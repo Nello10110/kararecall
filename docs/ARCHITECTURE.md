@@ -2,6 +2,8 @@
 
 État décrit le 5 novembre 2026. Ce document explique le fonctionnement du code livré et distingue les services disponibles des raccordements encore à réaliser. Pour les commandes de déploiement, voir [HOMELAB.md](HOMELAB.md) ; pour les évolutions à décider, voir le [backlog](../backlog.md).
 
+L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cette vue : quatre limites de retraitement/cache/couverture ont été reproduites sur des données fictives. Le Compose est utilisable pour un pilote ; une exploitation autonome demande les corrections et validations P0 du backlog.
+
 ## 1. Ce qui fonctionne aujourd’hui
 
 **Le Compose fournit l’application et son orchestration, pas les moteurs IA.** Il contient un service web et un worker optionnel. Aucun fournisseur, modèle téléchargé, serveur de transcription ou serveur de modèles n’y est installé automatiquement. Les connexions sont décrites dans `.env.example` puis renseignées dans le `.env` privé de chaque installation.

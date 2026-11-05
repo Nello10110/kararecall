@@ -6,6 +6,8 @@ Les évolutions à discuter et les travaux restants sont dans le [backlog](backl
 
 Le [document d’architecture](docs/ARCHITECTURE.md) décrit le fonctionnement global, le rôle de chaque modèle, les options locales et les raccordements encore à réaliser.
 
+L’[étude pour l’usage quotidien](docs/ETUDE-EXPLOITATION.md) compare les options et les coûts. Elle identifie les travaux P0 à terminer avant une exploitation autonome sur le NAS, notamment la conservation des versions de preuves lors des retraitements.
+
 Le NAS conserve les données et sert l’interface. Un travailleur optionnel synchronise Karakeep en lecture seule, extrait les médias et appelle les services IA configurés. Les modèles tournent sur une autre machine ou chez un fournisseur API : aucun gros modèle n’est chargé sur le NAS.
 
 ## Démarrer avec Docker Compose

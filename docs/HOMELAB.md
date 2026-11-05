@@ -1,5 +1,7 @@
 # Déploiement sur le homelab
 
+Ce guide décrit les commandes disponibles. Avant un usage autonome, consulter l’[étude d’exploitation](ETUDE-EXPLOITATION.md) et terminer le lot P0 du [backlog](../backlog.md), notamment la cohérence des preuves après retraitement et la validation des moteurs réels.
+
 ## Configuration
 
 Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, cloner le dépôt puis exécuter `python3 scripts/setup_env.py` ou créer `.env` depuis `.env.example`. Garder ce fichier sur le serveur : Compose transmet explicitement les variables requises à chaque service. Le service web ne reçoit aucune clé Karakeep ou IA.

@@ -1,55 +1,123 @@
 # Backlog — Mémoire
 
-Demandes et travaux restants, sans ordre de priorité. La priorisation sera décidée avec l’utilisateur. Ce document ne déclenche ni recherche web, ni appel IA, ni changement de configuration.
+Mise à jour du 5 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Ordre de réalisation proposé : **P0 avant usage autonome sur le NAS, P1 pour l’usage quotidien enrichi, P2 selon les résultats du pilote**. Les travaux ne sont pas encore réalisés sauf cases cochées. Les fournisseurs et dépenses ne sont pas sélectionnés automatiquement.
 
-## Enrichissement systématique par recherche internet
+## Déjà livré
 
-- [ ] Ajouter une étape de recherche web pour compléter chaque outil identifié : description, utilité, fonctionnement, documentation, site officiel et dépôt lorsqu’ils existent.
-- [ ] Conserver les pages consultées, leur date, leur URL et une trace de lecture ; rattacher chaque enrichissement à sa source.
-- [ ] Distinguer les propos de la vidéo, les descriptions de l’éditeur et les vérifications réalisées ; un site consulté ne prouve pas les performances annoncées.
-- [ ] Gérer les noms ambigus, les URL tronquées, les pages absentes et les contradictions sans inventer de correspondance.
-- [ ] Définir fournisseur de recherche, fréquence de rafraîchissement, cache, limites de coût et mécanisme de reprise.
+- [x] POC sur trois vidéos avec transcription locale, OCR et fiches sourcées.
+- [x] Interface dédiée : consultation, recherche globale, vidéo et transcription côte à côte, passages cliquables, exports Markdown et contexte pour assistant.
+- [x] Dépôt GitHub privé, Compose web/worker, configuration d’exemple et CI sur données synthétiques.
+- [x] [Document d’architecture](docs/ARCHITECTURE.md) : composants, flux, rôles IA et options locales.
+- [x] Étude des limites, coûts, alternatives et critères de passage à l’exploitation ; quatre limites de retraitement/cache/couverture reproduites sur un corpus fictif.
 
-## Accès naturel depuis un assistant : MCP à étudier
+## P0 — Socle avant exploitation autonome
 
-- [ ] Évaluer un serveur MCP pour chercher dans la bibliothèque et lire fiches, transcriptions, preuves horodatées et liens depuis un assistant conversationnel.
-- [ ] Comparer MCP et API HTTP existante ; décider du périmètre sans imposer MCP à l’interface web.
-- [ ] Prévoir authentification, accès en lecture seule, résultats bornés et citations jusqu’aux preuves originales.
-- [ ] Valider des demandes formulées naturellement, notamment à l’oral, avec abstention lorsque l’information manque.
+### Préserver les preuves lors des retraitements
 
-## Transcription, vidéo et recherche
+- [ ] Versionner les extractions de façon immuable : média, moteur/fournisseur, modèle/version et paramètres ; une fiche doit citer exactement les preuves utilisées lors de sa rédaction.
+- [ ] Remplacer les références reposant uniquement sur la position d’un segment par des références attachées à une version de preuve ; prévoir une migration des fiches existantes.
+- [ ] Préparer les nouvelles sorties dans une génération isolée, valider l’ensemble, puis publier atomiquement ; conserver une ancienne génération cohérente si une étape échoue.
+- [ ] Vérifier qu’une nouvelle transcription, un changement de modèle et une référence devenue absente ne modifient pas les preuves d’une ancienne fiche et ne cassent pas la consultation.
 
-Déjà disponible : transcription à côté de la vidéo, passages cliquables, recherche globale dans les textes transcrits et OCR. Les paroles du POC ont été transcrites localement avec Whisper ; le worker Docker appelle un service ASR configuré séparément du service vision.
+Acceptation : tests de retraitement et d’échec sans dérive des références ni mélange entre ancien catalogue et nouvelles preuves.
 
-- [ ] Ajouter une recherche directement dans le panneau de transcription avec surlignage et navigation au passage correspondant.
-- [ ] Améliorer la présentation des extraits de recherche et l’ouverture directe du passage retrouvé.
-- [ ] Évaluer une recherche sémantique ou hybride pour retrouver un besoin exprimé avec d’autres mots ; conserver les citations et mesurer les résultats sur des requêtes variées.
-- [ ] Choisir et valider les services réels de transcription, vision et synthèse : Mac ou API distante, compatibilité, qualité du français, noms propres, horodatages, coûts et confidentialité.
-- [ ] Comparer les options de transcription locale : service autour de faster-whisper, whisper.cpp, filtre Whisper de FFmpeg ou serveur audio compatible. Vérifier les contrats et les ressources ; aucun moteur n’est fourni dans le Compose actuel.
-- [ ] Détecter et réutiliser les pistes de sous-titres textuels disponibles afin d’éviter une nouvelle reconnaissance vocale, en conservant leur provenance et leurs temps.
-- [ ] Améliorer l’échantillonnage des captures pour les textes brefs et documenter sa couverture ; le worker est limité à 12 images par défaut.
-- [ ] Étudier le traitement des vidéos longues et volumineuses, des vidéos sans parole et la reprise indépendante des étapes après un échec.
+### Rendre les reprises et le cache explicites
 
-## Navigation et revue des fiches
+- [ ] Inclure fournisseur, modèle/version, paramètres et version du traitement dans les clés de cache, sans inclure les secrets.
+- [ ] Ajouter un retraitement volontaire par source/étape ; changer une clé d’authentification ne doit pas invalider des résultats valides.
+- [ ] Séparer les états téléchargement, audio, OCR, synthèse et publication ; une panne audio ne doit pas bloquer indéfiniment un OCR indépendant.
+- [ ] Traiter une vidéo sans piste audio ou sans paroles comme un cas normal ; afficher « non applicable » ou l’état réellement observé.
+- [ ] Ajouter un mode de rattrapage borné pour l’import initial, sans augmenter la concurrence par défaut ; rendre visible le nombre réel de sources en attente.
 
-- [ ] Recueillir les besoins d’usage quotidien puis ajuster navigation, filtres et éléments affichés.
-- [ ] Permettre la correction et la validation des synthèses marquées « À relire », des noms d’outils et des liens, en conservant leurs preuves.
-- [ ] Gérer les doublons d’outils issus de plusieurs favoris et les regrouper sans perdre leurs provenances.
-- [ ] Rendre les erreurs, les tâches en attente et les reprises plus faciles à comprendre et à piloter.
-- [ ] Étudier les exports ou liens utiles vers AFFiNE et Wiki.js selon les usages ; aucun connecteur n’est encore implémenté.
+Acceptation : panne du Mac, erreur API et redémarrage reprennent sans perte ni appel identique inutile, et l’interface distingue partiel, terminé, en attente et échec.
 
-## Déploiement et exploitation du homelab
+### Raccorder les moteurs et qualifier un pilote réel
 
-- [ ] Déployer le Compose sur le NAS, remplir son `.env` et vérifier les connexions réelles ; le dépôt privé et les tests locaux/CI sont déjà en place.
-- [ ] Importer le corpus privé du POC dans le volume du NAS sans l’envoyer sur GitHub.
-- [ ] Configurer l’accès LAN et, si nécessaire, le reverse proxy HTTPS ou le VPN du homelab.
-- [ ] Effectuer une sauvegarde puis un essai de restauration du volume et de la configuration.
-- [ ] Mesurer mémoire, temps de traitement et espace disque sur le NAS avec un corpus représentatif ; vérifier le comportement lorsque le Mac ou une API est indisponible.
-- [ ] Définir la gestion des favoris supprimés et des pièces jointes remplacées. Actuellement, les suppressions restent locales et le remplacement d’une vidéo conservée est bloqué pour préserver ses preuves.
-- [ ] Évaluer une image Docker publiée dans un registre privé si la construction depuis le dépôt devient gênante pour le gestionnaire de stacks.
+- [ ] Choisir un premier profil de traitement : API ou service Mac. Proposition : transcription et OCR spécialisé sur le Mac, synthèse locale ou API interchangeable.
+- [ ] Exposer les briques faster-whisper/Apple Vision locales derrière un service authentifié sur le réseau privé, si le profil Mac est retenu ; prévoir démarrage et redémarrage du service.
+- [ ] Comparer la vitesse/qualité avec whisper.cpp si nécessaire ; FFmpeg/Whisper reste une variante locale à adapter, pas une suppression du besoin de reconnaissance vocale.
+- [ ] Valider les contrats réels d’audio, vision et texte, y compris les paramètres non pris en charge, les horodatages et les réponses JSON ; `check` seul ne suffit pas.
+- [ ] Lire des favoris et télécharger au moins un média avec l’API REST Karakeep réelle, sans modifier les favoris et sans retourner sur Instagram.
+- [ ] Définir le périmètre de collecte et la taille du premier import ; ajouter la sélection par listes/tags si nécessaire, car le filtre actuel est une sous-chaîne d’URL et ne sélectionne pas les listes Karakeep.
+- [ ] Qualifier vingt sources variées : silence, nom propre, texte bref à l’écran, ambiguïté, plusieurs outils, absence de média ; mesurer précision, durée et mémoire.
 
-## État des raccordements IA
+Acceptation : chaîne réelle reproductible, paramètres documentés, limites affichées et aucun moteur/call distant activé sans configuration explicite.
 
-Le [document d’architecture](docs/ARCHITECTURE.md) distingue le POC local, les clients API du worker et les options encore à intégrer.
+### Borner et mesurer les dépenses
 
-Les adresses, clés et modèles sont prévus dans `.env.example` pour trois rôles indépendants : `ASR_*` pour les paroles, `VISION_*` pour le texte des captures, `LLM_*` pour la synthèse des fiches. La synchronisation et les appels IA restent désactivés tant que leur configuration n’est pas renseignée et activée. Aucun service réel n’est sélectionné par défaut.
+- [ ] Ajouter une limite de sortie compatible avec chaque fournisseur et permettre de régler le raisonnement lorsque le modèle le propose.
+- [ ] Enregistrer par étape les usages disponibles, durée audio, nombre de captures, tokens facturés et coût estimé selon des tarifs configurés ; ne pas journaliser les clés ou les contenus privés.
+- [ ] Fixer un plafond de sources/appels par période, limiter les reprises consécutives et suspendre le traitement facturable quand le budget configuré est atteint ou ne peut pas être évalué de manière sûre.
+- [ ] Garder des fournisseurs explicites, sans bascule payante automatique ; afficher un budget comme estimation et non comme facture garantie.
+- [ ] Mesurer le coût d’un lot avant d’autoriser un import massif ; distinguer import initial et coût mensuel récurrent.
+
+Acceptation : on peut expliquer le coût d’une fiche, limiter les sorties et arrêter les nouveaux appels à la limite choisie.
+
+### Déployer et restaurer sur le homelab
+
+- [ ] Déployer le Compose sur le NAS, renseigner son `.env` et vérifier les UID/GID, accès réseau, espace disque et ressources réels.
+- [ ] Importer le corpus privé du POC dans le volume, sans le faire passer par GitHub ; vérifier une reconstruction et des références d’origine.
+- [ ] Configurer l’accès LAN/VPN ou le reverse proxy HTTPS choisi ; préserver authentification, accès aux médias et requêtes vidéo partielles.
+- [ ] Sauvegarder volume et configuration puis restaurer réellement dans un volume neuf ; tester une mise à jour et le retour à une sauvegarde.
+- [ ] Mesurer le worker en charge avec les autres services du NAS ; prévoir un signal d’erreur utile et la détection d’un worker arrêté ou d’un manque d’espace disque.
+
+Acceptation : restauration et mise à jour vérifiées ; le web reste consultable pendant une panne des moteurs ; absence de données ou clés dans le dépôt et les images.
+
+## P1 — Usage quotidien et enrichissement demandé
+
+### Recherche internet systématique par outil
+
+- [ ] Après identification d’un outil, rechercher son site, documentation et dépôt officiels lorsqu’ils existent ; décrire son utilité et son fonctionnement à partir des sources consultées.
+- [ ] Commencer par un budget borné : une recherche et jusqu’à deux pages par nouvel outil, avec cache partagé entre favoris du même outil et date de révision.
+- [ ] Comparer Brave + lecture simple des pages et Firecrawl pour les extractions difficiles ; suivre coût et quota partagés, sans souscrire automatiquement.
+- [ ] Conserver les URL, dates, traces de lecture et citations ; distinguer description de l’éditeur, propos de la vidéo et capacités effectivement testées.
+- [ ] Gérer noms ambigus, URL tronquées, pages absentes et contradictions sans inventer de correspondance ; un lien inaccessible reste signalé.
+- [ ] Limiter les données envoyées à la recherche aux informations utiles, et borner volumes, délais et redirections de la récupération ; bloquer l’accès à des adresses privées depuis les liens non fiables.
+
+Acceptation : chaque enrichissement est retraçable, un doublon ne relance pas toute la recherche, un échec ne bloque pas les fiches existantes et le coût est visible.
+
+### Revue et navigation
+
+- [ ] Permettre de corriger et valider une synthèse « À relire », les noms et les liens, sans perdre l’historique ni les preuves.
+- [ ] Donner les écritures éditoriales à un seul propriétaire/une transaction ; éviter des modifications concurrentes des JSON par le web et le worker.
+- [ ] Regrouper les fiches d’un même outil issues de plusieurs favoris, en conservant toutes leurs provenances.
+- [ ] Recueillir les retours d’usage puis ajuster navigation et filtres ; améliorer les actions de reprise et les explications des erreurs.
+- [ ] Ajouter recherche et surlignage directement dans le panneau de transcription, puis navigation au passage correspondant.
+- [ ] Améliorer l’extrait et l’ouverture à l’instant précis depuis les résultats globaux.
+
+Déjà disponible : la recherche globale inclut transcriptions et OCR ; la transcription apparaît à côté de la vidéo avec passages cliquables.
+
+### Couverture et traitements économes
+
+- [ ] Répartir le budget texte entre légende, audio, OCR et portions de vidéo ; signaler les preuves non envoyées au modèle.
+- [ ] Détecter et importer les pistes de sous-titres textuels disponibles, avec origine et horodatages, pour éviter une nouvelle reconnaissance.
+- [ ] Améliorer l’échantillonnage des captures pour les textes brefs, sans envoyer toutes les images à un LLM par défaut ; documenter la couverture.
+- [ ] Étudier découpage/reprise des vidéos longues ou volumineuses et la sélection d’un OCR/vision plus riche seulement lorsque nécessaire.
+
+## P2 — Conversation, recherche avancée et long terme
+
+### MCP en lecture seule
+
+- [ ] Réutiliser les fonctions de recherche/lecture pour un serveur MCP : fiche, source, transcription, preuve horodatée et contexte.
+- [ ] Choisir transport et authentification selon les assistants réellement utilisés ; comparer adaptateur local sur Mac et service HTTP du homelab.
+- [ ] Borner les résultats et conserver les citations ; aucune écriture Karakeep ni exécution d’outil découvert dans les sources.
+- [ ] Qualifier des demandes naturelles, y compris orales, et l’abstention lorsque l’information est absente.
+
+### Mesurer avant de passer au sémantique
+
+- [ ] Constituer vingt questions de souvenirs indépendantes des fiches et mesurer le moteur lexical ; proposition initiale : bonne source dans les trois premiers résultats sur au moins seize questions.
+- [ ] Si ce niveau est insuffisant, comparer lexical et recherche hybride multilingue ; conserver les preuves et mesurer les faux positifs.
+- [ ] Garder les embeddings comme index dérivé reconstruisible ; n’ajouter une base vectorielle séparée que si l’échelle mesurée le justifie.
+
+### Stockage, performances et maintenance
+
+- [ ] Hacher les médias en flux, réutiliser les empreintes connues et éviter de relire tout le corpus pour chaque nouvelle fiche.
+- [ ] Ajouter pagination côté interface et reconstruction ciblée ; mesurer recherche et mémoire avec un corpus représentatif avant une nouvelle base serveur.
+- [ ] Définir quotas, espace libre, rétention des médias/versions et conservation des traces ; ne pas supprimer automatiquement les preuves citées.
+- [ ] Définir le traitement des favoris supprimés et des pièces jointes remplacées. Actuellement les suppressions restent locales et les remplacements sont bloqués.
+- [ ] Prévoir migrations de schéma, vérification des dépendances et modèles dépréciés, tests périodiques de restauration et mise à jour.
+- [ ] Étudier les exports utiles vers AFFiNE/Wiki.js et une image Docker dans un registre privé si ces besoins se confirment.
+
+## Critère de passage à l’exploitation
+
+Les critères et charges indicatives sont dans l’[étude](docs/ETUDE-EXPLOITATION.md#critères-proposés-pour-donner-le-feu-vert-au-nas). Le chantier peut commencer sur l’architecture actuelle ; le feu vert à l’usage autonome demande la validation du lot P0, et non la seule existence du Compose.
