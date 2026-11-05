@@ -25,6 +25,8 @@ Déjà disponible : transcription à côté de la vidéo, passages cliquables, r
 - [ ] Améliorer la présentation des extraits de recherche et l’ouverture directe du passage retrouvé.
 - [ ] Évaluer une recherche sémantique ou hybride pour retrouver un besoin exprimé avec d’autres mots ; conserver les citations et mesurer les résultats sur des requêtes variées.
 - [ ] Choisir et valider les services réels de transcription, vision et synthèse : Mac ou API distante, compatibilité, qualité du français, noms propres, horodatages, coûts et confidentialité.
+- [ ] Comparer les options de transcription locale : service autour de faster-whisper, whisper.cpp, filtre Whisper de FFmpeg ou serveur audio compatible. Vérifier les contrats et les ressources ; aucun moteur n’est fourni dans le Compose actuel.
+- [ ] Détecter et réutiliser les pistes de sous-titres textuels disponibles afin d’éviter une nouvelle reconnaissance vocale, en conservant leur provenance et leurs temps.
 - [ ] Améliorer l’échantillonnage des captures pour les textes brefs et documenter sa couverture ; le worker est limité à 12 images par défaut.
 - [ ] Étudier le traitement des vidéos longues et volumineuses, des vidéos sans parole et la reprise indépendante des étapes après un échec.
 
@@ -47,5 +49,7 @@ Déjà disponible : transcription à côté de la vidéo, passages cliquables, r
 - [ ] Évaluer une image Docker publiée dans un registre privé si la construction depuis le dépôt devient gênante pour le gestionnaire de stacks.
 
 ## État des raccordements IA
+
+Le [document d’architecture](docs/ARCHITECTURE.md) distingue le POC local, les clients API du worker et les options encore à intégrer.
 
 Les adresses, clés et modèles sont prévus dans `.env.example` pour trois rôles indépendants : `ASR_*` pour les paroles, `VISION_*` pour le texte des captures, `LLM_*` pour la synthèse des fiches. La synchronisation et les appels IA restent désactivés tant que leur configuration n’est pas renseignée et activée. Aucun service réel n’est sélectionné par défaut.
