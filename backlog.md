@@ -47,7 +47,8 @@ Acceptation : panne du Mac, erreur API et redémarrage reprennent sans perte ni 
 - [x] Produire un résumé de lecture sourcé même sans outil identifié, consultable, recherchable et exportable ; notes personnelles distinctes des textes éditeur.
 - [x] Proposer le profil DeepSeek texte/vision avec paramètres documentés, clés dans `.env` et transcription audio séparée. Voir [le guide](docs/IMPORT-ET-DEEPSEEK.md).
 - [ ] Mesurer le nombre total de favoris et de pages sans texte lors du premier import réel ; qualifier articles, notes et fichiers en plus des vidéos.
-- [ ] Extraire les PDF et lire les images autonomes lorsque Karakeep ne fournit pas de texte, avec conservation de l’original, limites de taille, preuves de page/image et état explicite des échecs. Leur import comme métadonnées est déjà assuré.
+- [x] Extraire le texte incorporé aux PDF et lire les images autonomes via le service vision sur activation explicite. Les originaux, preuves de page/image, limites et échecs sont consultables. [Paramètres](docs/HOMELAB.md#pdf-et-images).
+- [ ] Étudier l’OCR par page des PDF numérisés sans texte incorporé et en borner le coût.
 - [ ] Qualifier vingt sources variées : silence, nom propre, texte bref à l’écran, ambiguïté, plusieurs outils, absence de média ; mesurer précision, durée et mémoire.
 
 Acceptation : chaîne réelle reproductible, paramètres documentés, limites affichées et aucun moteur/call distant activé sans configuration explicite.
@@ -70,7 +71,8 @@ Acceptation : on peut expliquer le coût d’une fiche, limiter les sorties et a
 - [ ] Importer le corpus privé du POC dans le volume, sans le faire passer par GitHub ; vérifier une reconstruction et des références d’origine.
 - [ ] Configurer l’accès LAN/VPN ou le reverse proxy HTTPS choisi ; préserver authentification, accès aux médias et requêtes vidéo partielles.
 - [ ] Sauvegarder volume et configuration puis restaurer réellement dans un volume neuf ; tester une mise à jour et le retour à une sauvegarde.
-- [ ] Mesurer le worker en charge avec les autres services du NAS ; prévoir un signal d’erreur utile et la détection d’un worker arrêté ou d’un manque d’espace disque.
+- [x] Signaler une absence récente de statut du worker et un espace disque disponible inférieur à 256 Mio dans Traitements.
+- [ ] Mesurer le worker en charge avec les autres services du NAS.
 
 Acceptation : restauration et mise à jour vérifiées ; le web reste consultable pendant une panne des moteurs ; absence de données ou clés dans le dépôt et les images.
 
@@ -93,8 +95,8 @@ Acceptation : chaque enrichissement est retraçable, un doublon ne relance pas t
 - [ ] Donner les écritures éditoriales à un seul propriétaire/une transaction ; éviter des modifications concurrentes des JSON par le web et le worker.
 - [ ] Regrouper les fiches d’un même outil issues de plusieurs favoris, en conservant toutes leurs provenances.
 - [ ] Recueillir les retours d’usage puis ajuster navigation et filtres ; améliorer les actions de reprise et les explications des erreurs.
-- [ ] Ajouter recherche et surlignage directement dans le panneau de transcription, puis navigation au passage correspondant.
-- [ ] Améliorer l’extrait et l’ouverture à l’instant précis depuis les résultats globaux.
+- [x] Rechercher et surligner les mots dans le panneau de transcription, puis ouvrir le passage correspondant.
+- [x] Centrer l’extrait sur un mot retrouvé et ouvrir directement le passage ou la page depuis les résultats globaux.
 
 Déjà disponible : la recherche globale inclut transcriptions et OCR ; la transcription apparaît à côté de la vidéo avec passages cliquables.
 

@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import threading
 import time
 from datetime import datetime
@@ -19,6 +20,7 @@ import kararecall
 from settings import initialize
 from publication import active_root
 from controls import history_status, request_history
+from worker_documents import attachment_extension, attachment_target
 
 ROOT = kararecall.ROOT
 WEB = Path(__file__).resolve().parent / 'web'
@@ -32,12 +34,12 @@ def source_summary(source):
         author = urlsplit(source['url']).hostname or {'text':'Note personnelle','asset':'Fichier enregistré'}.get(source.get('bookmark_type'),'Source enregistrée')
     current=[e for e in source['evidence'] if not e.get('archived')]
     images = [e for e in current if e.get('image')]
-    preferred = next((e for e in images if e['start'] >= 14), images[0] if images else None)
+    preferred = next((e for e in images if e.get('start',0) >= 14), images[0] if images else None)
     return {key: source[key] for key in ('id', 'url', 'created_at', 'tags', 'processing')} | {
         'title': caption.strip(' “”:"'), 'author': author.strip(' @'),
         'thumbnail': '/assets/' + preferred['image'] if preferred else None,
         'transcript_count': sum(e['kind'] == 'asr' for e in current),
-        'frame_count': len(images), 'stages':source.get('stages',{}),
+        'frame_count': sum(e['kind']=='ocr' for e in images), 'stages':source.get('stages',{}),
         'bookmark_type':source.get('bookmark_type','link'),'content_status':source.get('content_status'),
         'has_video':bool(source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[]))),
         'has_reading':bool(source.get('reading'))}
@@ -103,6 +105,7 @@ def context_for(entity, sources):
                 source = sources[sid]
                 ev = next(e for e in source['evidence'] if e['id'] == eid)
                 at = f" à {kararecall.stamp(ev['start'])}" if ev.get('start') is not None else ''
+                if ev.get('page'):at += f" (page {ev['page']} du PDF)"
                 original_url=ev.get('source_url',source['url'])
                 if ev.get('archived'):at+=' (preuve conservée d’une version antérieure)'
                 lines += [f"  Preuve {ref}{at} : {original_url}", '  Extrait : ' + ev['text'].replace('\n', ' ')[:1200]]
@@ -250,16 +253,19 @@ def make_handler(corpus, username='', password=''):
                 worker=kararecall.read_json(corpus.root/'data/service-status.json',{})
                 usage=kararecall.read_json(corpus.root/'data/usage-summary.json',worker.get('usage',{}))
                 if usage:worker['usage']=usage
-                if worker.get('sync_enabled'):
+                if worker.get('heartbeat_at'):
                     moments=[worker.get('heartbeat_at'),usage.get('updated_at')]
                     latest=max((datetime.fromisoformat(t).timestamp() for t in moments if t),default=0)
-                    worker['stale']=time.time()-latest>max(300,worker.get('sync_interval_seconds',900)*2)
+                    threshold=max(300,worker.get('sync_interval_seconds',900)*2) if worker.get('state')=='running' else 300
+                    worker['stale']=time.time()-latest>threshold
+                disk=shutil.disk_usage(corpus.root)
+                storage={'free_mb':disk.free//(1024*1024),'low_space':disk.free<256*1024*1024}
                 summaries = [source_summary(s) for s in data['sources']]
                 complete = sum(s['processing']['audio_transcribed'] and s['processing']['ocr_sampled'] for s in summaries)
                 return self.send_json({'entities': data['entities'], 'sources': summaries,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if kararecall.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',
-                    'worker': worker, 'history_import':history_status(corpus.root),
+                    'worker': worker, 'history_import':history_status(corpus.root), 'storage':storage,
                     'updated_at': (view_root / 'data/catalog.json').stat().st_mtime,
                     'last_process': kararecall.read_json(view_root / 'data/last-process.json', {})})
             if path == '/api/search':
@@ -285,6 +291,18 @@ def make_handler(corpus, username='', password=''):
                 return self.send_json({'source': source, 'summary': source_summary(source),
                     'entities': [e for e in entities.values() if sid in e['source_ids']],
                     'media_url': '/assets/data/media/' + sid + '.mp4' if source['processing']['media_downloaded'] else None})
+            match = re.fullmatch(r'/download/document/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]{1,120})', path)
+            if match:
+                sid, asset_id = match.groups()
+                source = sources[sid]
+                relative = f'data/documents/{sid}/{asset_id}.bin'
+                candidates = [source['processing'].get('attachment'), *(e.get('attachment') for e in source['evidence'])]
+                attachment = next((item for item in candidates if item and item['file']==relative), None)
+                if not attachment:
+                    return self.send_json({'error':'Pièce jointe introuvable'}, 404)
+                target = attachment_target(view_root,sid,attachment)
+                if not target.is_file():return self.send_json({'error':'Pièce jointe introuvable'},404)
+                return self.serve_file(target,sid+attachment_extension(target,attachment['kind']))
             match = re.fullmatch(r'/download/(tool|source)/([a-zA-Z0-9_-]+)\.md', path)
             if match:
                 kind, sid = match.groups()

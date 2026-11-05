@@ -11,7 +11,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -v
-      - run: python -m compileall -q kararecall.py web_server.py settings.py integrations.py worker.py worker_media.py publication.py usage.py controls.py scripts
+      - run: python -m compileall -q kararecall.py web_server.py settings.py integrations.py worker.py worker_media.py worker_documents.py publication.py usage.py controls.py scripts
       - run: python scripts/check_container.py
   media:
     runs-on: ubuntu-latest
@@ -19,3 +19,4 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build --target worker --tag kararecall-worker:test .
       - run: docker run --rm --mount "type=bind,src=$PWD/tests,dst=/tests,readonly" -e PYTHONPATH=/app kararecall-worker:test python -m unittest discover -s /tests -p test_media_worker.py -v
+      - run: docker run --rm --mount "type=bind,src=$PWD/tests,dst=/tests,readonly" -e PYTHONPATH=/app kararecall-worker:test python -m unittest discover -s /tests -p test_documents.py -v

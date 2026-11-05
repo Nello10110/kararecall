@@ -117,7 +117,7 @@ Le format produit par FFmpeg/Whisper devrait être converti vers les preuves JSO
 
 Le navigateur consulte le corpus en lecture seule ; une commande authentifiée et protégée contre les requêtes intersites peut demander un import global. Elle écrit une demande locale, exécutée par le worker, sans modification de Karakeep. Le service web lit le catalogue JSON, classe les résultats et sert les médias/images autorisés. La recherche examine les titres, descriptions, usages, preuves citées et textes des sources, y compris les transcriptions et l’OCR. Elle normalise les accents et rapproche certaines fautes d’orthographe. **Elle n’est pas limitée à une correspondance de phrase exacte, mais elle n’est pas sémantique** et ne fait appel à aucun LLM ni embedding.
 
-Une source expose sa transcription à côté de la vidéo. Les passages disponibles sont cliquables pour naviguer à l’instant cité. Une recherche dédiée dans ce panneau, le surlignage et une ouverture directe plus précise depuis tous les résultats restent dans le backlog.
+Une source expose sa transcription à côté de la vidéo. Les passages disponibles sont cliquables pour naviguer à l’instant cité. Le panneau permet de rechercher et surligner des mots. Les résultats globaux peuvent ouvrir directement la preuve horodatée. Les preuves PDF sont repérées par page.
 
 Le bouton de contexte fournit un texte à copier dans un assistant ; il ne transmet rien automatiquement. Aucune conversation intégrée ni serveur MCP n’est encore fourni. Les routes de lecture existantes sont détaillées dans [WEB.md](WEB.md).
 

@@ -6,6 +6,7 @@
 !integrations.py
 !worker.py
 !worker_media.py
+!worker_documents.py
 !requirements.worker.txt
 !web/
 !web/**

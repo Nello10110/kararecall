@@ -8,3 +8,19 @@
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 
 .history-import{display:flex;align-items:center;justify-content:space-between;gap:24px}.history-import p{font-size:13px;line-height:1.8}.history-import small{display:block;color:var(--muted);margin-top:10px}.history-import .btn{flex-shrink:0}.btn:disabled{opacity:.55;cursor:wait}@media(max-width:650px){.history-import{align-items:flex-start;flex-direction:column}}
+
+.transcript-find { display: grid; gap: 6px; margin-bottom: 12px; }
+.transcript-find label { font-size: 12px; font-weight: 600; }
+.transcript-find input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+}
+.transcript-find small { color: var(--muted); }
+.transcript mark, .snippet mark { background: #e4ecc3; color: inherit; border-radius: 3px; }
+.selected-proof { border-color: #8ea67a; }
+.result-proof { margin: 0 0 12px 12px; }
+.detail-panel > .btn { margin-top: 10px; }

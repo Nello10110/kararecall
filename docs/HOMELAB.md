@@ -19,7 +19,9 @@ Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, 
 | `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY` | Adresse Karakeep et clé Bearer ; pas besoin d’ajouter `/api/v1` |
 | `KARAKEEP_URL_FILTER` | Sous-chaîne d’URL facultative ; ex. `instagram.com` ; vide = tous les favoris |
 | `SYNC_INTERVAL_SECONDS`, `WORKER_BATCH_SIZE` | Période et maximum de traitements par passage ; défaut 900 s et 3 |
-| `DOWNLOAD_MEDIA` | Téléchargement des pièces jointes vidéo ; défaut true |
+| `DOWNLOAD_MEDIA` | Téléchargement des vidéos et des PDF/images sans texte fourni par Karakeep ; défaut true |
+| `PDF_MAX_PAGES` | Nombre de pages analysées localement par PDF ; défaut 25, maximum 100 |
+| `IMAGE_OCR_ENABLED` | Envoie les images autonomes au service vision configuré pour lire le texte ; défaut false |
 | `MEDIA_MAX_MB`, `MEDIA_MAX_SECONDS` | Limites de taille et durée ; défaut 100 Mio, 300 s |
 | `HTTP_TIMEOUT_SECONDS` | Délai réseau par requête ; défaut 120 s |
 | `LLM_ENABLED` | Résumés des sources et rédaction des fiches à partir des preuves ; défaut false |
@@ -41,6 +43,15 @@ Pour une clé contenant `$` ou `#`, utiliser des guillemets simples dans `.env`.
 
 Voir le [guide import et DeepSeek](IMPORT-ET-DEEPSEEK.md). Renseigner les accès Karakeep et `COMPOSE_PROFILES=automation`, puis démarrer les services. Dans **Traitements**, cliquer sur **Importer tout l’historique** ; `SYNC_ENABLED=false` peut être conservé. Ce passage importe le catalogue et les textes, sans IA ni téléchargement. Ensuite, qualifier un premier traitement avant d’activer la boucle. Garder les deux filtres URL/tags vides pour analyser aussi les sites et articles ; corriger `instagram.com` dans un ancien `.env`.
 
+## PDF et images
+
+Le worker télécharge l’original des PDF et images sans texte fourni par Karakeep lorsque `DOWNLOAD_MEDIA=true`. La limite est de 20 Mio par fichier, ou moins si `MEDIA_MAX_MB` est inférieur. L’original est accessible en téléchargement dans la fiche source. Les preuves restent liées à l’empreinte du fichier, y compris lorsqu’une pièce jointe est remplacée dans Karakeep.
+
+- Le worker Docker extrait le texte incorporé aux PDF avec Poppler, avec des limites de temps, mémoire, pages et sortie. Chaque page conserve son numéro. Une limite atteinte est signalée. Un scan sans texte incorporé apparaît comme « Aucun texte extrait ». [Documentation de pdftotext](https://manpages.debian.org/trixie/poppler-utils/pdftotext.1.en.html).
+- Une image est conservée comme original par défaut. Pour lire son texte, définir `IMAGE_OCR_ENABLED=true` avec un modèle vision déjà configuré. Le service reçoit un aperçu JPEG sans métadonnées, limité à 1280 pixels de côté. JPEG, PNG et WebP fixes sont acceptés jusqu’à 20 mégapixels. L’appel est comptabilisé comme un appel vision.
+
+L’import manuel du catalogue reste indépendant du téléchargement et de l’extraction. Utiliser `worker.py retry --source ID --stage document` pour retraiter volontairement un fichier déjà conservé. Le suivi se trouve dans Traitements et dans la fiche source.
+
 ## Lancement et diagnostic
 
 ```sh
@@ -61,7 +72,7 @@ docker compose up -d
 
 Un verrou empêche deux workers de modifier le même volume. La synchronisation parcourt toutes les pages de favoris à chaque passage pour détecter les modifications ; elle conserve les suppressions et ne modifie jamais Karakeep. Les identifiants servent à dédupliquer, les réponses brutes sont conservées par version et les tâches réussies ne sont pas rejouées sans changement de source ou de configuration du pipeline. Changer uniquement une clé n’invalide pas les résultats réussis ; les échecs reprendront après leur délai.
 
-Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Traitements. Le statut `done` d’une tâche signifie que les étapes **configurées** ont fini ; sans ASR/vision, il ne signifie pas qu’une vidéo a été analysée. Une erreur ASR laisse la vision progresser et publier ses résultats ; la synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `worker.py retry --source ID --stage asr|vision|llm|all` permet une reprise explicite. Une nouvelle pièce jointe remplaçant une vidéo locale est bloquée, avec conservation de l’ancienne version et de ses références ; la migration de versions n’est pas automatisée.
+Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Traitements. Le worker actualise son signal de présence pendant l’attente entre deux passages. La vue signale un état ancien et indique un espace disque faible sous 256 Mio disponibles sur le système de fichiers du volume. Le statut `done` d’une tâche signifie que les étapes **configurées** ont fini ; sans ASR/vision, il ne signifie pas qu’une vidéo a été analysée. Une erreur ASR laisse la vision progresser et publier ses résultats ; la synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `worker.py retry --source ID --stage asr|vision|document|llm|all` permet une reprise explicite. Une nouvelle pièce jointe remplaçant une vidéo locale est bloquée, avec conservation de l’ancienne version et de ses références ; la migration de versions n’est pas automatisée.
 
 Le web a une limite de 384 Mio et le worker de 768 Mio ; un seul média est traité à la fois. Les images utilisent `python:3.12-slim` et sont construites pour l’architecture du NAS. Le parcours web a été testé sous OrbStack Linux ARM64, autour de 21 Mio au repos avec le petit corpus de test. Ce n’est pas une mesure de charge du worker ni une garantie mémoire pour un gros corpus. Une limite trop basse peut provoquer un arrêt OOM, à diagnostiquer via `docker compose ps` et les journaux.
 

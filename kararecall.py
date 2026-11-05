@@ -195,12 +195,16 @@ def load_evidence(source, root=ROOT):
                          "text": "\n".join(line["text"] for line in frame["lines"]),
                          "image": str((directory / frame["image"]).relative_to(root)),
                          "recognition":{key:ocr.get(key) for key in ('engine','model','cache_key')},"media_sha256":digest})
+    from worker_documents import load_document_evidence
+    document_rows, attachment = load_document_evidence(source, root, directory)
+    evidence.extend(document_rows)
     if source.get('evidence_schema')==2:
         from publication import freeze
         evidence=freeze(source,evidence,root)
         current={row['id'] for row in evidence}
         evidence += [dict(row,archived=True) for row in source.get('evidence_archive',[]) if row['id'] not in current]
     return evidence, {"media_downloaded": media.exists(), "media_sha256": digest,
+                      "attachment": attachment,
                       "audio_transcribed": transcript.get("status") == "complete",
                       "ocr_sampled": ocr.get("status") == "complete",
                       "ocr_interval_seconds": ocr.get("interval"),
@@ -269,8 +273,13 @@ def build(root=ROOT):
                  f"Audio transcrit : {status['audio_transcribed']}. OCR échantillonné : {status['ocr_sampled']}."]
         if status["ocr_sampled"]:
             lines += [f"Une image toutes les {status['ocr_interval_seconds']} s ; du texte bref peut être manqué."]
-        if source.get('content_status')=='metadata_only':
-            lines += ['', 'Texte intégral indisponible dans Karakeep : seules les métadonnées sont conservées. Une pièce jointe non vidéo n’est pas analysée par ce worker.']
+        attachment = status.get('attachment')
+        if attachment:
+            lines += ['', f"[Télécharger la pièce jointe originale](../../{attachment['file']})"]
+            if attachment['truncated']:
+                lines += ['Le texte extrait couvre une partie du PDF.']
+        if source.get('content_status')=='metadata_only' and (not attachment or attachment['status']!='complete'):
+            lines += ['', 'Aucun texte intégral disponible pour ce favori.']
         if source.get('reading'):
             lines += ['', '## Résumé de lecture · à relire', '']+render_claim(source['reading'],lookup)
             if coverage_notice(source['reading']):lines += [coverage_notice(source['reading']),'']
@@ -284,6 +293,8 @@ def build(root=ROOT):
             lines += [f'<a id="{eid}"></a>', "", f"### {eid} · {kind}", ""]
             if "start" in evidence:
                 lines += [f"[{stamp(evidence['start'])} · vidéo locale](../../data/media/{sid}.mp4#t={evidence['start']:.2f})", ""]
+            if evidence.get('page'):
+                lines += [f"[PDF original, page {evidence['page']}](../../{evidence['attachment']['file']})", '']
             if evidence.get("image"):
                 lines += [f"[Image source](../../{evidence['image']})", ""]
             lines += ["> " + evidence["text"].replace("\n", "\n> "), ""]
@@ -384,13 +395,19 @@ def search(query, catalog, limit=5):
         snippets = []
         for sid in doc['source_ids']:
             for evidence in lookup[sid]['evidence']:
+                if doc['kind']=='source' and evidence.get('archived'):
+                    continue
                 if doc['refs'] and sid + '#' + evidence['id'] not in doc['refs']:
                     continue
                 overlap = len(q & set(tokens(evidence['text'])))
                 if overlap:
+                    raw = evidence['text']
+                    position = next((word.start() for word in re.finditer(r'\w+',raw) if normalize(word.group()) in q),0)
+                    start = max(0,position-80)
+                    excerpt = ('…' if start else '') + raw[start:start+230].strip() + ('…' if len(raw)>start+230 else '')
                     snippets.append({'source_id': sid, 'evidence_id': evidence['id'],
                                      'kind': evidence['kind'], 'archived':evidence.get('archived',False), 'start': evidence.get('start'),
-                                     'image': evidence.get('image'), 'text': evidence['text'][:700], 'overlap': overlap})
+                                     'image': evidence.get('image'), 'page': evidence.get('page'), 'text': excerpt, 'overlap': overlap})
         item['snippets'] = sorted(snippets, key=lambda x: -x['overlap'])[:2]
         results.append(item)
     return sorted(results, key=lambda d: (-d["score"], d["id"]))[:limit]

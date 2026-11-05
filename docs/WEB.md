@@ -7,7 +7,7 @@ L’interface est servie par `web_server.py`, sans compilation ni dépendance ti
 - **Recherche** : mots ou description d’un souvenir, classement lexical, filtres outils/sources.
 - **Mes outils** : description, utilité, fonctionnement, limites, liens et preuves. Les synthèses automatiques sont marquées « À relire ».
 - **Sources** : favoris conservés localement, texte disponible, état réel des extractions.
-- **Preuves** : transcription et captures horodatées, vidéo locale avec navigation à l’instant cité. Les formats lisibles dépendent du navigateur.
+- **Preuves** : recherche et surlignage dans la transcription, captures horodatées et ouverture du passage depuis les résultats globaux. Les preuves de document affichent le numéro de page du PDF ou l’aperçu de l’image.
 - **Traitements** : présence des médias, transcription/OCR et état du dernier passage du worker. Actualiser le catalogue pour charger les nouveaux résultats. Un bouton permet de demander l’import de tout l’historique ; il ne lance pas d’analyse IA et ne modifie pas Karakeep. La demande est persistée et exécutée par le worker. Les analyses suivent la configuration et les quotas habituels. Elle affiche le budget comptabilisé, les appels, les sources en attente et les étapes en erreur/non applicables, et signale un état de collecte trop ancien.
 - **Approfondir** : export Markdown ou copie du contexte destiné à un autre assistant ; aucune requête IA n’est lancée par ce bouton. Un champ sélectionnable remplace le presse-papiers si nécessaire.
 
@@ -26,6 +26,7 @@ Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont 
 | `/api/context/ID` | Contexte Markdown d’un outil |
 | `/download/tool/ID.md` | Export d’un outil |
 | `/download/source/ID.md` | Export d’une source |
+| `/download/document/ID/ASSET_ID` | Téléchargement authentifié d’un original associé à une source ou à sa preuve archivée |
 | `/assets/…` | Médias/images figurant dans la liste autorisée du catalogue |
 
 Pages, API et médias sont protégés ensemble par HTTP Basic si configuré. Les fichiers `.env`, réponses API brutes, modèles et scripts ne sont pas servis. Le catalogue JSON est rechargé quand sa génération, sa date ou sa taille change. Une requête utilise une seule génération pour ses données et fichiers ; les preuves des anciennes versions restent accessibles depuis les fiches qui les citent. Les écritures de JSON utilisent un remplacement atomique. La consultation n’effectue aucune modification de favoris ou de fiches ; seul le worker écrit les résultats dans le volume partagé.

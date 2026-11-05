@@ -10,6 +10,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import kararecall
 from publication import active_root,file_hash
+from worker_documents import attachment_target
 
 
 def verify(root):
@@ -20,6 +21,7 @@ def verify(root):
     for source in catalog['sources']:kararecall.validate_reading(source,lookup)
     for entity in catalog['entities']:kararecall.validate_entity(entity,lookup,selected)
     proofs=0
+    checked_attachments={}
     for source in catalog['sources']:
         sid=source['id']
         raw=(selected/source['raw_file']).resolve()
@@ -28,6 +30,11 @@ def verify(root):
         media=selected/'data/media'/(sid+'.mp4')
         expected=source['processing'].get('media_sha256')
         if expected and (not media.is_file() or file_hash(media)!=expected):raise ValueError('Empreinte média incohérente')
+        attachments=[source['processing'].get('attachment'),*(e.get('attachment') for e in source['evidence'])]
+        for attachment in filter(None, attachments):
+            target=attachment_target(selected,sid,attachment)
+            if target not in checked_attachments:checked_attachments[target]=file_hash(target)
+            if checked_attachments[target]!=attachment['sha256']:raise ValueError('Empreinte de pièce jointe incohérente')
         for evidence in source['evidence']:
             proofs+=1
             if source.get('evidence_schema')==2:

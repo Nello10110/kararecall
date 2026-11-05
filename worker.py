@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 
 import kararecall
 from controls import process_history, update_history
+from worker_documents import MAX_DOCUMENT_MB, document_path, extract_document, extraction_config
 from integrations import Karakeep, ServiceError, normalize_bookmark, chat, json_result, request_json
 from settings import Settings, initialize
 
@@ -35,7 +36,7 @@ def video_asset(source):
 
 
 def pack_evidence(evidence,budget):
-    groups={kind:[e for e in evidence if e['kind']==kind and not e.get('archived')] for kind in ('caption','page','text','document','note','asr','ocr')}
+    groups={kind:[e for e in evidence if e['kind']==kind and not e.get('archived')] for kind in ('caption','page','text','document','note','asr','ocr','pdf-page','image-text')}
     groups={kind:entries for kind,entries in groups.items() if entries}
     rows=[];coverage={}
     for kind,entries in groups.items():
@@ -44,7 +45,7 @@ def pack_evidence(evidence,budget):
         indices=sorted({round(i*(len(entries)-1)/max(1,count-1)) for i in range(count)})
         for index in indices:
             entry=entries[index]
-            row={k:entry[k] for k in ('id','kind','text','start','end') if k in entry}
+            row={k:entry[k] for k in ('id','kind','text','start','end','page') if k in entry}
             # IDs are hashes, so reserve room for their serialization too.
             row['text']=row['text'][:max(1,quota//count-180)]
             rows.append(row)
@@ -131,10 +132,14 @@ def redacted(message,settings):
 
 def pipeline_key(source,settings):
     fields={k:source.get(k) for k in ('id','url','created_at','modified_at','title','description','note','tags','page_text','karakeep_summary_unverified','assets','raw_file','bookmark_type','asset_type')}
-    return fingerprint(['pipeline-v3',fields,settings.download_media,settings.llm_enabled,
+    parts=['pipeline-v3',fields,settings.download_media,settings.llm_enabled,
         settings.llm_url,settings.llm_model,settings.llm_max_chars,settings.llm_max_tokens,settings.llm_reasoning,
         settings.asr_url,settings.asr_model,settings.asr_timestamps,settings.vision_url,settings.vision_model,
-        settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.llm_thinking,settings.vision_thinking])
+        settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.llm_thinking,settings.vision_thinking]
+    if source.get('document_asset_id') and not source.get('page_text'):
+        parts.append(extraction_config(source['asset_type'],settings))
+        parts.append(settings.media_max_mb)
+    return fingerprint(parts)
 
 
 def archive(source,root):
@@ -256,6 +261,21 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                                     budget_pause |= isinstance(exc,BudgetExceeded)
                                     ordinary_error |= not isinstance(exc,BudgetExceeded)
                                     errors.append(safe_error(exc,settings))
+                        document_id=source.get('document_asset_id')
+                        if document_id:
+                            stages['document']='source_text' if source.get('page_text') else 'disabled'
+                            if settings.download_media and not source.get('page_text'):
+                                try:
+                                    status(settings,state='running',active_stage='document')
+                                    original=document_path(draft,source['id'],document_id)
+                                    if not original.exists():client.download(document_id,original,max_mb=MAX_DOCUMENT_MB)
+                                    stages['document']=extract_document(source,original,draft/'data/extracted'/source['id'],
+                                        settings,ledger,forced and force_stage in ('all','document'))
+                                except Exception as exc:
+                                    stages['document']='paused' if isinstance(exc,BudgetExceeded) else 'failed'
+                                    budget_pause |= isinstance(exc,BudgetExceeded)
+                                    ordinary_error |= not isinstance(exc,BudgetExceeded)
+                                    errors.append(safe_error(exc,settings))
                         archive(source,draft)
                         stages['llm']='disabled'
                         # Publish independent successful extraction even if another stage failed.
@@ -267,7 +287,7 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                                     status(settings,state='running',active_stage='llm')
                                     evidence,_=kararecall.load_evidence(source,draft)
                                     generated=synthesize(source,evidence,settings,ledger)
-                                    lookup={sid:dict(s,evidence=kararecall.load_evidence(s,draft)[0]) for sid,s in sources.items()}
+                                    lookup={source['id']:dict(source,evidence=evidence)}
                                     for entity in generated:kararecall.validate_entity(entity,lookup,draft)
                                     entities=[e for e in entities if not (e.get('curation')=='machine-generated' and e['source_ids']==[source['id']])]+generated
                                     stages['llm']='complete'
@@ -278,6 +298,7 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         source['stages']=stages
                         source['pipeline_fingerprint']=digest
                         source['processing_result']='partial' if errors else 'complete'
+                        source['processing_error']=' ; '.join(errors)[:400]
                         if errors:
                             failed+=1
                             paused=budget_pause and not ordinary_error
@@ -329,7 +350,7 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('command',choices=['once','loop','check','retry','usage','import-history'])
     parser.add_argument('--source',help='ID de la source à retraiter explicitement')
-    parser.add_argument('--stage',choices=['all','asr','vision','llm'],default='all')
+    parser.add_argument('--stage',choices=['all','asr','vision','document','llm'],default='all')
     args=parser.parse_args()
     settings=Settings.from_env()
     if args.command=='usage':
@@ -369,8 +390,12 @@ def main():
             status(settings,state='error',last_checked_at=now(),message=message)
             print(message,flush=True)
         deadline=time.monotonic()+settings.sync_interval
+        heartbeat=time.monotonic()+30
         while running and time.monotonic()<deadline:
             process_history(settings,run_cycle)
+            if time.monotonic()>=heartbeat:
+                status(settings)
+                heartbeat=time.monotonic()+30
             time.sleep(max(0,min(1,deadline-time.monotonic())))
 
 

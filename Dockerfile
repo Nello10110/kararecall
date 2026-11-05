@@ -5,7 +5,7 @@ ARG PUID=10001
 ARG PGID=10001
 RUN groupadd --gid ${PGID} kararecall && useradd --uid ${PUID} --gid ${PGID} --no-create-home kararecall && mkdir -p /workspace/data /workspace/vault && chown -R kararecall:kararecall /workspace
 ENV KARARECALL_ROOT=/workspace
-COPY kararecall.py web_server.py settings.py integrations.py worker.py worker_media.py publication.py usage.py controls.py ./
+COPY kararecall.py web_server.py settings.py integrations.py worker.py worker_media.py worker_documents.py publication.py usage.py controls.py ./
 COPY web/ ./web/
 COPY scripts/verify_storage.py ./verify_storage.py
 USER kararecall
@@ -13,6 +13,7 @@ USER kararecall
 FROM base AS worker
 USER root
 COPY requirements.worker.txt ./
+RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir -r requirements.worker.txt
 USER kararecall
 HEALTHCHECK NONE

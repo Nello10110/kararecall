@@ -92,7 +92,7 @@ Dans **Traitements**, clique sur **Importer tout l’historique**.
 
 Attends le message indiquant le nombre de favoris pris en compte, puis ouvre **Sources** ou **Recherche**. Les textes fournis par Karakeep sont consultables et recherchables immédiatement. Relancer l’import met à jour chaque entrée portant le même identifiant Karakeep.
 
-Le bouton importe le catalogue et les textes disponibles. Les PDF et images sans texte apparaissent avec l’état **Métadonnées seulement**.
+Le bouton importe le catalogue et les textes disponibles. À ce stade, les PDF et images sans texte fourni par Karakeep apparaissent avec l’état **Métadonnées seulement**. Le traitement des fichiers se configure ensuite. [PDF et images](HOMELAB.md#pdf-et-images).
 
 ## 6. Activer DeepSeek et les mises à jour automatiques
 

@@ -62,7 +62,7 @@ Le contrôle de connexion ne lance pas d’inférence. Les premières analyses p
 
 Recherche par souvenir, bibliothèque d’outils, sources originales, transcription et captures horodatées, lecture vidéo à l’instant cité, suivi des traitements et exports Markdown. Le bouton de contexte prépare un texte à copier dans un assistant, avec les explications, liens et preuves. Il n’appelle pas lui-même de service IA.
 
-Chaque favori peut recevoir un résumé de lecture sourcé ; les articles sans outil identifiable restent des sources avec leur résumé et ne sont pas transformés en faux outils. Les PDF/images sans texte fourni par Karakeep sont signalés comme métadonnées seules : leur extraction reste au backlog.
+Chaque favori peut recevoir un résumé de lecture sourcé ; les articles sans outil identifiable restent des sources avec leur résumé et ne sont pas transformés en faux outils. Lors d’un traitement, KaraRecall conserve les PDF et images sans texte fourni par Karakeep. Le texte des PDF est extrait localement, page par page. Pour les images, `IMAGE_OCR_ENABLED=true` active la lecture par le service vision configuré. [Paramètres et limites](docs/HOMELAB.md#pdf-et-images).
 
 Les fiches générées automatiquement portent **À relire**. Leurs propos sont attribués aux sources. Les liens relevés restent non vérifiés ; une vérification documentaire exige une trace externe explicite. La recherche est lexicale, avec normalisation des accents et rapprochement orthographique, sans embeddings.
 

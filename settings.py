@@ -101,6 +101,8 @@ class Settings:
     vision_input_usd: float=0
     vision_output_usd: float=0
     asr_usd_per_hour: float=0
+    pdf_max_pages: int=25
+    image_ocr_enabled: bool=False
 
     @classmethod
     def from_env(cls):
@@ -129,7 +131,8 @@ class Settings:
             daily_call_limit=integer('AI_MAX_CALLS_PER_DAY',50,1,10000),monthly_call_limit=integer('AI_MAX_CALLS_PER_MONTH',400,1,100000),
             llm_input_usd=amount('LLM_INPUT_USD_PER_MILLION',0),llm_output_usd=amount('LLM_OUTPUT_USD_PER_MILLION',0),
             vision_input_usd=amount('VISION_INPUT_USD_PER_MILLION',0),vision_output_usd=amount('VISION_OUTPUT_USD_PER_MILLION',0),
-            asr_usd_per_hour=amount('ASR_USD_PER_HOUR',0))
+            asr_usd_per_hour=amount('ASR_USD_PER_HOUR',0),pdf_max_pages=integer('PDF_MAX_PAGES',25,1,100),
+            image_ocr_enabled=boolean('IMAGE_OCR_ENABLED'))
 
     def validate_worker(self):
         if any(value not in ('','enabled','disabled') for value in (self.llm_thinking,self.vision_thinking)):
@@ -152,6 +155,8 @@ class Settings:
             raise ValueError('ASR_MODEL nécessite ASR_BASE_URL')
         if self.vision_model and not self.vision_url:
             raise ValueError('VISION_MODEL nécessite VISION_BASE_URL ou LLM_BASE_URL')
+        if self.image_ocr_enabled and not self.vision_model:
+            raise ValueError('IMAGE_OCR_ENABLED nécessite VISION_MODEL')
 
 
 def initialize(root):

@@ -10,7 +10,7 @@ La collecte normale n’applique plus de filtre par défaut. Elle lit toutes les
 |---|---|---|
 | Site ou article | Titre, description, texte intégral/HTML fourni par Karakeep, notes personnelles et liens présents dans le HTML | Aucun retour sur le site pour compléter un texte absent. Les scripts et styles sont exclus du texte ; le JSON brut garde le contenu reçu. |
 | Note texte | Texte et éventuelle URL d’origine, plus la note personnelle associée | Une note sans URL reste consultable et exportable, sans lien original inventé. |
-| Fichier image ou PDF | Métadonnées et texte déjà extrait fourni dans `content.content` par Karakeep | Sans ce texte, état « Métadonnées seulement ». L’extraction PDF et l’OCR des images autonomes ne sont pas implémentés. |
+| Fichier image ou PDF | Métadonnées et texte fourni par Karakeep. Si absent, le worker peut conserver l’original et extraire les pages PDF ou le texte de l’image. | L’OCR d’image autonome est activable dans `.env`. Les PDF numérisés sans texte incorporé sont signalés. [Paramètres et limites](HOMELAB.md#pdf-et-images). |
 | Vidéo jointe à un lien | Textes Karakeep, téléchargement du média, transcription/OCR selon la configuration | Aucun téléchargement direct Instagram. Sans ASR, les paroles ne sont pas reconnues. L’OCR porte sur des captures échantillonnées. |
 | Type inconnu | Métadonnées et réponse brute | Aucune analyse du fichier n’est annoncée. |
 

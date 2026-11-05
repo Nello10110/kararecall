@@ -83,16 +83,16 @@ class Karakeep:
             seen.add(cursor)
         raise ServiceError('Pagination Karakeep trop longue ; aucun import partiel appliqué.')
 
-    def download(self,asset_id,destination):
+    def download(self,asset_id,destination,*,max_mb=None):
         check_id(asset_id)
-        maximum=self.settings.media_max_mb*1024*1024
+        maximum=min(self.settings.media_max_mb,max_mb or self.settings.media_max_mb)*1024*1024
         temporary=Path(str(destination)+'.part')
         destination.parent.mkdir(parents=True,exist_ok=True)
         try:
             with request(self.base+'/assets/'+quote(asset_id),self.settings.karakeep_key,timeout=self.settings.timeout) as response:
                 declared=response.headers.get('Content-Length')
                 if declared and int(declared)>maximum:
-                    raise ServiceError('Pièce jointe trop volumineuse pour MEDIA_MAX_MB.')
+                    raise ServiceError('Pièce jointe trop volumineuse pour la limite de téléchargement.')
                 count=0
                 with temporary.open('wb') as output:
                     while True:
@@ -101,7 +101,7 @@ class Karakeep:
                             break
                         count+=len(block)
                         if count>maximum:
-                            raise ServiceError('Pièce jointe trop volumineuse pour MEDIA_MAX_MB.')
+                            raise ServiceError('Pièce jointe trop volumineuse pour la limite de téléchargement.')
                         output.write(block)
                 if count==0:
                     raise ServiceError('Pièce jointe vide.')
@@ -154,6 +154,7 @@ def normalize_bookmark(bookmark):
             assets.append({'id':video_id,'type':'video'})
     return {'id':sid,'url':content.get('url') or content.get('sourceUrl') or '',
         'bookmark_type':kind,'asset_type':content.get('assetType'),
+        'document_asset_id':check_id(content['assetId']) if kind=='asset' and content.get('assetType') in ('pdf','image') and content.get('assetId') else None,
         'content_status':'text_available' if text else 'metadata_only',
         'archived':bool(bookmark.get('archived')),'favourited':bool(bookmark.get('favourited')),
         'created_at':created,'modified_at':bookmark.get('modifiedAt') or created,'title':str(title),
