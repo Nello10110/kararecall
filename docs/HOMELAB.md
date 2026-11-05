@@ -1,5 +1,7 @@
 # Déploiement sur le homelab
 
+Pour configurer le NAS et lancer le premier import, suis le [manuel pas à pas](INSTALLATION.md).
+
 Ce guide décrit les commandes disponibles. Le [guide P0](P0.md) détaille le profil API, les limites et les commandes de reprise/vérification. Les preuves sont désormais versionnées et publiées par génération ; la qualification des moteurs réels et du NAS reste à réaliser selon le [backlog](../backlog.md).
 
 ## Configuration

@@ -2,6 +2,8 @@
 
 Une interface web pour retrouver les découvertes enregistrées dans Karakeep, consulter leurs preuves et repartir avec une fiche utile : **description de l’outil, usages, fonctionnement, limites et liens pour approfondir**.
 
+Le manuel couvre la configuration du NAS, le premier import et l’activation de DeepSeek. Il inclut une méthode sans Python installé sur le NAS. **[Manuel d’installation](docs/INSTALLATION.md)**.
+
 Les évolutions à discuter et les travaux restants sont dans le [backlog](backlog.md), avec un ordre de réalisation proposé et des critères vérifiables.
 
 Le [document d’architecture](docs/ARCHITECTURE.md) décrit le fonctionnement global, le rôle de chaque modèle, les options locales et les raccordements encore à réaliser.
@@ -10,21 +12,25 @@ L’[étude pour l’usage quotidien](docs/ETUDE-EXPLOITATION.md) compare les op
 
 Le NAS conserve les données et sert l’interface. Un travailleur optionnel synchronise Karakeep en lecture seule, extrait les médias et appelle les services IA configurés. Les modèles tournent sur une autre machine ou chez un fournisseur API : aucun gros modèle n’est chargé sur le NAS.
 
-## Démarrer avec Docker Compose
+## Démarrage rapide
 
-Prérequis : Docker avec Compose v2, accès GitHub au dépôt privé. Depuis le homelab :
+Avec Docker Compose v2 et un accès au dépôt GitHub privé, lance ces commandes depuis le dossier de tes applications sur le NAS.
 
 ```sh
 git clone https://github.com/Nello10110/second-cerveau.git
 cd second-cerveau
 python3 scripts/setup_env.py --profile deepseek
-# Consulter .env pour les identifiants et ajuster la configuration.
+```
+
+Ouvre `.env` et complète les lignes `KARAKEEP_BASE_URL` et `KARAKEEP_API_KEY`. Mets `COMPOSE_PROFILES=automation` pour démarrer le worker et `MEMOIRE_BIND_ADDRESS=0.0.0.0` pour accéder à l’interface depuis le réseau du NAS. Conserve `SYNC_ENABLED=false` et `LLM_ENABLED=false` pour le premier import. Les filtres URL/tags restent vides afin de prendre tous les favoris.
+
+```sh
 docker compose up -d --build
 ```
 
-Sans Python sur l’hôte : copier `.env.example` vers `.env` et remplacer impérativement le mot de passe d’exemple. Le script génère un mot de passe aléatoire, protège le fichier en lecture/écriture propriétaire et refuse de remplacer une configuration existante.
+Ouvre **`http://IP_DU_NAS:8765`** avec `MEMOIRE_USERNAME` et `MEMOIRE_PASSWORD` indiqués dans `.env`, puis clique sur **Traitements → Importer tout l’historique**. Sur le Mac, garder l’écoute `127.0.0.1` et ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
-Ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765) avec les identifiants de `.env`. Sur le réseau local du NAS, définir `MEMOIRE_BIND_ADDRESS=0.0.0.0`, recréer le service et ouvrir `http://IP_DU_NAS:8765`. Pour un accès internet, utiliser le reverse proxy HTTPS du homelab ou un VPN. L’authentification est HTTP Basic ; elle doit être transportée en HTTPS hors d’un environnement de confiance.
+Les commandes pour un NAS sans Python et le premier essai DeepSeek figurent dans le manuel. Pour un accès distant, utilise un VPN ou le [reverse proxy HTTPS du homelab](docs/HOMELAB.md#réseau).
 
 **Une nouvelle installation démarre vide.** Les favoris, vidéos, notes et clés du POC ne sont pas inclus dans Git ni dans les images. Les données persistent dans le volume Docker `memoire-storage`, indépendamment des conteneurs. Le [guide homelab](docs/HOMELAB.md) explique aussi comment importer un corpus local existant.
 
