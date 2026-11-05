@@ -119,6 +119,8 @@ def migrate(sources,entities,root):
             references[source['id']+'#'+old['id']]=source['id']+'#'+new['id']
         source['evidence_schema']=2
         source['evidence_archive']=frozen
+        if source.get('reading'):
+            source['reading']['evidence']=[references.get(ref,ref) for ref in source['reading'].get('evidence',[])]
     for entity in entities:
         for claim in cerveau.entity_claims(entity):
             claim['evidence']=[references.get(ref,ref) for ref in claim.get('evidence',[])]

@@ -15,3 +15,5 @@
 
 !scripts/
 !scripts/verify_storage.py
+
+!controls.py

@@ -88,6 +88,8 @@ class Settings:
     vision_max_tokens: int=600
     llm_reasoning: str=''
     vision_reasoning: str=''
+    llm_thinking: str=''
+    vision_thinking: str=''
     token_limit_param: str='max_completion_tokens'
     asr_timestamps: bool=True
     monthly_budget_usd: float=2.0
@@ -121,6 +123,7 @@ class Settings:
             llm_max_tokens=integer('LLM_MAX_OUTPUT_TOKENS',2000,100,16000),
             vision_max_tokens=integer('VISION_MAX_OUTPUT_TOKENS',600,50,4000),
             llm_reasoning=os.getenv('LLM_REASONING_EFFORT','').strip(),vision_reasoning=os.getenv('VISION_REASONING_EFFORT','').strip(),
+            llm_thinking=os.getenv('LLM_THINKING','').strip(),vision_thinking=os.getenv('VISION_THINKING','').strip(),
             token_limit_param=os.getenv('AI_TOKEN_LIMIT_PARAM','max_completion_tokens'),asr_timestamps=boolean('ASR_SEGMENT_TIMESTAMPS',True),
             monthly_budget_usd=amount('AI_MONTHLY_BUDGET_USD',2),call_reserve_usd=amount('AI_CALL_RESERVE_USD',0.05),
             daily_call_limit=integer('AI_MAX_CALLS_PER_DAY',50,1,10000),monthly_call_limit=integer('AI_MAX_CALLS_PER_MONTH',400,1,100000),
@@ -129,6 +132,8 @@ class Settings:
             asr_usd_per_hour=amount('ASR_USD_PER_HOUR',0))
 
     def validate_worker(self):
+        if any(value not in ('','enabled','disabled') for value in (self.llm_thinking,self.vision_thinking)):
+            raise ValueError('LLM_THINKING / VISION_THINKING : enabled, disabled ou vide attendu')
         if self.token_limit_param not in ('max_completion_tokens','max_tokens'):
             raise ValueError('AI_TOKEN_LIMIT_PARAM non reconnu')
         if any(effort not in ('','none','minimal','low','medium','high','xhigh','max') for effort in (self.llm_reasoning,self.vision_reasoning)):
@@ -139,7 +144,7 @@ class Settings:
             raise ValueError('SYNC_ENABLED nécessite KARAKEEP_BASE_URL et KARAKEEP_API_KEY')
         if self.sync_enabled:
             for role,url,key,enabled in [('LLM',self.llm_url,self.llm_key,self.llm_enabled),('VISION',self.vision_url,self.vision_key,bool(self.vision_model)),('ASR',self.asr_url,self.asr_key,bool(self.asr_model))]:
-                if enabled and urlsplit(url).hostname in ('api.openai.com','api.groq.com') and not key:
+                if enabled and urlsplit(url).hostname in ('api.openai.com','api.groq.com','api.deepseek.com') and not key:
                     raise ValueError(f'{role}_API_KEY est nécessaire pour ce fournisseur')
         if self.llm_enabled and not (self.llm_url and self.llm_model):
             raise ValueError('LLM_ENABLED nécessite LLM_BASE_URL et LLM_MODEL')

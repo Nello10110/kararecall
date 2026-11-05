@@ -26,8 +26,8 @@ def main():
     restored_volume=env['MEMOIRE_VOLUME_NAME']+'-restore'
     auth='Basic '+base64.b64encode((env['MEMOIRE_USERNAME']+':'+env['MEMOIRE_PASSWORD']).encode()).decode()
     base='http://127.0.0.1:18765'
-    def request(path,authenticated=True,headers=None):
-        request=urllib.request.Request(base+path,headers={**({'Authorization':auth} if authenticated else {}),**(headers or {})})
+    def request(path,authenticated=True,headers=None,data=None):
+        request=urllib.request.Request(base+path,data=data,headers={**({'Authorization':auth} if authenticated else {}),**(headers or {})})
         return urllib.request.urlopen(request,timeout=5)
     try:
         compose('up','--detach','--build')
@@ -53,6 +53,17 @@ def main():
             with request('/api/catalog') as response:disabled=json.load(response).get('worker',{}).get('state')=='disabled'
             if disabled:break
             if time.monotonic()>deadline:raise AssertionError('Disabled worker did not report its state')
+            time.sleep(.25)
+        with request('/api/control') as r:csrf=json.load(r)['csrf_token']
+        with request('/api/import-history',headers={'Content-Type':'application/json','X-Memoire-CSRF':csrf},data=b'{}') as r:
+            assert r.status==202 and json.load(r)['state']=='queued'
+        deadline=time.monotonic()+10
+        while True:
+            with request('/api/control') as r:task=json.load(r)['history_import']
+            if task['state']=='error':
+                assert 'KARAKEEP_BASE_URL' in task['message']
+                break
+            if time.monotonic()>deadline:raise AssertionError('Disabled worker did not consume manual import request')
             time.sleep(.25)
         container=compose('ps','--quiet','web').stdout.strip()
         fixture=(ROOT/'tests/fixtures.py').read_text()+'''
@@ -87,7 +98,7 @@ with generation(cerveau.ROOT) as (draft,publish):
         restored=subprocess.run(['docker','run','--rm','--read-only','--mount','type=volume,src='+restored_volume+',dst=/workspace',image,'python','verify_storage.py'],check=True,capture_output=True,text=True)
         assert json.loads(restored.stdout)==verified
         usage=subprocess.check_output(['docker','stats','--no-stream','--format','{{.MemUsage}}',container],text=True).strip()
-        print('Docker/OrbStack : volume vide puis corpus synthétique, auth, recherche, contexte, Markdown, requêtes vidéo, sauvegarde et restauration sur volume neuf vérifiés.')
+        print('Docker/OrbStack : import demandé depuis le web et consommé par le worker désactivé (configuration manquante signalée), corpus synthétique, auth, recherche, exports, vidéo, sauvegarde/restauration vérifiés.')
         print('Mémoire observée au repos après les requêtes :',usage)
     finally:
         subprocess.run(['docker','volume','rm',restored_volume],capture_output=True)

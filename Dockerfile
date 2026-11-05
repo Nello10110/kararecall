@@ -5,7 +5,7 @@ ARG PUID=10001
 ARG PGID=10001
 RUN groupadd --gid ${PGID} memoire && useradd --uid ${PUID} --gid ${PGID} --no-create-home memoire && mkdir -p /workspace/data /workspace/vault && chown -R memoire:memoire /workspace
 ENV MEMOIRE_ROOT=/workspace
-COPY cerveau.py web_server.py settings.py integrations.py worker.py worker_media.py publication.py usage.py ./
+COPY cerveau.py web_server.py settings.py integrations.py worker.py worker_media.py publication.py usage.py controls.py ./
 COPY web/ ./web/
 COPY scripts/verify_storage.py ./verify_storage.py
 USER memoire

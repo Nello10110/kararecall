@@ -42,7 +42,12 @@ Acceptation : panne du Mac, erreur API et redémarrage reprennent sans perte ni 
 - [ ] Comparer la vitesse/qualité avec whisper.cpp si nécessaire ; FFmpeg/Whisper reste une variante locale à adapter, pas une suppression du besoin de reconnaissance vocale.
 - [ ] Valider les contrats réels d’audio, vision et texte, y compris les paramètres non pris en charge, les horodatages et les réponses JSON ; `check` seul ne suffit pas.
 - [ ] Lire des favoris et télécharger au moins un média avec l’API REST Karakeep réelle, sans modifier les favoris et sans retourner sur Instagram.
-- [x] Proposer un périmètre Instagram et un filtre facultatif par noms de tags ; le périmètre réel et la taille du premier import restent à choisir. La sélection par listes n’est pas implémentée.
+- [x] Inclure tous les favoris par défaut : sites, articles, notes, fichiers et vidéos, sans filtre Instagram ; conserver les filtres URL/tags facultatifs.
+- [x] Ajouter dans Traitements un import durable de tout l’historique, indépendant du batch d’analyses, sans appel IA ni téléchargement et sans doublon.
+- [x] Produire un résumé de lecture sourcé même sans outil identifié, consultable, recherchable et exportable ; notes personnelles distinctes des textes éditeur.
+- [x] Proposer le profil DeepSeek texte/vision avec paramètres documentés, clés dans `.env` et transcription audio séparée. Voir [le guide](docs/IMPORT-ET-DEEPSEEK.md).
+- [ ] Mesurer le nombre total de favoris et de pages sans texte lors du premier import réel ; qualifier articles, notes et fichiers en plus des vidéos.
+- [ ] Extraire les PDF et lire les images autonomes lorsque Karakeep ne fournit pas de texte, avec conservation de l’original, limites de taille, preuves de page/image et état explicite des échecs. Leur import comme métadonnées est déjà assuré.
 - [ ] Qualifier vingt sources variées : silence, nom propre, texte bref à l’écran, ambiguïté, plusieurs outils, absence de média ; mesurer précision, durée et mémoire.
 
 Acceptation : chaîne réelle reproductible, paramètres documentés, limites affichées et aucun moteur/call distant activé sans configuration explicite.
@@ -95,6 +100,9 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 
 ### Couverture et traitements économes
 
+- [ ] Adapter le traitement des longs articles/documents : découpage avec couverture mesurée, résumés hiérarchiques et citations précises ; actuellement la sélection dans le budget texte est signalée.
+- [ ] Comparer DeepSeek Search/Fetch aux options de recherche existantes avant le chantier d’enrichissement ; aucun appel automatique actuel.
+
 - [x] Répartir le budget texte entre légende, audio, OCR et portions de vidéo ; signaler les preuves non envoyées au modèle.
 - [ ] Détecter et importer les pistes de sous-titres textuels disponibles, avec origine et horodatages, pour éviter une nouvelle reconnaissance.
 - [ ] Améliorer l’échantillonnage des captures pour les textes brefs, sans envoyer toutes les images à un LLM par défaut ; documenter la couverture.
@@ -117,7 +125,8 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 
 ### Stockage, performances et maintenance
 
-- [ ] Si le volume initial le justifie, ajouter un mode de rattrapage borné ; ce n’est pas un prérequis pour les vingt vidéos mensuelles prévues.
+- [x] Séparer import du catalogue historique et analyses par lots bornées avec les quotas existants.
+- [ ] Mesurer les copies/reconstructions de générations et la pagination HTTP sur un grand historique ; optimiser selon les résultats du NAS.
 - [ ] Hacher les médias en flux, réutiliser les empreintes connues et éviter de relire tout le corpus pour chaque nouvelle fiche.
 - [ ] Ajouter pagination côté interface et reconstruction ciblée ; mesurer recherche et mémoire avec un corpus représentatif avant une nouvelle base serveur.
 - [ ] Définir quotas, espace libre, rétention des médias/versions et conservation des traces ; ne pas supprimer automatiquement les preuves citées.

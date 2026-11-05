@@ -8,19 +8,27 @@ import secrets
 
 def main():
     parser=argparse.ArgumentParser(description='Créer une configuration privée sans remplacer un fichier existant')
-    parser.add_argument('--profile',choices=['api','empty'],default='api')
+    parser.add_argument('--profile',choices=['deepseek','api','empty'],default='deepseek')
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[1]
     target=root/'.env'
     text=(root/'.env.example').read_text().replace('MEMOIRE_PASSWORD=change-me-before-start',
         'MEMOIRE_PASSWORD='+secrets.token_urlsafe(32))
-    if args.profile=='api':
+    values={}
+    if args.profile=='deepseek':
+        values={'LLM_BASE_URL':'https://api.deepseek.com','LLM_MODEL':'deepseek-flash',
+                'VISION_BASE_URL':'https://api.deepseek.com','VISION_MODEL':'deepseek-flash',
+                'AI_TOKEN_LIMIT_PARAM':'max_tokens','LLM_THINKING':'disabled','VISION_THINKING':'disabled',
+                'LLM_INPUT_USD_PER_MILLION':'0.30','LLM_OUTPUT_USD_PER_MILLION':'1.20',
+                'VISION_INPUT_USD_PER_MILLION':'0.30','VISION_OUTPUT_USD_PER_MILLION':'1.20'}
+    elif args.profile=='api':
         values={'LLM_BASE_URL':'https://api.openai.com/v1','LLM_MODEL':'gpt-6-luna',
                 'ASR_BASE_URL':'https://api.groq.com/openai/v1','ASR_MODEL':'whisper-large-v3-turbo',
                 'VISION_BASE_URL':'https://api.openai.com/v1','VISION_MODEL':'gpt-6-luna',
                 'LLM_REASONING_EFFORT':'none','VISION_REASONING_EFFORT':'none',
                 'LLM_INPUT_USD_PER_MILLION':'0.10','LLM_OUTPUT_USD_PER_MILLION':'0.50',
                 'VISION_INPUT_USD_PER_MILLION':'0.10','VISION_OUTPUT_USD_PER_MILLION':'0.50','ASR_USD_PER_HOUR':'0.04'}
+    if values:
         lines=[]
         for line in text.splitlines():
             key=line.partition('=')[0]

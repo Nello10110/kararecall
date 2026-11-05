@@ -52,6 +52,16 @@ def validate_reference(ref, lookup):
         raise ValueError(f'Preuve manquante: {ref}')
 
 
+def validate_reading(source,lookup):
+    reading=source.get('reading')
+    if reading is None:return
+    if not isinstance(reading,dict) or reading.get('status')!='source_claim' or not isinstance(reading.get('text'),str) or not reading['text'].strip() or not reading.get('evidence'):
+        raise ValueError('Résumé de lecture sans attribution ou références')
+    for ref in reading['evidence']:
+        if not isinstance(ref,str) or not ref.startswith(source['id']+'#'):raise ValueError('Résumé lié à une autre source')
+        validate_reference(ref,lookup)
+
+
 def validate_entity(entity, lookup, root):
     for claim in entity_claims(entity):
         if claim['status'] not in STATUS_LABELS:
@@ -85,7 +95,7 @@ def render_claim(claim, lookup):
     lines = [f"**{STATUS_LABELS[claim['status']]}** — {claim['text']}", '']
     for ref in claim.get('evidence', []):
         sid, eid = ref.split('#')
-        lines += [f"[Preuve {eid}](../sources/{sid}.md#{eid}) · [Publication]({lookup[sid]['url']})  "]
+        lines += [f"[Preuve {ref}](../sources/{sid}.md#{eid})"+(f" · [Source originale]({lookup[sid]['url']})" if lookup[sid]['url'] else '')+"  "]
     if claim.get('verification_url'):
         lines += [f"[Source externe]({claim['verification_url']}) · [Trace de lecture](../../{claim['verification_file']})  "]
     return lines + ['']
@@ -163,7 +173,10 @@ def load_evidence(source, root=ROOT):
     sid = source["id"]
     evidence = [{"id": "caption", "kind": "caption", "text": source["title"] + "\n" + source["description"]}]
     if source["page_text"]:
-        evidence.append({"id": "page", "kind": "page", "text": source["page_text"]})
+        kind={'text':'text','asset':'document'}.get(source.get('bookmark_type'),'page')
+        evidence.append({"id":kind,"kind":kind,"text":source['page_text']})
+    if source.get('note'):
+        evidence.append({'id':'note','kind':'note','text':source['note']})
     directory = root / "data/extracted" / sid
     transcript = read_json(directory / "transcript.json", {})
     ocr = read_json(directory / "ocr.json", {})
@@ -238,6 +251,7 @@ def build(root=ROOT):
         source = dict(source, evidence=evidence, processing=status)
         catalog["sources"].append(source)
     lookup = {s["id"]: s for s in catalog["sources"]}
+    for source in catalog['sources']:validate_reading(source,lookup)
     # Fail closed: a synthesis may not cite a missing or stale piece of evidence.
     for entity in entities:
         if not re.fullmatch(r"[a-z0-9-]+", entity["id"]):
@@ -249,12 +263,17 @@ def build(root=ROOT):
                  f"audio_transcribed: {str(status['audio_transcribed']).lower()}",
                  f"ocr_sampled: {str(status['ocr_sampled']).lower()}", "---", "",
                  "# " + source["title"].replace("\n", " ")[:180], "",
-                 f"[Publication originale]({source['url']}) · [Réponse Karakeep brute](../../{source['raw_file']})", "",
+                 (f"[Source originale]({source['url']}) · " if source['url'] else '')+f"[Réponse Karakeep brute](../../{source['raw_file']})", "",
                  f"Enregistré : {source['created_at']} (UTC). Cette date n’est pas la date de publication.", "",
                  "## État de traitement", "",
                  f"Audio transcrit : {status['audio_transcribed']}. OCR échantillonné : {status['ocr_sampled']}."]
         if status["ocr_sampled"]:
             lines += [f"Une image toutes les {status['ocr_interval_seconds']} s ; du texte bref peut être manqué."]
+        if source.get('content_status')=='metadata_only':
+            lines += ['', 'Texte intégral indisponible dans Karakeep : seules les métadonnées sont conservées. Une pièce jointe non vidéo n’est pas analysée par ce worker.']
+        if source.get('reading'):
+            lines += ['', '## Résumé de lecture · à relire', '']+render_claim(source['reading'],lookup)
+            if coverage_notice(source['reading']):lines += [coverage_notice(source['reading']),'']
         lines += ["", "Les transcriptions et l’OCR sont des extractions automatiques, à relire. Les propos de l’auteur ne sont pas des faits vérifiés.", "", "## Fiches liées", ""]
         related = [e for e in entities if sid in e["source_ids"]]
         lines += [f"- [{e['name']}](../outils/{e['id']}.md)" for e in related] or ["Aucune synthèse relue pour cette source."]
@@ -334,7 +353,8 @@ def search(query, catalog, limit=5):
                           "description": e['description'], 'details': e.get('details', {}),
                           'links': e.get('links', []), 'follow_up': e.get('follow_up', '')})
     for s in catalog["sources"]:
-        body = " ".join([s["title"], memory_context(s)] + [e["text"] for e in s["evidence"] if not e.get('archived')])
+        reading=s.get('reading',{})
+        body = " ".join([s["title"], memory_context(s), ' '.join(s.get('tags',[])), reading.get('text',''), ' '.join(reading.get('keywords',[]))] + [e["text"] for e in s["evidence"] if not e.get('archived')])
         documents.append({"id": s["id"], "kind": "source", "title": s["title"][:160], "body": body,
                           "path": f"vault/sources/{s['id']}.md", "source_ids": [s["id"]], "refs": []})
     q = set(tokens(query))

@@ -17,7 +17,7 @@ Prérequis : Docker avec Compose v2, accès GitHub au dépôt privé. Depuis le 
 ```sh
 git clone https://github.com/Nello10110/second-cerveau.git
 cd second-cerveau
-python3 scripts/setup_env.py --profile api
+python3 scripts/setup_env.py --profile deepseek
 # Consulter .env pour les identifiants et ajuster la configuration.
 docker compose up -d --build
 ```
@@ -30,9 +30,11 @@ Ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765) avec les identifiants de `
 
 ## Activer la collecte et les fiches IA
 
-Le profil API généré prépare Groq `whisper-large-v3-turbo` pour la transcription et OpenAI `gpt-6-luna` pour les captures et la synthèse. Aucun compte ni clé n’est fourni ; aucun appel n’est activé par la création du fichier. Les fournisseurs et modèles restent modifiables.
+Le profil recommandé prépare DeepSeek `deepseek-flash` pour les captures et la synthèse. La transcription audio reste à configurer séparément. Aucun compte ni clé n’est fourni ; aucun appel n’est activé par la création du fichier. Le [guide import et DeepSeek](docs/IMPORT-ET-DEEPSEEK.md) précise les capacités, limites et coûts. Le profil alternatif `--profile api` reste disponible.
 
-Dans `.env`, renseigner `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY`, `LLM_API_KEY` et `ASR_API_KEY`. La vision hérite de la clé LLM si `VISION_API_KEY` est vide. La collecte est limitée aux URL contenant `instagram.com` par défaut ; `KARAKEEP_TAG_FILTER` permet aussi de sélectionner des noms de tags.
+Dans `.env`, renseigner `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY` et la clé DeepSeek dans `LLM_API_KEY`. La vision hérite de la clé LLM si `VISION_API_KEY` est vide. **Tous les favoris sont collectés par défaut**, y compris sites, articles, notes, fichiers et favoris archivés. Garder `KARAKEEP_URL_FILTER=` et `KARAKEEP_TAG_FILTER=` pour conserver ce périmètre ; corriger un ancien `.env` limité à Instagram.
+
+Dans **Traitements**, le bouton **Importer tout l’historique** demande au worker de récupérer le catalogue complet, sans appel IA ni téléchargement média. Le worker doit être démarré avec ses accès Karakeep ; la synchronisation périodique peut rester désactivée pour cet import. Les analyses suivront ensuite par lots avec les étapes et le budget configurés.
 
 Le [guide P0](docs/P0.md) donne le premier passage manuel puis l’activation de `SYNC_ENABLED=true`, `LLM_ENABLED=true` et du profil Compose `automation`. Commencer avec `WORKER_BATCH_SIZE=1`, contrôler les preuves, puis démarrer la boucle. `ASR_MODEL` et `VISION_MODEL` vides désactivent leurs étapes.
 
@@ -51,6 +53,8 @@ Le contrôle de connexion ne lance pas d’inférence. Les premières analyses p
 ## Consulter et poursuivre
 
 Recherche par souvenir, bibliothèque d’outils, sources originales, transcription et captures horodatées, lecture vidéo à l’instant cité, suivi des traitements et exports Markdown. Le bouton de contexte prépare un texte à copier dans un assistant, avec les explications, liens et preuves. Il n’appelle pas lui-même de service IA.
+
+Chaque favori peut recevoir un résumé de lecture sourcé ; les articles sans outil identifiable restent des sources avec leur résumé et ne sont pas transformés en faux outils. Les PDF/images sans texte fourni par Karakeep sont signalés comme métadonnées seules : leur extraction reste au backlog.
 
 Les fiches générées automatiquement portent **À relire**. Leurs propos sont attribués aux sources. Les liens relevés restent non vérifiés ; une vérification documentaire exige une trace externe explicite. La recherche est lexicale, avec normalisation des accents et rapprochement orthographique, sans embeddings.
 

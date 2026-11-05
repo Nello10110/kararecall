@@ -86,7 +86,7 @@ class WorkerTests(unittest.TestCase):
                 assert payload['model']=='test-model'
                 evidence=json.loads(payload['messages'][-1]['content'])['evidence']
                 caption=next(e['id'] for e in evidence if e['kind']=='caption')
-                answer={'tools':[{'name':'Lampe Flux','description':'Une lampe qui éclaire le bureau.',
+                answer={'reading':{'summary':'Une lampe pour le bureau.','evidence_ids':[caption],'keywords':['éclairage']},'tools':[{'name':'Lampe Flux','description':'Une lampe qui éclaire le bureau.',
                     'aliases':['éclairage','bureau'],'evidence_ids':['invented' if owner.bad_refs else caption],
                     'details':dict(description='Une lampe.',usefulness='Éclairer le bureau.',operation='Le fonctionnement détaillé n’est pas précisé.',limitations='Données issues de la source ; à relire.'),
                     'links':[{'url':'https://example.com/lamp','label':'Lien dans la source','purpose':'Approfondir'},

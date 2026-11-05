@@ -17,6 +17,7 @@ def verify(root):
     catalog=cerveau.read_json(selected/'data/catalog.json')
     if not isinstance(catalog,dict):raise ValueError('Catalogue absent')
     lookup={source['id']:source for source in catalog['sources']}
+    for source in catalog['sources']:cerveau.validate_reading(source,lookup)
     for entity in catalog['entities']:cerveau.validate_entity(entity,lookup,selected)
     proofs=0
     for source in catalog['sources']:

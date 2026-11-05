@@ -8,6 +8,7 @@ import mimetypes
 import os
 from pathlib import Path
 import re
+import secrets
 import threading
 import time
 from datetime import datetime
@@ -17,6 +18,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import cerveau
 from settings import initialize
 from publication import active_root
+from controls import history_status, request_history
 
 ROOT = cerveau.ROOT
 WEB = Path(__file__).resolve().parent / 'web'
@@ -27,6 +29,7 @@ def source_summary(source):
     author, _, caption = title.partition(' on Instagram:')
     if not caption:
         caption = title
+        author = urlsplit(source['url']).hostname or {'text':'Note personnelle','asset':'Fichier enregistré'}.get(source.get('bookmark_type'),'Source enregistrée')
     current=[e for e in source['evidence'] if not e.get('archived')]
     images = [e for e in current if e.get('image')]
     preferred = next((e for e in images if e['start'] >= 14), images[0] if images else None)
@@ -34,7 +37,10 @@ def source_summary(source):
         'title': caption.strip(' “”:"'), 'author': author.strip(' @'),
         'thumbnail': '/assets/' + preferred['image'] if preferred else None,
         'transcript_count': sum(e['kind'] == 'asr' for e in current),
-        'frame_count': len(images), 'stages':source.get('stages',{})}
+        'frame_count': len(images), 'stages':source.get('stages',{}),
+        'bookmark_type':source.get('bookmark_type','link'),'content_status':source.get('content_status'),
+        'has_video':bool(source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[]))),
+        'has_reading':bool(source.get('reading'))}
 
 
 class Corpus:
@@ -109,6 +115,7 @@ def context_for(entity, sources):
 
 
 def make_handler(corpus, username='', password=''):
+    csrf_token=secrets.token_urlsafe(32)
     class Handler(BaseHTTPRequestHandler):
         server_version = 'Memoire/0.1'
 
@@ -186,6 +193,31 @@ def make_handler(corpus, username='', password=''):
         def do_HEAD(self):
             self.do_GET()
 
+        def do_POST(self):
+            # One local administrative command, with no remote keys in the web service.
+            self.close_connection=True
+            if not self.authorized():
+                return self.send_bytes(b'Authentification requise','text/plain; charset=utf-8',401,
+                                       {'WWW-Authenticate':'Basic realm="Memoire", charset="UTF-8"'})
+            origin=self.headers.get('Origin')
+            if (self.headers.get('Sec-Fetch-Site')=='cross-site' or
+                (origin and urlsplit(origin).netloc.casefold()!=self.headers.get('Host','').casefold()) or
+                not hmac.compare_digest(self.headers.get('X-Memoire-CSRF','').encode(),csrf_token.encode())):
+                return self.send_json({'error':'Origine ou jeton de session invalide. Actualiser la page.'},403)
+            if self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
+            try:
+                length=int(self.headers.get('Content-Length','-1'))
+                if self.headers.get('Transfer-Encoding') or not 0<=length<=1024:
+                    return self.send_json({'error':'Corps de requête invalide'},400)
+                if self.headers.get('Content-Type','').split(';')[0]!='application/json':
+                    return self.send_json({'error':'JSON attendu'},415)
+                self.connection.settimeout(10)
+                payload=json.loads(self.rfile.read(length))
+                if payload!={}:return self.send_json({'error':'Cette commande n’accepte aucun paramètre'},400)
+                return self.send_json(request_history(corpus.root),202)
+            except (ValueError,UnicodeError):return self.send_json({'error':'JSON invalide'},400)
+            except (OSError,TimeoutError):return self.send_json({'error':'Import non enregistré ; vérifier le volume et réessayer.'},503)
+
         def do_GET(self):
             try:
                 self.handle_get()
@@ -207,6 +239,8 @@ def make_handler(corpus, username='', password=''):
             static = {'/': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/icon.svg': 'icon.svg'}
             if path in static:
                 return self.serve_file(WEB / static[path])
+            if path=='/api/control':
+                return self.send_json({'csrf_token':csrf_token,'history_import':history_status(corpus.root)})
             data,view_root,assets = corpus.view()
             sources = {s['id']: s for s in data['sources']}
             entities = {e['id']: e for e in data['entities']}
@@ -225,7 +259,7 @@ def make_handler(corpus, username='', password=''):
                 return self.send_json({'entities': data['entities'], 'sources': summaries,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if cerveau.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',
-                    'worker': worker,
+                    'worker': worker, 'history_import':history_status(corpus.root),
                     'updated_at': (view_root / 'data/catalog.json').stat().st_mtime,
                     'last_process': cerveau.read_json(view_root / 'data/last-process.json', {})})
             if path == '/api/search':

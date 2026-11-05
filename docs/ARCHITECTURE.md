@@ -18,7 +18,9 @@ L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cet
 | NAS | Compose prêt à construire ; déploiement, ressources réelles et connexions restent à valider sur le matériel. |
 | Recherche internet automatique et MCP | Non implémentés ; consignés dans le backlog. |
 
-Le fait que le POC ait produit une transcription ne signifie donc pas qu’un moteur de transcription est déjà fourni dans le Compose. Le script local existe ; son exposition comme service serait nécessaire pour un profil Mac. Le profil API proposé n’en dépend pas et peut être généré avec `scripts/setup_env.py --profile api`.
+Le fait que le POC ait produit une transcription ne signifie donc pas qu’un moteur de transcription est déjà fourni dans le Compose. Le script local existe ; son exposition comme service serait nécessaire pour un profil Mac. Le profil API proposé n’en dépend pas et peut être généré avec `scripts/setup_env.py --profile deepseek`.
+
+Le [guide tous favoris et DeepSeek](IMPORT-ET-DEEPSEEK.md) décrit le profil retenu avec la clé déjà disponible, l’import initial depuis le web et les limites des fichiers sans texte. DeepSeek Flash est proposé pour texte et vision ; la transcription audio reste un service distinct à choisir.
 
 ## 2. Vue d’ensemble
 
@@ -77,12 +79,12 @@ Un serveur simplement « compatible OpenAI » peut ne prendre en charge qu’une
 
 ## 4. Un favori, du début à la fiche
 
-1. Si le profil `automation` et la synchronisation sont activés, le worker lit toutes les pages de favoris Karakeep. Il prépare l’import complet avant de publier les métadonnées locales. Un filtre d’URL facultatif permet de limiter les sources retenues.
+1. Si le profil `automation` et la synchronisation sont activés, le worker lit toutes les pages de favoris Karakeep. Il prépare l’import complet avant de publier les métadonnées locales. Par défaut tous les favoris sont retenus, y compris sites, articles, notes et fichiers. Des filtres URL/tags restent facultatifs. Le bouton d’import historique ignore ces filtres pour lire tout le catalogue sans téléchargement ni appel IA.
 2. Les réponses brutes sont archivées par version, puis les sources sont dédupliquées par identifiant. La description et le texte de page sont des preuves distinctes ; le résumé IA de Karakeep n’est pas utilisé comme preuve des paroles ou des images.
 3. Une file durable sélectionne les sources à traiter : trois par passage, toutes les quinze minutes par défaut. Les sources déjà traitées sont reconnues par leur empreinte de source/configuration.
 4. Le worker télécharge la pièce jointe vidéo si nécessaire et autorisé. Limites par défaut : 100 Mio pour le téléchargement et 300 secondes pour l’analyse. Si aucune vidéo n’est jointe, seuls les textes disponibles peuvent être exploités.
 5. PyAV décode le média sur le NAS. Le son est converti en WAV et les captures sont préparées sans modèle IA. Seules les étapes configurées appellent ensuite un moteur audio ou vision.
-6. Le LLM texte, s’il est activé, rédige les fiches à partir des preuves disponibles. Sans audio/vision, il peut produire une fiche à partir du texte source, mais cela ne constitue pas une analyse vidéo.
+6. Le LLM texte, s’il est activé, rédige un résumé de lecture sourcé pour chaque favori, puis des fiches pour les seuls outils identifiés explicitement. Les résumés sont recherchables et exportés avec leurs preuves. Sans audio/vision, il peut produire une fiche à partir du texte source, mais cela ne constitue pas une analyse vidéo.
 7. Le programme fige les preuves par contenu/provenance, conserve leurs captures, valide les références et reconstruit catalogue et Markdown dans une génération de travail. Seul le remplacement atomique de `data/current.json` rend cette génération visible. Les fiches éditoriales existantes sont préservées ; le worker remplace ses propres synthèses de la source traitée.
 8. L’interface recharge le catalogue lors des requêtes s’il a changé ; actualiser l’écran permet d’afficher les nouvelles données.
 
@@ -113,7 +115,7 @@ Le format produit par FFmpeg/Whisper devrait être converti vers les preuves JSO
 
 ## 7. Consultation et recherche
 
-Le navigateur appelle le service web en lecture seule. Celui-ci lit le catalogue JSON, classe les résultats et sert les médias/images autorisés. La recherche examine les titres, descriptions, usages, preuves citées et textes des sources, y compris les transcriptions et l’OCR. Elle normalise les accents et rapproche certaines fautes d’orthographe. **Elle n’est pas limitée à une correspondance de phrase exacte, mais elle n’est pas sémantique** et ne fait appel à aucun LLM ni embedding.
+Le navigateur consulte le corpus en lecture seule ; une commande authentifiée et protégée contre les requêtes intersites peut demander un import global. Elle écrit une demande locale, exécutée par le worker, sans modification de Karakeep. Le service web lit le catalogue JSON, classe les résultats et sert les médias/images autorisés. La recherche examine les titres, descriptions, usages, preuves citées et textes des sources, y compris les transcriptions et l’OCR. Elle normalise les accents et rapproche certaines fautes d’orthographe. **Elle n’est pas limitée à une correspondance de phrase exacte, mais elle n’est pas sémantique** et ne fait appel à aucun LLM ni embedding.
 
 Une source expose sa transcription à côté de la vidéo. Les passages disponibles sont cliquables pour naviguer à l’instant cité. Une recherche dédiée dans ce panneau, le surlignage et une ouverture directe plus précise depuis tous les résultats restent dans le backlog.
 
@@ -143,6 +145,7 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 | `compose.yaml`, `Dockerfile` | Services web/worker, volume, réseau et limites de ressources. |
 | `settings.py`, `.env.example` | Paramètres, validations et activation des étapes. |
 | `integrations.py` | Lecture REST Karakeep et client de conversation compatible OpenAI. |
+| `controls.py` | File durable des demandes manuelles d’import du catalogue, sans inférence. |
 | `worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
 | `publication.py`, `usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
 | `worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |

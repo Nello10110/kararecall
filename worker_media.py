@@ -78,7 +78,7 @@ def transcribe(media,output,settings,ledger=None):
 def recognize_frames(media,output,settings,ledger=None):
     import av
     digest=file_hash(media)
-    cache_key=hashlib.sha256(json.dumps(['vision-v2',settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param]).encode()).hexdigest()
+    cache_key=hashlib.sha256(json.dumps(['vision-v2',settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.vision_thinking]).encode()).hexdigest()
     old=cerveau.read_json(output/'ocr.json',{})
     if old.get('media_sha256')==digest and old.get('cache_key')==cache_key and old.get('status')=='complete':
         return
@@ -108,7 +108,7 @@ def recognize_frames(media,output,settings,ledger=None):
             else:
                 text=chat(settings.vision_url,settings.vision_key,settings.vision_model,
                     [{'role':'user','content':[{'type':'text','text':prompt},{'type':'image_url','image_url':{'url':'data:image/jpeg;base64,'+base64.b64encode(path.read_bytes()).decode()}}]}],settings.timeout,
-                    max_tokens=settings.vision_max_tokens,reasoning=settings.vision_reasoning,token_limit_param=settings.token_limit_param,ledger=ledger,stage='vision')
+                    max_tokens=settings.vision_max_tokens,reasoning=settings.vision_reasoning,thinking=settings.vision_thinking,token_limit_param=settings.token_limit_param,ledger=ledger,stage='vision')
                 extracted=json_result(text)
                 if not isinstance(extracted.get('text'),str):
                     raise ServiceError('Réponse vision non conforme ; OCR non publié.')

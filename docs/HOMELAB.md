@@ -4,7 +4,7 @@ Ce guide décrit les commandes disponibles. Le [guide P0](P0.md) détaille le pr
 
 ## Configuration
 
-Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, cloner le dépôt puis exécuter `python3 scripts/setup_env.py --profile api` ou créer `.env` depuis `.env.example`. Garder ce fichier sur le serveur : Compose transmet explicitement les variables requises à chaque service. Le service web ne reçoit aucune clé Karakeep ou IA.
+Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, cloner le dépôt puis exécuter `python3 scripts/setup_env.py --profile deepseek` ou créer `.env` depuis `.env.example`. Garder ce fichier sur le serveur : Compose transmet explicitement les variables requises à chaque service. Le service web ne reçoit aucune clé Karakeep ou IA.
 
 | Paramètres `.env` | Rôle |
 |---|---|
@@ -20,8 +20,10 @@ Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, 
 | `DOWNLOAD_MEDIA` | Téléchargement des pièces jointes vidéo ; défaut true |
 | `MEDIA_MAX_MB`, `MEDIA_MAX_SECONDS` | Limites de taille et durée ; défaut 100 Mio, 300 s |
 | `HTTP_TIMEOUT_SECONDS` | Délai réseau par requête ; défaut 120 s |
-| `LLM_ENABLED` | Rédaction des fiches à partir des preuves ; défaut false |
+| `LLM_ENABLED` | Résumés des sources et rédaction des fiches à partir des preuves ; défaut false |
 | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | API compatible OpenAI ; URL incluant `/v1` si requis par le serveur |
+| `LLM_THINKING`, `VISION_THINKING` | Paramètre `thinking.type` facultatif ; profil DeepSeek : `disabled` |
+| `AI_TOKEN_LIMIT_PARAM` | `max_tokens` pour DeepSeek ; `max_completion_tokens` pour les serveurs le demandant |
 | `LLM_MAX_INPUT_CHARS` | Budget de texte source transmis à une synthèse ; défaut 24000 caractères |
 | `ASR_BASE_URL`, `ASR_API_KEY`, `ASR_MODEL` | API `audio/transcriptions` compatible avec WAV/multipart/`verbose_json` |
 | `VISION_BASE_URL`, `VISION_API_KEY`, `VISION_MODEL` | API multimodale pour lire le texte visible ; URL/clé héritent du LLM si vides |
@@ -32,6 +34,10 @@ Les noms des modèles doivent être ceux du serveur concerné. Aucun modèle, fo
 Sur le Mac, utiliser une adresse réseau joignable depuis le NAS et configurer le serveur de modèles pour écouter sur ce réseau. Ne pas exposer un Ollama sans protection sur internet. Une panne ou extinction du Mac provoque un échec réessayé plus tard ; le web et les anciennes fiches restent utilisables. Les services distants reçoivent les données correspondant aux étapes activées : texte pour la synthèse, audio pour ASR, captures pour vision. La mémoire des modèles est consommée sur leur serveur, pas sur le NAS.
 
 Pour une clé contenant `$` ou `#`, utiliser des guillemets simples dans `.env`. Ne pas ajouter de commentaire sur la même ligne qu’une valeur si la configuration est aussi utilisée directement par les scripts Python. Ne pas mettre d’identifiant dans une URL : utiliser les champs `*_API_KEY`.
+
+## Import initial de tous les favoris
+
+Voir le [guide import et DeepSeek](IMPORT-ET-DEEPSEEK.md). Renseigner les accès Karakeep et `COMPOSE_PROFILES=automation`, puis démarrer les services. Dans **Traitements**, cliquer sur **Importer tout l’historique** ; `SYNC_ENABLED=false` peut être conservé. Ce passage importe le catalogue et les textes, sans IA ni téléchargement. Ensuite, qualifier un premier traitement avant d’activer la boucle. Garder les deux filtres URL/tags vides pour analyser aussi les sites et articles ; corriger `instagram.com` dans un ancien `.env`.
 
 ## Lancement et diagnostic
 
