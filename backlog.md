@@ -2,6 +2,8 @@
 
 Mise à jour du 5 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Ordre de réalisation proposé : **P0 avant usage autonome sur le NAS, P1 pour l’usage quotidien enrichi, P2 selon les résultats du pilote**. Les travaux ne sont pas encore réalisés sauf cases cochées. Les fournisseurs et dépenses ne sont pas sélectionnés automatiquement.
 
+Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimensionner la première version pour ce volume, sans service Mac obligatoire ni abonnement de recherche payant par défaut. Les optimisations de débit passent après la fiabilité et l’usage quotidien.
+
 ## Déjà livré
 
 - [x] POC sur trois vidéos avec transcription locale, OCR et fiches sourcées.
@@ -27,7 +29,7 @@ Acceptation : tests de retraitement et d’échec sans dérive des références 
 - [ ] Ajouter un retraitement volontaire par source/étape ; changer une clé d’authentification ne doit pas invalider des résultats valides.
 - [ ] Séparer les états téléchargement, audio, OCR, synthèse et publication ; une panne audio ne doit pas bloquer indéfiniment un OCR indépendant.
 - [ ] Traiter une vidéo sans piste audio ou sans paroles comme un cas normal ; afficher « non applicable » ou l’état réellement observé.
-- [ ] Ajouter un mode de rattrapage borné pour l’import initial, sans augmenter la concurrence par défaut ; rendre visible le nombre réel de sources en attente.
+- [ ] Rendre visible le nombre réel de sources en attente, sans augmenter la concurrence par défaut.
 
 Acceptation : panne du Mac, erreur API et redémarrage reprennent sans perte ni appel identique inutile, et l’interface distingue partiel, terminé, en attente et échec.
 
@@ -111,6 +113,7 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 
 ### Stockage, performances et maintenance
 
+- [ ] Si le volume initial le justifie, ajouter un mode de rattrapage borné ; ce n’est pas un prérequis pour les vingt vidéos mensuelles prévues.
 - [ ] Hacher les médias en flux, réutiliser les empreintes connues et éviter de relire tout le corpus pour chaque nouvelle fiche.
 - [ ] Ajouter pagination côté interface et reconstruction ciblée ; mesurer recherche et mémoire avec un corpus représentatif avant une nouvelle base serveur.
 - [ ] Définir quotas, espace libre, rétention des médias/versions et conservation des traces ; ne pas supprimer automatiquement les preuves citées.
