@@ -33,7 +33,7 @@ Acceptation : panne du Mac, erreur API et redémarrage reprennent sans perte ni 
 
 ### Raccorder les moteurs et qualifier un pilote réel
 
-- [ ] Choisir un premier profil de traitement : API ou service Mac. Proposition : transcription et OCR spécialisé sur le Mac, synthèse locale ou API interchangeable.
+- [ ] Choisir un premier profil de traitement : proposition d’un profil API économique pour rendre le NAS indépendant du Mac, si la transmission convient. Garder le profil Mac audio/OCR comme alternative ; son économie seule ne le rend pas prioritaire aux volumes estimés.
 - [ ] Exposer les briques faster-whisper/Apple Vision locales derrière un service authentifié sur le réseau privé, si le profil Mac est retenu ; prévoir démarrage et redémarrage du service.
 - [ ] Comparer la vitesse/qualité avec whisper.cpp si nécessaire ; FFmpeg/Whisper reste une variante locale à adapter, pas une suppression du besoin de reconnaissance vocale.
 - [ ] Valider les contrats réels d’audio, vision et texte, y compris les paramètres non pris en charge, les horodatages et les réponses JSON ; `check` seul ne suffit pas.

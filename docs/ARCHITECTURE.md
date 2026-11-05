@@ -99,7 +99,7 @@ Le traitement est séquentiel. Un échec audio interrompt cette source avant les
 | API ASR distante | Renseigner URL, modèle et clé d’un service conforme, puis tester une vidéo. | Indépendant du Mac ; audio envoyé au fournisseur, coût et règles de conservation propres au service. |
 | Moteur directement sur le NAS | Non fourni dans le Compose actuel. Possibilité à mesurer selon CPU, RAM et petit modèle choisi. | Autonomie vis-à-vis du Mac, mais concurrence avec les autres services du NAS ; les 2–3 Go disponibles ne suffisent pas à garantir la faisabilité ou la vitesse. |
 
-Orientation proposée, **pas encore déployée** : commencer par mesurer un moteur audio local sur le Mac, tout en gardant l’interface et le stockage sur le NAS. Choisir ensuite entre un service local permanent et une API distante selon la disponibilité du Mac, la qualité, le coût et les temps mesurés. Aucun fournisseur n’est sélectionné par ce document.
+Orientation après l’[étude des coûts](ETUDE-EXPLOITATION.md), **pas encore déployée** : un premier profil API économique peut rendre le NAS autonome vis-à-vis du Mac, si la transmission des données convient. Le moteur local sur Mac reste une alternative à mesurer pour la confidentialité ou un besoin constaté ; le faible coût estimé des API ne suffit pas à rendre ce service local obligatoire. Aucun fournisseur n’est sélectionné par ce document.
 
 ## 6. Rôle de FFmpeg et réduction des appels IA
 
