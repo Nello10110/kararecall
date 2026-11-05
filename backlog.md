@@ -82,7 +82,7 @@ Acceptation : restauration et mise à jour vérifiées ; le web reste consultabl
 
 - [ ] Après identification d’un outil, rechercher son site, documentation et dépôt officiels lorsqu’ils existent ; décrire son utilité et son fonctionnement à partir des sources consultées.
 - [ ] Commencer par un budget borné : une recherche et jusqu’à deux pages par nouvel outil, avec cache partagé entre favoris du même outil et date de révision.
-- [ ] Comparer Brave + lecture simple des pages et Firecrawl pour les extractions difficiles ; suivre coût et quota partagés, sans souscrire automatiquement.
+- [x] Comparer Brave et Firecrawl pour la recherche et la lecture, avec un scénario de vingt outils par mois. [Comparatif](docs/RECHERCHE-WEB.md).
 - [ ] Conserver les URL, dates, traces de lecture et citations ; distinguer description de l’éditeur, propos de la vidéo et capacités effectivement testées.
 - [ ] Gérer noms ambigus, URL tronquées, pages absentes et contradictions sans inventer de correspondance ; un lien inaccessible reste signalé.
 - [ ] Limiter les données envoyées à la recherche aux informations utiles, et borner volumes, délais et redirections de la récupération ; bloquer l’accès à des adresses privées depuis les liens non fiables.
@@ -103,7 +103,7 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 ### Couverture et traitements économes
 
 - [ ] Adapter le traitement des longs articles/documents : découpage avec couverture mesurée, résumés hiérarchiques et citations précises ; actuellement la sélection dans le budget texte est signalée.
-- [ ] Comparer DeepSeek Search/Fetch aux options de recherche existantes avant le chantier d’enrichissement ; aucun appel automatique actuel.
+- [x] Comparer DeepSeek Search/Fetch aux options de recherche existantes et définir le contrat du premier pilote. [Choix proposé et critères](docs/RECHERCHE-WEB.md).
 
 - [x] Répartir le budget texte entre légende, audio, OCR et portions de vidéo ; signaler les preuves non envoyées au modèle.
 - [ ] Détecter et importer les pistes de sous-titres textuels disponibles, avec origine et horodatages, pour éviter une nouvelle reconnaissance.
