@@ -1,0 +1,81 @@
+services:
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        PUID: ${PUID:-10001}
+        PGID: ${PGID:-10001}
+    ports:
+      - "${MEMOIRE_BIND_ADDRESS:-127.0.0.1}:${MEMOIRE_PORT:-8765}:8765"
+    environment:
+      MEMOIRE_USERNAME: ${MEMOIRE_USERNAME:?Définir MEMOIRE_USERNAME dans .env}
+      MEMOIRE_PASSWORD: ${MEMOIRE_PASSWORD:?Définir MEMOIRE_PASSWORD dans .env}
+    volumes:
+      - storage:/workspace
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 384m
+    cpus: 1.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+  worker:
+    profiles: [automation]
+    build:
+      context: .
+      target: worker
+      args:
+        PUID: ${PUID:-10001}
+        PGID: ${PGID:-10001}
+    environment:
+      SYNC_ENABLED: ${SYNC_ENABLED:-false}
+      KARAKEEP_BASE_URL: ${KARAKEEP_BASE_URL:-}
+      KARAKEEP_API_KEY: ${KARAKEEP_API_KEY:-}
+      KARAKEEP_URL_FILTER: ${KARAKEEP_URL_FILTER:-}
+      SYNC_INTERVAL_SECONDS: ${SYNC_INTERVAL_SECONDS:-900}
+      DOWNLOAD_MEDIA: ${DOWNLOAD_MEDIA:-true}
+      WORKER_BATCH_SIZE: ${WORKER_BATCH_SIZE:-3}
+      MEDIA_MAX_MB: ${MEDIA_MAX_MB:-100}
+      MEDIA_MAX_SECONDS: ${MEDIA_MAX_SECONDS:-300}
+      HTTP_TIMEOUT_SECONDS: ${HTTP_TIMEOUT_SECONDS:-120}
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_MAX_INPUT_CHARS: ${LLM_MAX_INPUT_CHARS:-24000}
+      ASR_BASE_URL: ${ASR_BASE_URL:-}
+      ASR_API_KEY: ${ASR_API_KEY:-}
+      ASR_MODEL: ${ASR_MODEL:-}
+      VISION_BASE_URL: ${VISION_BASE_URL:-}
+      VISION_API_KEY: ${VISION_API_KEY:-}
+      VISION_MODEL: ${VISION_MODEL:-}
+      VISION_INTERVAL_SECONDS: ${VISION_INTERVAL_SECONDS:-5}
+      VISION_MAX_FRAMES: ${VISION_MAX_FRAMES:-12}
+    volumes:
+      - storage:/workspace
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    cpus: 1.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  storage:
+    name: ${MEMOIRE_VOLUME_NAME:-memoire-storage}

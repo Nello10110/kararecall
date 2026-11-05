@@ -1,0 +1,11 @@
+*
+!Dockerfile
+!cerveau.py
+!web_server.py
+!settings.py
+!integrations.py
+!worker.py
+!worker_media.py
+!requirements.worker.txt
+!web/
+!web/**
