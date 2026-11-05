@@ -7,6 +7,10 @@
 !worker.py
 !worker_media.py
 !worker_documents.py
+!web_research.py
+!editorial.py
+!kararecall_mcp.py
+!requirements.mcp.txt
 !requirements.worker.txt
 !web/
 !web/**
@@ -16,5 +20,6 @@
 
 !scripts/
 !scripts/verify_storage.py
+!scripts/pilot.py
 
 !controls.py

@@ -6,6 +6,7 @@ L’interface est servie par `web_server.py`, sans compilation ni dépendance ti
 
 - **Recherche** : mots ou description d’un souvenir, classement lexical, filtres outils/sources.
 - **Mes outils** : description, utilité, fonctionnement, limites, liens et preuves. Les synthèses automatiques sont marquées « À relire ».
+- **Revue des fiches** : corriger le nom, le résumé, les rubriques et les liens, marquer la fiche comme relue ou regrouper deux fiches du même outil. Les citations existantes et les versions précédentes restent conservées. Une page externe consultée peut recevoir une note attribuée après revue par l’utilisateur.
 - **Sources** : favoris conservés localement, texte disponible, état réel des extractions.
 - **Preuves** : recherche et surlignage dans la transcription, captures horodatées et ouverture du passage depuis les résultats globaux. Les preuves de document affichent le numéro de page du PDF ou l’aperçu de l’image.
 - **Traitements** : présence des médias, transcription/OCR et état du dernier passage du worker. Actualiser le catalogue pour charger les nouveaux résultats. Un bouton permet de demander l’import de tout l’historique ; il ne lance pas d’analyse IA et ne modifie pas Karakeep. La demande est persistée et exécutée par le worker. Les analyses suivent la configuration et les quotas habituels. Elle affiche le budget comptabilisé, les appels, les sources en attente et les étapes en erreur/non applicables, et signale un état de collecte trop ancien.
@@ -22,6 +23,8 @@ Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont 
 | `/api/catalog` | Outils, sources, compteurs et état public du worker |
 | `/api/search?q=…&scope=all` | Recherche ; scope accepte aussi `tools` ou `sources` |
 | `/api/tools/ID` | Fiche d’outil |
+| `/api/research/ID` | Trace de recherche web de la fiche, si elle existe |
+| `/api/editorial/ID` | Dernière révision de la fiche avec sa version précédente |
 | `/api/sources/ID` | Source et preuves |
 | `/api/context/ID` | Contexte Markdown d’un outil |
 | `/download/tool/ID.md` | Export d’un outil |
@@ -29,8 +32,11 @@ Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont 
 | `/download/document/ID/ASSET_ID` | Téléchargement authentifié d’un original associé à une source ou à sa preuve archivée |
 | `/assets/…` | Médias/images figurant dans la liste autorisée du catalogue |
 
-Pages, API et médias sont protégés ensemble par HTTP Basic si configuré. Les fichiers `.env`, réponses API brutes, modèles et scripts ne sont pas servis. Le catalogue JSON est rechargé quand sa génération, sa date ou sa taille change. Une requête utilise une seule génération pour ses données et fichiers ; les preuves des anciennes versions restent accessibles depuis les fiches qui les citent. Les écritures de JSON utilisent un remplacement atomique. La consultation n’effectue aucune modification de favoris ou de fiches ; seul le worker écrit les résultats dans le volume partagé.
+Pages, API et médias sont protégés ensemble par HTTP Basic si configuré. Les fichiers `.env`, réponses API brutes, modèles et scripts ne sont pas servis. Le catalogue JSON est rechargé quand sa génération, sa date ou sa taille change. Une requête utilise une seule génération pour ses données et fichiers ; les preuves des anciennes versions restent accessibles depuis les fiches qui les citent. Les écritures de JSON utilisent un remplacement atomique. La revue est enregistrée dans une génération avec le même verrou d’écriture que le worker.
 
-Une seule route administrative est ajoutée : **`POST /api/import-history`**, corps `{}`, `Content-Type: application/json` et en-tête `X-KaraRecall-CSRF` obtenu via `/api/control`. Elle exige la même authentification, refuse les origines différentes et borne le corps à 1 Kio. Aucun autre paramètre ni chemin n’est accepté. Elle écrit uniquement sous `data/control/` ; le web ne reçoit toujours aucune clé API. Le bouton affiche attente, progression, résultat ou erreur et se rafraîchit pendant l’import.
+Les commandes administratives exigent la même authentification, une origine autorisée, du JSON et l’en-tête `X-KaraRecall-CSRF` obtenu via `/api/control`.
+
+- `POST /api/import-history` reçoit `{}` dans un corps de 1 Kio maximum. Il enregistre une demande dans `data/control/`.
+- `POST /api/tools/ID/edit` vérifie la révision de la fiche, et celle de l’autre fiche en cas de regroupement. La commande conserve les anciennes versions et publie la nouvelle après validation. Les anciens liens des fiches regroupées restent utilisables. Une fiche revue ou corrigée est préservée lors des traitements suivants.
 
 Les requêtes `HEAD` et `Range` permettent la navigation vidéo. Le reverse proxy doit conserver ces en-têtes, le statut 206 et l’en-tête `Authorization`. Le serveur est prévu pour un usage personnel derrière un reverse proxy, avec un compte partagé configuré dans `.env` ; il n’a pas de gestion multi-utilisateur ni d’éditeur intégré.

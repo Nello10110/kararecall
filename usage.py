@@ -39,14 +39,16 @@ class UsageLedger:
         with self.connect() as db:
             count,accounted,measured=db.execute('SELECT count(*),coalesce(sum(accounted_usd),0),coalesce(sum(measured_usd),0) FROM calls WHERE month=?',(month,)).fetchone()
             unknown=db.execute("SELECT count(*) FROM calls WHERE month=? AND measured_usd IS NULL",(month,)).fetchone()[0]
+            web_count,web_total=db.execute("SELECT count(*),coalesce(sum(accounted_usd),0) FROM calls WHERE month=? AND stage IN ('web-search','web-fetch')",(month,)).fetchone()
         return {'month':month,'calls':count,'accounted_usd':round(accounted,6),'measured_estimate_usd':round(measured,6),
-                'unpriced_calls':unknown,'limit_usd':self.settings.monthly_budget_usd}
+                'unpriced_calls':unknown,'limit_usd':self.settings.monthly_budget_usd,
+                'web_calls':web_count,'web_accounted_usd':round(web_total,6)}
 
-    def call(self,stage,provider,model,operation,audio_seconds=0):
+    def call(self,stage,provider,model,operation,audio_seconds=0,*,fixed_cost=None):
         config=self.settings
         instant=datetime.now(timezone.utc)
         month,day=instant.strftime('%Y-%m'),instant.strftime('%Y-%m-%d')
-        reservation=config.call_reserve_usd
+        reservation=config.call_reserve_usd if fixed_cost is None else fixed_cost
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             count,total=db.execute('SELECT count(*),coalesce(sum(accounted_usd),0) FROM calls WHERE month=?',(month,)).fetchone()
@@ -62,7 +64,7 @@ class UsageLedger:
             result=operation()
             usage=result.get('usage') or {}
             incoming=usage.get('prompt_tokens');outgoing=usage.get('completion_tokens')
-            measured=None
+            measured=fixed_cost
             if stage=='asr' and config.asr_usd_per_hour>0:
                 measured=max(10,audio_seconds)/3600*config.asr_usd_per_hour
             elif stage in ('llm','vision'):

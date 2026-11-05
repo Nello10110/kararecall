@@ -20,6 +20,7 @@ import kararecall
 from settings import initialize
 from publication import active_root
 from controls import history_status, request_history
+from editorial import EditConflict, edit_tool, revision
 from worker_documents import attachment_extension, attachment_target
 
 ROOT = kararecall.ROOT
@@ -112,6 +113,7 @@ def context_for(entity, sources):
         lines += ['']
     lines += ['## Liens pour approfondir', '']
     lines += [f"- {link.get('label', 'Lien')} : {link['url']} ({kararecall.LINK_LABELS[link['status']]})" for link in entity.get('links', [])]
+    lines += kararecall.render_research(entity)
     lines += ['', '## Publications originales', '']
     lines += [f"- {sources[sid]['url']} — enregistré {sources[sid]['created_at']}" for sid in entity['source_ids']]
     return '\n'.join(lines) + '\n'
@@ -197,7 +199,7 @@ def make_handler(corpus, username='', password=''):
             self.do_GET()
 
         def do_POST(self):
-            # One local administrative command, with no remote keys in the web service.
+            # Local administrative commands, with no remote keys in the web service.
             self.close_connection=True
             if not self.authorized():
                 return self.send_bytes(b'Authentification requise','text/plain; charset=utf-8',401,
@@ -207,19 +209,23 @@ def make_handler(corpus, username='', password=''):
                 (origin and urlsplit(origin).netloc.casefold()!=self.headers.get('Host','').casefold()) or
                 not hmac.compare_digest(self.headers.get('X-KaraRecall-CSRF','').encode(),csrf_token.encode())):
                 return self.send_json({'error':'Origine ou jeton de session invalide. Actualiser la page.'},403)
-            if self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
+            edit=re.fullmatch(r'/api/tools/([a-z0-9-]+)/edit',self.path)
+            if not edit and self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
             try:
                 length=int(self.headers.get('Content-Length','-1'))
-                if self.headers.get('Transfer-Encoding') or not 0<=length<=1024:
+                if self.headers.get('Transfer-Encoding') or not 0<=length<=(128*1024 if edit else 1024):
                     return self.send_json({'error':'Corps de requête invalide'},400)
                 if self.headers.get('Content-Type','').split(';')[0]!='application/json':
                     return self.send_json({'error':'JSON attendu'},415)
                 self.connection.settimeout(10)
                 payload=json.loads(self.rfile.read(length))
+                if edit:return self.send_json(edit_tool(corpus.root,edit[1],payload))
                 if payload!={}:return self.send_json({'error':'Cette commande n’accepte aucun paramètre'},400)
                 return self.send_json(request_history(corpus.root),202)
-            except (ValueError,UnicodeError):return self.send_json({'error':'JSON invalide'},400)
-            except (OSError,TimeoutError):return self.send_json({'error':'Import non enregistré ; vérifier le volume et réessayer.'},503)
+            except EditConflict as exc:return self.send_json({'error':str(exc)},409)
+            except (json.JSONDecodeError,UnicodeError):return self.send_json({'error':'JSON invalide'},400)
+            except ValueError as exc:return self.send_json({'error':str(exc) if edit else 'Requête invalide'},400)
+            except OSError:return self.send_json({'error':'Modification non enregistrée ; vérifier le volume.'},503)
 
         def do_GET(self):
             try:
@@ -247,6 +253,7 @@ def make_handler(corpus, username='', password=''):
             data,view_root,assets = corpus.view()
             sources = {s['id']: s for s in data['sources']}
             entities = {e['id']: e for e in data['entities']}
+            aliases = {alias: e['id'] for e in data['entities'] for alias in e.get('merged_ids',[])}
             if path == '/api/health':
                 return self.send_json({'status': 'ok'})
             if path == '/api/catalog':
@@ -266,6 +273,7 @@ def make_handler(corpus, username='', password=''):
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if kararecall.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',
                     'worker': worker, 'history_import':history_status(corpus.root), 'storage':storage,
+                    'research':kararecall.read_json(corpus.root/'data/research-status.json',{}),
                     'updated_at': (view_root / 'data/catalog.json').stat().st_mtime,
                     'last_process': kararecall.read_json(view_root / 'data/last-process.json', {})})
             if path == '/api/search':
@@ -279,14 +287,27 @@ def make_handler(corpus, username='', password=''):
                 results = kararecall.search(query, data, 100)
                 results = [r for r in results if scope == 'all' or (scope == 'tools') == (r['kind'] == 'outil')]
                 return self.send_json({'query': query, 'results': results, 'search_mode': 'lexical'})
-            match = re.fullmatch(r'/api/(tools|sources|context)/([a-zA-Z0-9_-]+)', path)
+            match = re.fullmatch(r'/api/(tools|sources|context|research|editorial)/([a-zA-Z0-9_-]+)', path)
             if match:
                 kind, sid = match.groups()
+                if kind!='sources':sid=aliases.get(sid,sid)
+                if kind == 'editorial':
+                    history=entities[sid].get('editorial_history',[])
+                    if not history:return self.send_json({'error':'Historique indisponible'},404)
+                    trace=history[-1]
+                    if not re.fullmatch(r'data/editorial/[a-f0-9]{32}\.json',trace):raise ValueError('Trace invalide')
+                    return self.serve_file(view_root/trace,sid+'-revue.json')
+                if kind == 'research':
+                    research=entities[sid].get('web_research')
+                    if not research:return self.send_json({'error':'Recherche web indisponible'},404)
+                    trace=research['trace_file']
+                    if not re.fullmatch(r'data/verification/research/[a-f0-9]{64}\.json',trace):raise ValueError('Trace invalide')
+                    return self.serve_file(view_root/trace,sid+'-recherche.json')
                 if kind == 'context':
                     return self.send_json({'markdown': context_for(entities[sid], sources)})
                 if kind == 'tools':
                     entity = entities[sid]
-                    return self.send_json({'entity': entity, 'sources': [source_summary(sources[s]) for s in entity['source_ids']]})
+                    return self.send_json({'entity': entity, 'revision':revision(entity), 'sources': [source_summary(sources[s]) for s in entity['source_ids']]})
                 source = sources[sid]
                 return self.send_json({'source': source, 'summary': source_summary(source),
                     'entities': [e for e in entities.values() if sid in e['source_ids']],
@@ -306,6 +327,7 @@ def make_handler(corpus, username='', password=''):
             match = re.fullmatch(r'/download/(tool|source)/([a-zA-Z0-9_-]+)\.md', path)
             if match:
                 kind, sid = match.groups()
+                if kind=='tool':sid=aliases.get(sid,sid)
                 if sid not in (entities if kind == 'tool' else sources):
                     return self.send_json({'error': 'Fiche introuvable'}, 404)
                 directory = 'outils' if kind == 'tool' else 'sources'

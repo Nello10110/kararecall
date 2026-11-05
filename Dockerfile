@@ -5,10 +5,18 @@ ARG PUID=10001
 ARG PGID=10001
 RUN groupadd --gid ${PGID} kararecall && useradd --uid ${PUID} --gid ${PGID} --no-create-home kararecall && mkdir -p /workspace/data /workspace/vault && chown -R kararecall:kararecall /workspace
 ENV KARARECALL_ROOT=/workspace
-COPY kararecall.py web_server.py settings.py integrations.py worker.py worker_media.py worker_documents.py publication.py usage.py controls.py ./
+COPY kararecall.py web_server.py settings.py integrations.py worker.py worker_media.py worker_documents.py web_research.py editorial.py publication.py usage.py controls.py ./
 COPY web/ ./web/
 COPY scripts/verify_storage.py ./verify_storage.py
+COPY scripts/pilot.py ./pilot.py
 USER kararecall
+
+FROM base AS mcp
+USER root
+COPY kararecall_mcp.py requirements.mcp.txt ./
+RUN pip install --no-cache-dir -r requirements.mcp.txt
+USER kararecall
+ENTRYPOINT ["python", "kararecall_mcp.py"]
 
 FROM base AS worker
 USER root

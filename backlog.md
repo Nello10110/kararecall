@@ -16,6 +16,8 @@ Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimen
 
 Implémentation et commandes : [P0.md](docs/P0.md). Les clés personnelles ne sont pas renseignées et aucun appel IA facturé n’a été effectué pendant les tests.
 
+Le [guide du pilote](docs/PILOTE.md) donne les commandes de qualification REST, des modèles et du NAS, ainsi que la mesure de recherche. Les validations réelles restent ouvertes jusqu’au retour de ces essais.
+
 ### Préserver les preuves lors des retraitements
 
 - [x] Versionner les extractions de façon immuable : média, moteur/fournisseur, modèle/version et paramètres ; une fiche doit citer exactement les preuves utilisées lors de sa rédaction.
@@ -80,20 +82,23 @@ Acceptation : restauration et mise à jour vérifiées ; le web reste consultabl
 
 ### Recherche internet systématique par outil
 
-- [ ] Après identification d’un outil, rechercher son site, documentation et dépôt officiels lorsqu’ils existent ; décrire son utilité et son fonctionnement à partir des sources consultées.
-- [ ] Commencer par un budget borné : une recherche et jusqu’à deux pages par nouvel outil, avec cache partagé entre favoris du même outil et date de révision.
+- [x] Rechercher après publication et afficher les sites, documents et dépôts candidats, avec lecture ciblée via DeepSeek.
+- [x] Permettre la revue de l’identité de l’éditeur et l’ajout de notes de description, d’usage et de fonctionnement attribuées à une page effectivement consultée.
+- [ ] Évaluer la rédaction automatique de notes documentaires avec abstention lorsque l’identité de l’éditeur reste incertaine.
+- [x] Appliquer une recherche et jusqu’à deux pages par nouvel outil, avec cache partagé, date de passage et budget persistant.
 - [x] Comparer Brave et Firecrawl pour la recherche et la lecture, avec un scénario de vingt outils par mois. [Comparatif](docs/RECHERCHE-WEB.md).
-- [ ] Conserver les URL, dates, traces de lecture et citations ; distinguer description de l’éditeur, propos de la vidéo et capacités effectivement testées.
-- [ ] Gérer noms ambigus, URL tronquées, pages absentes et contradictions sans inventer de correspondance ; un lien inaccessible reste signalé.
-- [ ] Limiter les données envoyées à la recherche aux informations utiles, et borner volumes, délais et redirections de la récupération ; bloquer l’accès à des adresses privées depuis les liens non fiables.
+- [x] Conserver les URL, dates et traces immuables, séparées des affirmations et preuves initiales.
+- [x] Présenter les résultats ambigus et lectures indisponibles sans attribuer automatiquement les affirmations à l’éditeur. Rejeter les adresses tronquées ou sensibles.
+- [x] Limiter les données envoyées au nom de l’outil et aux adresses candidates retenues. Borner volume et délais. Refuser la connexion directe à une destination découverte et les redirections de l’API.
+- [ ] Qualifier le pilote avec le compte DeepSeek réel, dont les homonymes et les contradictions.
 
 Acceptation : chaque enrichissement est retraçable, un doublon ne relance pas toute la recherche, un échec ne bloque pas les fiches existantes et le coût est visible.
 
 ### Revue et navigation
 
-- [ ] Permettre de corriger et valider une synthèse « À relire », les noms et les liens, sans perdre l’historique ni les preuves.
-- [ ] Donner les écritures éditoriales à un seul propriétaire/une transaction ; éviter des modifications concurrentes des JSON par le web et le worker.
-- [ ] Regrouper les fiches d’un même outil issues de plusieurs favoris, en conservant toutes leurs provenances.
+- [x] Corriger et valider les fiches depuis l’interface avec conservation des révisions et des preuves.
+- [x] Sérialiser les écritures éditoriales et les traitements via un verrou partagé. Refuser une modification fondée sur une révision ancienne.
+- [x] Regrouper explicitement des fiches du même outil, avec conservation des références, sources et anciens liens.
 - [ ] Recueillir les retours d’usage puis ajuster navigation et filtres ; améliorer les actions de reprise et les explications des erreurs.
 - [x] Rechercher et surligner les mots dans le panneau de transcription, puis ouvrir le passage correspondant.
 - [x] Centrer l’extrait sur un mot retrouvé et ouvrir directement le passage ou la page depuis les résultats globaux.
@@ -114,9 +119,9 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 
 ### MCP en lecture seule
 
-- [ ] Réutiliser les fonctions de recherche/lecture pour un serveur MCP : fiche, source, transcription, preuve horodatée et contexte.
-- [ ] Choisir transport et authentification selon les assistants réellement utilisés ; comparer adaptateur local sur Mac et service HTTP du homelab.
-- [ ] Borner les résultats et conserver les citations ; aucune écriture Karakeep ni exécution d’outil découvert dans les sources.
+- [x] Adapter l’API de lecture à MCP pour les fiches, sources, transcriptions, preuves et contextes. [Guide MCP](docs/MCP.md).
+- [x] Choisir stdio pour un assistant local, avec accès au NAS authentifié via l’API web. Documenter l’option distante pour les clients qui la nécessitent.
+- [x] Borner les résultats MCP et conserver les citations. Les outils proposés sont en lecture seule.
 - [ ] Qualifier des demandes naturelles, y compris orales, et l’abstention lorsque l’information est absente.
 
 ### Mesurer avant de passer au sémantique

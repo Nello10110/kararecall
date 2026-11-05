@@ -222,6 +222,18 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(run_cycle(self.config)['processed'],0)
         self.assertEqual(len([r for r in self.requests if r[0]=='POST']),sent)
 
+    def test_worker_keeps_a_reviewed_card_during_resynthesis(self):
+        from editorial import edit_tool
+        from test_editorial import change
+        run_cycle(self.config)
+        entities=kararecall.read_json(active_root(self.root)/'data/entities.json')
+        original=next(row for row in entities if row['source_ids']==['one'])
+        edit_tool(self.root,original['id'],change(original,name='Lampe revue'))
+        self.assertEqual(run_cycle(self.config,force_id='one',force_stage='llm')['processed'],1)
+        updated=kararecall.read_json(active_root(self.root)/'data/entities.json')
+        self.assertEqual(len(updated),len(entities))
+        self.assertEqual(next(row for row in updated if row['id']==original['id'])['name'],'Lampe revue')
+
 
 if __name__=='__main__':
     unittest.main()

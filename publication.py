@@ -44,7 +44,7 @@ def generation(root):
         for name in ('sources.json','entities.json','last-process.json'):
             source=origin/'data'/name
             if source.is_file():shutil.copy2(source,draft/'data'/name)
-        for name in ('raw','media','documents','evidence','verification','extracted'):
+        for name in ('raw','media','documents','evidence','verification','editorial','extracted'):
             source=origin/'data'/name
             if source.is_dir():
                 # Extraction scripts can overwrite JPEGs in place; never hardlink those.

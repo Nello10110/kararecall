@@ -24,3 +24,18 @@
 .selected-proof { border-color: #8ea67a; }
 .result-proof { margin: 0 0 12px 12px; }
 .detail-panel > .btn { margin-top: 10px; }
+
+.editorial summary { cursor: pointer; font-weight: 600; }
+.editorial form { display: grid; gap: 14px; margin-top: 16px; }
+.editorial label, .editorial fieldset { display: grid; gap: 6px; }
+.editorial input:not([type='checkbox']), .editorial textarea, .editorial select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--ink);
+  background: white;
+  font: inherit;
+}
+.editorial fieldset { border: 1px solid var(--border); padding: 10px; }
+.editorial .editorial-review { display: flex; align-items: center; }

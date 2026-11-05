@@ -1,4 +1,5 @@
 .venv/
+.venv-mcp/
 .build/
 /data/
 /vault/
@@ -12,6 +13,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.pilot-questions.json
 *.secret
 *.tar
 *.tar.gz

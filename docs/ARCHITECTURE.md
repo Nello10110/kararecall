@@ -16,7 +16,7 @@ L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cet
 | Worker Docker : audio, vision, synthèse | Clients API implémentés ; tests avec services simulés et vidéo synthétique. Aucune inférence sur un fournisseur réel n’a été validée pour ce worker. |
 | Installation neuve | Bibliothèque vide ; collecte et synthèse désactivées dans la configuration d’exemple, modèles audio/vision non renseignés. |
 | NAS | Compose prêt à construire ; déploiement, ressources réelles et connexions restent à valider sur le matériel. |
-| Recherche internet automatique et MCP | Non implémentés ; consignés dans le backlog. |
+| Enrichissement web et MCP | Pilote web DeepSeek configurable et adaptateur MCP local en lecture seule. |
 
 Le fait que le POC ait produit une transcription ne signifie donc pas qu’un moteur de transcription est déjà fourni dans le Compose. Le script local existe ; son exposition comme service serait nécessaire pour un profil Mac. Le profil API proposé n’en dépend pas et peut être généré avec `scripts/setup_env.py --profile deepseek`.
 
@@ -119,7 +119,7 @@ Le navigateur consulte le corpus en lecture seule ; une commande authentifiée e
 
 Une source expose sa transcription à côté de la vidéo. Les passages disponibles sont cliquables pour naviguer à l’instant cité. Le panneau permet de rechercher et surligner des mots. Les résultats globaux peuvent ouvrir directement la preuve horodatée. Les preuves PDF sont repérées par page.
 
-Le bouton de contexte fournit un texte à copier dans un assistant ; il ne transmet rien automatiquement. Aucune conversation intégrée ni serveur MCP n’est encore fourni. Les routes de lecture existantes sont détaillées dans [WEB.md](WEB.md).
+Le bouton de contexte fournit un texte à copier dans un assistant ; il ne transmet rien automatiquement. L’adaptateur MCP local réutilise les routes de lecture. Les routes de lecture existantes sont détaillées dans [WEB.md](WEB.md).
 
 ## 8. Données, configuration et disponibilité
 

@@ -19,6 +19,7 @@ from urllib.parse import urlsplit
 import kararecall
 from controls import process_history, update_history
 from worker_documents import MAX_DOCUMENT_MB, document_path, extract_document, extraction_config
+from web_research import run_research
 from integrations import Karakeep, ServiceError, normalize_bookmark, chat, json_result, request_json
 from settings import Settings, initialize
 
@@ -124,7 +125,7 @@ def status(settings,**fields):
 
 
 def redacted(message,settings):
-    for secret in (settings.karakeep_key,settings.llm_key,settings.asr_key,settings.vision_key):
+    for secret in (settings.karakeep_key,settings.llm_key,settings.asr_key,settings.vision_key,settings.web_research_key):
         if secret:
             message=message.replace(secret,'[secret masqué]')
     return message[:400]
@@ -289,7 +290,9 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                                     generated=synthesize(source,evidence,settings,ledger)
                                     lookup={source['id']:dict(source,evidence=evidence)}
                                     for entity in generated:kararecall.validate_entity(entity,lookup,draft)
-                                    entities=[e for e in entities if not (e.get('curation')=='machine-generated' and e['source_ids']==[source['id']])]+generated
+                                    retained=[e for e in entities if not (e.get('curation')=='machine-generated' and e['source_ids']==[source['id']])]
+                                    existing={eid for e in retained for eid in [e['id'],*e.get('merged_ids',[])]}
+                                    entities=retained+[item for item in generated if item['id'] not in existing]
                                     stages['llm']='complete'
                                 except Exception as exc:
                                     stages['llm']='paused' if isinstance(exc,BudgetExceeded) else 'failed';errors.append(safe_error(exc,settings))
@@ -348,9 +351,11 @@ def check_connections(settings):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('command',choices=['once','loop','check','retry','usage','import-history'])
+    parser.add_argument('command',choices=['once','loop','check','retry','usage','import-history','research'])
     parser.add_argument('--source',help='ID de la source à retraiter explicitement')
     parser.add_argument('--stage',choices=['all','asr','vision','document','llm'],default='all')
+    parser.add_argument('--tool',help='Identifiant de fiche pour une recherche web ciblée')
+    parser.add_argument('--refresh',action='store_true',help='Relancer explicitement la recherche de la fiche')
     args=parser.parse_args()
     settings=Settings.from_env()
     if args.command=='usage':
@@ -372,6 +377,10 @@ def main():
         if not args.source:parser.error('retry exige --source')
         print(json.dumps(run_cycle(settings,args.source,args.stage),ensure_ascii=False))
         return
+    if args.command=='research':
+        if args.refresh and not args.tool:parser.error('--refresh exige --tool')
+        print(json.dumps(run_research(settings,args.tool,args.refresh),ensure_ascii=False))
+        return
     if args.command=='once':
         print(json.dumps(run_cycle(settings),ensure_ascii=False))
         return
@@ -389,6 +398,12 @@ def main():
             message=redacted(message,settings)
             status(settings,state='error',last_checked_at=now(),message=message)
             print(message,flush=True)
+        if running and settings.sync_enabled and settings.web_research_enabled:
+            try:
+                run_research(settings)
+            except Exception as exc:
+                kararecall.write_json(settings.root/'data/research-status.json',{
+                    'state':'error','error':safe_error(exc,settings),'updated_at':now()})
         deadline=time.monotonic()+settings.sync_interval
         heartbeat=time.monotonic()+30
         while running and time.monotonic()<deadline:

@@ -28,6 +28,7 @@ DETAIL_SECTIONS = [('description', 'Description'), ('usefulness', 'À quoi ça s
 STATUS_LABELS = {'source_claim': 'Selon la source', 'hypothesis': 'Hypothèse à confirmer',
                  'verified': 'Vérification externe', 'documented': 'Selon la documentation éditeur'}
 LINK_LABELS = {'repository_exists': 'Dépôt trouvé', 'page_read': 'Page consultée',
+               'user_link_unchecked': 'Ajouté lors de la revue, accès non vérifié',
                'source_link_unchecked': 'Relevé dans la source, accès non vérifié',
                'source_publication': 'Publication d’origine conservée dans Karakeep',
                'linked_from_official_page': 'Lien fourni par l’éditeur, page cible non relue',
@@ -89,6 +90,34 @@ def validate_entity(entity, lookup, root):
                 raise ValueError('Trace de lien manquante')
         elif not link.get('evidence'):
             raise ValueError('Un lien exige une provenance')
+    research=entity.get('web_research')
+    if research:
+        trace=research.get('trace_file','')
+        if not re.fullmatch(r'data/verification/research/[a-f0-9]{64}\.json',trace):
+            raise ValueError('Chemin de trace de recherche invalide')
+        payload={key:value for key,value in research.items() if key!='trace_file'}
+        digest=hashlib.sha256(json.dumps(payload,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+        if not trace.endswith('/'+digest+'.json') or read_json(root/trace)!=payload:
+            raise ValueError('Trace de recherche absente ou modifiée')
+    for trace in entity.get('editorial_history',[]):
+        if not re.fullmatch(r'data/editorial/[a-f0-9]{32}\.json',trace) or not (root/trace).is_file():
+            raise ValueError('Historique éditorial manquant ou invalide')
+
+
+def render_research(entity, include_trace=False):
+    research=entity.get('web_research')
+    if not research:return []
+    lines=['','## Pistes de recherche web','',f"Recherche via {research['provider']} le {research['searched_at'] or research['completed_at'] or 'jour de traitement'}. Les résultats demandent une revue de l’identité de l’outil.",'']
+    pages={row['url']:row for row in research['pages']}
+    for row in research['results']:
+        page=pages.get(row['url'])
+        status='Page consultée' if page and page['status']=='read' else 'Lecture indisponible' if page else 'Lien relevé dans la recherche'
+        lines.append(f"- <{row['url']}> · {status}")
+        if page and page.get('excerpt'):
+            escaped=re.sub(r'([\\`*_{}\[\]<>|!])',r'\\\1',page['excerpt'])
+            lines.append('  Extrait : '+escaped)
+    if include_trace:lines+=['',f"[Trace de recherche](../../{research['trace_file']})"]
+    return lines+['']
 
 
 def render_claim(claim, lookup):
@@ -323,6 +352,7 @@ def build(root=ROOT):
                 lines += [f"  [Origine dans la vidéo](../sources/{sid}.md#{eid})  "]
             if link.get('reference_file'):
                 lines += [f"  [Trace de lecture](../../{link['reference_file']})  "]
+        lines += render_research(entity, include_trace=True)
         lines += ['', '## Pour aller plus loin avec un assistant', '', entity.get('follow_up', 'Partir des liens ci-dessus et préciser le besoin concret à approfondir.'), '']
         lines += ["", "## Autres fiches liées", ""]
         lines += [f"- [{other['name']}]({other['id']}.md)" for other in entities if other["id"] != entity["id"] and set(other["source_ids"]) & set(entity["source_ids"])] or ["Pas encore de lien thématique relu."]
