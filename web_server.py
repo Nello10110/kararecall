@@ -39,7 +39,7 @@ def source_summary(source):
     return {key: source[key] for key in ('id', 'url', 'created_at', 'tags', 'processing')} | {
         'title': caption.strip(' “”:"'), 'author': author.strip(' @'),
         'thumbnail': '/assets/' + preferred['image'] if preferred else None,
-        'transcript_count': sum(e['kind'] == 'asr' for e in current),
+        'transcript_count': sum(e['kind'] in ('asr','subtitle') for e in current),
         'frame_count': sum(e['kind']=='ocr' for e in images), 'stages':source.get('stages',{}),
         'bookmark_type':source.get('bookmark_type','link'),'content_status':source.get('content_status'),
         'has_video':bool(source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[]))),

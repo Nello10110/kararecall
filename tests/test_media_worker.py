@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
 import kararecall
@@ -57,6 +58,50 @@ class MediaTests(unittest.TestCase):
     def tearDown(self):
         self.server.shutdown();self.server.server_close();self.thread.join(timeout=5);self.temporary.cleanup()
 
+    def test_embedded_text_subtitles_avoid_asr_and_keep_provenance(self):
+        import av
+        import numpy as np
+        import shutil
+        from publication import active_root
+        from worker import run_cycle
+
+        root=self.config.root
+        srt=root/'embedded.srt'
+        srt.write_text('1\n00:00:01,000 --> 00:00:03,500\nSous-titre français de test\n\n',encoding='utf-8')
+        video_path=root/'embedded.mkv'
+        with av.open(str(srt)) as source,av.open(str(video_path),'w') as output:
+            stream=output.add_stream('mpeg4',rate=1)
+            stream.width=64;stream.height=64;stream.pix_fmt='yuv420p'
+            subtitles=output.add_stream_from_template(source.streams.subtitles[0])
+            subtitles.metadata['language']='fra'
+            for _ in range(5):
+                frame=av.VideoFrame.from_ndarray(np.zeros((64,64,3),dtype=np.uint8),format='rgb24')
+                for packet in stream.encode(frame):output.mux(packet)
+            for packet in stream.encode():output.mux(packet)
+            for packet in source.demux(source.streams.subtitles[0]):
+                if packet.dts is not None:
+                    packet.stream=subtitles
+                    output.mux(packet)
+        self.config.sync_enabled=True
+        self.config.karakeep_url=self.config.asr_url
+        self.config.karakeep_key='fixture-only'
+        self.config.vision_model=''
+        self.config.reuse_subtitles=True
+        bookmark={'id':'with-subtitles','createdAt':'2026-11-05T12:00:00Z',
+                  'content':{'type':'link','url':'https://example.com/video','videoAssetId':'video-file'}}
+        def download(_,destination):
+            destination.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(video_path,destination)
+        with patch('worker.Karakeep.bookmarks',return_value=iter([bookmark])),patch('worker.Karakeep.download',side_effect=download):
+            self.assertEqual(run_cycle(self.config)['processed'],1)
+        self.assertEqual(self.calls,[])
+        source=kararecall.read_json(active_root(root)/'data/catalog.json')['sources'][0]
+        self.assertEqual(source['stages']['asr'],'subtitles_reused')
+        self.assertFalse(source['processing']['audio_transcribed'])
+        proof=next(row for row in source['evidence'] if row['kind']=='subtitle')
+        self.assertEqual((proof['start'],proof['end']),(1.0,3.5))
+        self.assertEqual(proof['recognition']['language'],'fra')
+
     def test_audio_and_frames_are_extracted_sent_and_cached(self):
         from worker_media import transcribe,recognize_frames
         transcribe(self.media,self.output,self.config)
@@ -98,6 +143,27 @@ class MediaTests(unittest.TestCase):
         recognize_frames(self.media,self.output,self.config)
         self.assertEqual(len(self.calls),3)
         self.assertEqual(len(kararecall.read_json(self.output/'ocr.json')['frames']),2)
+
+    def test_change_sampling_keeps_frame_budget_and_prioritizes_transitions(self):
+        import av
+        import numpy as np
+        from worker_media import recognize_frames
+
+        video=self.media.parent/'changes.mp4'
+        with av.open(str(video),'w') as container:
+            stream=container.add_stream('mpeg4',rate=10)
+            stream.width=64;stream.height=64;stream.pix_fmt='yuv420p'
+            for index in range(20):
+                level=240 if 5<=index<15 else 10
+                frame=av.VideoFrame.from_ndarray(np.full((64,64,3),level,dtype=np.uint8),format='rgb24')
+                for packet in stream.encode(frame):container.mux(packet)
+            for packet in stream.encode():container.mux(packet)
+        self.config.vision_sample_mode='changes'
+        recognize_frames(video,self.output,self.config)
+        ocr=kararecall.read_json(self.output/'ocr.json')
+        self.assertEqual(ocr['sampling'],'bounded_changes')
+        self.assertEqual([row['time'] for row in ocr['frames']],[0.5,1.5])
+        self.assertEqual(len(self.calls),2)
 
     def test_video_without_audio_never_calls_audio_service(self):
         import av

@@ -11,10 +11,11 @@ from unittest.mock import patch
 
 import kararecall
 from publication import active_root
+from integrations import ServiceError
 from settings import Settings
 from web_server import Corpus, make_handler
 from worker import run_cycle
-from worker_documents import pdf_text
+from worker_documents import extract_document, pdf_text
 
 
 def pdf_bytes(pages):
@@ -143,3 +144,34 @@ class DocumentTests(unittest.TestCase):
         self.assertEqual(proof['text'],'Jauge hydraulique')
         self.assertTrue((active_root(self.root)/proof['image']).is_file())
         self.assertEqual(self.downloads,['asset-one'])
+
+    @unittest.skipUnless(shutil.which('pdftoppm') and shutil.which('pdftotext'), 'Poppler est fourni dans le worker Docker')
+    def test_pdf_ocr_budget_and_retry_preserve_page_provenance(self):
+        self.settings.pdf_ocr_enabled=True
+        self.settings.pdf_ocr_max_pages=2
+        self.settings.vision_model='fixture-vision'
+        self.settings.vision_url='https://example.invalid'
+        row=bookmark('pdf')
+        content=pdf_bytes(['', 'Texte natif', '', ''])
+        answer={'choices':[{'message':{'content':json.dumps({'text':'Texte OCR'})}}]}
+        with patch('integrations.request_json',side_effect=[answer,ServiceError('Interruption de test')]) as model:
+            self.assertEqual(self.cycle(row,content)['failed'],1)
+            self.assertEqual(model.call_count,2)
+            payload=model.call_args.args[2]['messages'][0]['content'][1]['image_url']['url']
+            self.assertTrue(base64.b64decode(payload.split(',',1)[1]).startswith(b'\xff\xd8'))
+        source=self.catalog()['sources'][0]
+        self.assertEqual(source['processing']['attachment']['status'],'partial')
+        pages={proof['page']:proof for proof in source['evidence'] if proof['kind']=='pdf-page'}
+        self.assertEqual(set(pages),{1,2})
+        self.assertEqual(pages[1]['recognition']['model'],'fixture-vision')
+        self.assertIsNone(pages[2]['recognition']['model'])
+        self.assertTrue((active_root(self.root)/pages[1]['image']).is_file())
+        original=self.root/'fixture.pdf'
+        original.write_bytes(content)
+        with patch('integrations.request_json',return_value=answer) as model:
+            output=self.root/'resume'
+            self.assertEqual(extract_document(source,original,output,self.settings),'complete')
+            self.assertEqual(model.call_count,1)
+        artifact=kararecall.read_json(output/'document.json')
+        self.assertTrue(artifact['truncated'])
+        self.assertEqual([page['page'] for page in artifact['ocr_pages']],[1,3])

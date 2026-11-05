@@ -12,6 +12,65 @@ import kararecall
 from integrations import chat, json_result, request, ServiceError
 
 
+TEXT_SUBTITLES={'mov_text','subrip','srt','ass','ssa','webvtt','text'}
+
+
+def extract_subtitles(media,output,settings):
+    import av
+
+    digest=file_hash(media)
+    target=output/'subtitles.json'
+    previous=kararecall.read_json(target,{})
+    if (previous.get('media_sha256')==digest and previous.get('engine')=='pyav-text-track-v1'
+            and previous.get('max_seconds')==settings.media_max_seconds):
+        return previous['status']
+    result={'engine':'pyav-text-track-v1','media_sha256':digest,'max_seconds':settings.media_max_seconds,
+            'status':'not_applicable','segments':[]}
+    with av.open(str(media)) as container:
+        tracks=[stream for stream in container.streams.subtitles
+                if stream.codec_context.name in TEXT_SUBTITLES and not (stream.disposition & stream.disposition.forced)]
+        if tracks:
+            tracks.sort(key=lambda stream:(stream.metadata.get('language') not in ('fra','fre','fr'),stream.index))
+            track=tracks[0]
+            result.update(track=track.index,language=track.metadata.get('language') or 'unknown')
+            origin=float((container.start_time or 0)/av.time_base)
+            duration=float(container.duration/av.time_base) if container.duration else None
+            result['duration']=duration
+            if duration and duration>settings.media_max_seconds:
+                result['status']='partial'
+            else:
+                for index,packet in enumerate(container.demux(track)):
+                    if index>=3000 or len(result['segments'])>=1000:
+                        result['status']='partial'
+                        break
+                    if packet.pts is None or packet.time_base is None:
+                        continue
+                    subset=track.decode2(packet)
+                    if subset is None:
+                        continue
+                    base=float(packet.pts*packet.time_base)-origin
+                    start=max(0,base+subset.start_display_time/1000)
+                    end=base+subset.end_display_time/1000
+                    if (end<=start or subset.end_display_time>=2**31) and packet.duration:
+                        end=base+float(packet.duration*packet.time_base)
+                    if end>settings.media_max_seconds:
+                        result['status']='partial'
+                        break
+                    if not 0<=start<end:
+                        continue
+                    text='\n'.join(row.dialogue.decode('utf-8','replace') for row in subset
+                                   if getattr(row,'dialogue',b'')).strip()
+                    if len(text)>4000:
+                        result['status']='partial'
+                        break
+                    if text:
+                        result['segments'].append({'start':start,'end':end,'text':text})
+                if result['status']!='partial' and result['segments']:
+                    result['status']='complete'
+    kararecall.write_json(target,result)
+    return result['status']
+
+
 def transcribe(media,output,settings,ledger=None):
     import av
     digest=file_hash(media)
@@ -75,10 +134,49 @@ def transcribe(media,output,settings,ledger=None):
             'timestamp_precision':precision,'status':'complete','segments':segments})
 
 
+def sample_frames(frames, step, prefer_changes):
+    if not prefer_changes:
+        next_time=0
+        for frame in frames:
+            if frame.time is not None and frame.time+0.001>=next_time:
+                yield frame
+                next_time+=step
+        return
+
+    import numpy as np
+
+    window, next_probe = 0, 0
+    earliest, best_score = 0, -1
+    best = previous = None
+    for frame in frames:
+        timestamp=frame.time
+        if timestamp is None or timestamp+0.001<next_probe:
+            continue
+        next_probe=timestamp+0.5
+        current=frame.reformat(width=96,height=54,format='gray').to_ndarray().astype(np.int16)
+        score=0 if previous is None else np.abs(current-previous).mean()
+        previous=current
+        current_window=int(timestamp/step)
+        if current_window!=window:
+            if best is not None:
+                earliest=best.time+step
+                yield best
+            window,best,best_score=current_window,None,-1
+        if timestamp+0.001>=earliest and score>best_score:
+            best,best_score=frame,score
+    if best is not None:
+        yield best
+
+
 def recognize_frames(media,output,settings,ledger=None):
     import av
     digest=file_hash(media)
-    cache_key=hashlib.sha256(json.dumps(['vision-v2',settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.vision_thinking]).encode()).hexdigest()
+    config=['vision-v2',settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,
+            settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.vision_thinking]
+    prefer_changes=settings.vision_sample_mode=='changes'
+    if prefer_changes:
+        config.append('changes-v1')
+    cache_key=hashlib.sha256(json.dumps(config).encode()).hexdigest()
     old=kararecall.read_json(output/'ocr.json',{})
     if old.get('media_sha256')==digest and old.get('cache_key')==cache_key and old.get('status')=='complete':
         return
@@ -92,10 +190,7 @@ def recognize_frames(media,output,settings,ledger=None):
         if not 0<duration<=settings.media_max_seconds:
             raise ServiceError('Durée vidéo absente ou supérieure à MEDIA_MAX_SECONDS ; images non envoyées.')
         step=max(settings.vision_interval,duration/settings.vision_max_frames)
-        next_time=0
-        for frame in container.decode(stream):
-            if frame.time is None or frame.time+0.001<next_time:
-                continue
+        for frame in sample_frames(container.decode(stream),step,prefer_changes):
             filename=f'frame-{frame.time:08.3f}.jpg'
             path=output/filename
             image=frame.to_image()
@@ -116,9 +211,9 @@ def recognize_frames(media,output,settings,ledger=None):
                 progress['frames'][cache_id]=row
                 kararecall.write_json(progress_path,progress)
             rows.append(row)
-            next_time+=step
             if len(rows)>=settings.vision_max_frames:
                 break
     kararecall.write_json(output/'ocr.json',{'engine':'configured-vision-api','model':settings.vision_model,
         'cache_key':cache_key,'media_sha256':digest,'duration':duration,'interval':step,'requested_interval':settings.vision_interval,
-        'max_frames':settings.vision_max_frames,'sampling':'bounded_regular','status':'complete','frames':rows})
+        'max_frames':settings.vision_max_frames,'sampling':'bounded_changes' if prefer_changes else 'bounded_regular',
+        'status':'complete','frames':rows})

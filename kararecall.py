@@ -209,16 +209,21 @@ def load_evidence(source, root=ROOT):
     directory = root / "data/extracted" / sid
     transcript = read_json(directory / "transcript.json", {})
     ocr = read_json(directory / "ocr.json", {})
+    subtitles = read_json(directory / 'subtitles.json', {})
     media = root / "data/media" / (sid + ".mp4")
     from publication import file_hash
     digest = file_hash(media) if media.exists() else None
-    for artifact in (transcript, ocr):
+    for artifact in (transcript, ocr, subtitles):
         if artifact and (not digest or artifact.get("media_sha256") != digest):
             raise ValueError(f"Extraction périmée ou média absent: {sid}")
     for i, segment in enumerate(transcript.get("segments", [])):
         evidence.append({"id": f"asr-{i:03}", "kind": "asr", "text": segment["text"],
                          "start": segment["start"], "end": segment["end"],
                          "recognition":{key:transcript.get(key) for key in ('engine','model','cache_key')},"media_sha256":digest})
+    for i, segment in enumerate(subtitles.get('segments',[])):
+        evidence.append({'id':f'subtitle-{i:03}','kind':'subtitle','text':segment['text'],
+                         'start':segment['start'],'end':segment['end'],
+                         'recognition':{key:subtitles.get(key) for key in ('engine','track','language')},'media_sha256':digest})
     for i, frame in enumerate(ocr.get("frames", [])):
         evidence.append({"id": f"ocr-{i:03}", "kind": "ocr", "start": frame["time"],
                          "text": "\n".join(line["text"] for line in frame["lines"]),
@@ -235,9 +240,11 @@ def load_evidence(source, root=ROOT):
     return evidence, {"media_downloaded": media.exists(), "media_sha256": digest,
                       "attachment": attachment,
                       "audio_transcribed": transcript.get("status") == "complete",
+                      "subtitles_available": bool(subtitles.get('segments')),
                       "ocr_sampled": ocr.get("status") == "complete",
                       "ocr_interval_seconds": ocr.get("interval"),
-                      "duration_seconds": transcript.get("duration") or ocr.get("duration")}
+                      "ocr_sampling": ocr.get("sampling"),
+                      "duration_seconds": transcript.get("duration") or ocr.get("duration") or subtitles.get('duration')}
 
 
 def stamp(second):
@@ -301,7 +308,9 @@ def build(root=ROOT):
                  "## État de traitement", "",
                  f"Audio transcrit : {status['audio_transcribed']}. OCR échantillonné : {status['ocr_sampled']}."]
         if status["ocr_sampled"]:
-            lines += [f"Une image toutes les {status['ocr_interval_seconds']} s ; du texte bref peut être manqué."]
+            method = ('Changements visuels prioritaires' if status.get('ocr_sampling')=='bounded_changes'
+                      else 'Captures réparties dans la durée')
+            lines += [f"{method}. Intervalle cible : {status['ocr_interval_seconds']} s. Du texte bref peut être manqué."]
         attachment = status.get('attachment')
         if attachment:
             lines += ['', f"[Télécharger la pièce jointe originale](../../{attachment['file']})"]

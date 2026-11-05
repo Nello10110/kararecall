@@ -20,7 +20,9 @@ Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, 
 | `KARAKEEP_URL_FILTER` | Sous-chaîne d’URL facultative ; ex. `instagram.com` ; vide = tous les favoris |
 | `SYNC_INTERVAL_SECONDS`, `WORKER_BATCH_SIZE` | Période et maximum de traitements par passage ; défaut 900 s et 3 |
 | `DOWNLOAD_MEDIA` | Téléchargement des vidéos et des PDF/images sans texte fourni par Karakeep ; défaut true |
+| `REUSE_SUBTITLES` | Détecte les pistes de sous-titres textuelles embarquées et les réutilise avant l’ASR ; défaut false |
 | `PDF_MAX_PAGES` | Nombre de pages analysées localement par PDF ; défaut 25, maximum 100 |
+| `PDF_OCR_ENABLED`, `PDF_OCR_MAX_PAGES` | OCR des pages sans texte via le service vision. Désactivé par défaut, plafond de 3 pages par PDF si activé, maximum 10 |
 | `IMAGE_OCR_ENABLED` | Envoie les images autonomes au service vision configuré pour lire le texte ; défaut false |
 | `MEDIA_MAX_MB`, `MEDIA_MAX_SECONDS` | Limites de taille et durée ; défaut 100 Mio, 300 s |
 | `HTTP_TIMEOUT_SECONDS` | Délai réseau par requête ; défaut 120 s |
@@ -32,6 +34,7 @@ Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, 
 | `ASR_BASE_URL`, `ASR_API_KEY`, `ASR_MODEL` | API `audio/transcriptions` compatible avec WAV/multipart/`verbose_json` |
 | `VISION_BASE_URL`, `VISION_API_KEY`, `VISION_MODEL` | API multimodale pour lire le texte visible ; URL/clé héritent du LLM si vides |
 | `VISION_INTERVAL_SECONDS`, `VISION_MAX_FRAMES` | Échantillonnage réparti sur la vidéo ; défaut minimum 5 s et maximum 12 images |
+| `VISION_SAMPLE_MODE` | `regular` par défaut. `changes` choisit les changements visuels les plus marqués dans des fenêtres espacées, dans le même budget d’images |
 
 Les noms des modèles doivent être ceux du serveur concerné. Aucun modèle, fournisseur ni abonnement n’est fourni par le projet. L’API Ollama texte ne remplace pas une API de transcription. Un modèle vision doit accepter les images encodées dans `image_url`. Pour ASR, choisir un modèle/service acceptant `response_format=verbose_json` ; tous les modèles audio OpenAI ou compatibles ne l’acceptent pas. Si l’ASR renvoie seulement du texte, l’extraction est explicitement marquée avec une précision à l’échelle du média entier.
 
@@ -43,11 +46,18 @@ Pour une clé contenant `$` ou `#`, utiliser des guillemets simples dans `.env`.
 
 Voir le [guide import et DeepSeek](IMPORT-ET-DEEPSEEK.md). Renseigner les accès Karakeep et `COMPOSE_PROFILES=automation`, puis démarrer les services. Dans **Traitements**, cliquer sur **Importer tout l’historique** ; `SYNC_ENABLED=false` peut être conservé. Ce passage importe le catalogue et les textes, sans IA ni téléchargement. Ensuite, qualifier un premier traitement avant d’activer la boucle. Garder les deux filtres URL/tags vides pour analyser aussi les sites et articles ; corriger `instagram.com` dans un ancien `.env`.
 
+## Sous-titres embarqués
+
+`REUSE_SUBTITLES=true` cherche une piste de texte locale dans la vidéo téléchargée. Le worker préfère une piste française quand elle est présente, ignore les pistes forcées et conserve les extraits avec leurs temps, leur langue, leur numéro de piste et l’empreinte de la vidéo. Une piste textuelle lue jusqu’au bout remplace l’appel ASR du passage. Une piste absente, partielle ou illisible laisse fonctionner l’ASR configuré. Les sous-titres sont identifiés séparément des paroles reconnues. Un retraitement explicite `--stage asr` peut demander une vraie transcription.
+
+Avec `VISION_SAMPLE_MODE=changes`, le worker compare des images réduites environ toutes les demi-secondes en local. Il privilégie un changement par fenêtre tout en respectant l’espacement et le plafond d’images envoyées au modèle. Un texte très bref entre deux sondes ou une scène déjà chargée peut passer inaperçu. Le mode et l’intervalle sont conservés avec le résultat.
+
 ## PDF et images
 
 Le worker télécharge l’original des PDF et images sans texte fourni par Karakeep lorsque `DOWNLOAD_MEDIA=true`. La limite est de 20 Mio par fichier, ou moins si `MEDIA_MAX_MB` est inférieur. L’original est accessible en téléchargement dans la fiche source. Les preuves restent liées à l’empreinte du fichier, y compris lorsqu’une pièce jointe est remplacée dans Karakeep.
 
-- Le worker Docker extrait le texte incorporé aux PDF avec Poppler, avec des limites de temps, mémoire, pages et sortie. Chaque page conserve son numéro. Une limite atteinte est signalée. Un scan sans texte incorporé apparaît comme « Aucun texte extrait ». [Documentation de pdftotext](https://manpages.debian.org/trixie/poppler-utils/pdftotext.1.en.html).
+- Le worker Docker extrait le texte incorporé aux PDF avec Poppler, avec des limites de temps, mémoire, pages et sortie. Chaque page conserve son numéro. Une limite atteinte est signalée. [Documentation de pdftotext](https://manpages.debian.org/trixie/poppler-utils/pdftotext.1.en.html).
+- Avec `PDF_OCR_ENABLED=true`, les premières pages sans texte dans cette fenêtre sont converties localement en JPEG de 1280 pixels de côté au maximum. Seuls ces aperçus sont envoyés au service vision configuré. Les preuves OCR portent le numéro de page et le modèle utilisé. Les pages terminées sont réutilisées après un arrêt. Compter jusqu’à `PDF_OCR_MAX_PAGES` appels vision par PDF, dans les quotas IA partagés. Les pages avec une couche texte incomplète ne sont pas éligibles à ce traitement. [Documentation de pdftoppm](https://manpages.debian.org/trixie/poppler-utils/pdftoppm.1.en.html).
 - Une image est conservée comme original par défaut. Pour lire son texte, définir `IMAGE_OCR_ENABLED=true` avec un modèle vision déjà configuré. Le service reçoit un aperçu JPEG sans métadonnées, limité à 1280 pixels de côté. JPEG, PNG et WebP fixes sont acceptés jusqu’à 20 mégapixels. L’appel est comptabilisé comme un appel vision.
 
 L’import manuel du catalogue reste indépendant du téléchargement et de l’extraction. Utiliser `worker.py retry --source ID --stage document` pour retraiter volontairement un fichier déjà conservé. Le suivi se trouve dans Traitements et dans la fiche source.

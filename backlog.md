@@ -50,7 +50,7 @@ Acceptation : panne du Mac, erreur API et redémarrage reprennent sans perte ni 
 - [x] Proposer le profil DeepSeek texte/vision avec paramètres documentés, clés dans `.env` et transcription audio séparée. Voir [le guide](docs/IMPORT-ET-DEEPSEEK.md).
 - [ ] Mesurer le nombre total de favoris et de pages sans texte lors du premier import réel ; qualifier articles, notes et fichiers en plus des vidéos.
 - [x] Extraire le texte incorporé aux PDF et lire les images autonomes via le service vision sur activation explicite. Les originaux, preuves de page/image, limites et échecs sont consultables. [Paramètres](docs/HOMELAB.md#pdf-et-images).
-- [ ] Étudier l’OCR par page des PDF numérisés sans texte incorporé et en borner le coût.
+- [x] Extraire le texte des PDF numérisés sur option, avec aperçu par page, provenance, reprise et plafond d’appels vision.
 - [ ] Qualifier vingt sources variées : silence, nom propre, texte bref à l’écran, ambiguïté, plusieurs outils, absence de média ; mesurer précision, durée et mémoire.
 
 Acceptation : chaîne réelle reproductible, paramètres documentés, limites affichées et aucun moteur/call distant activé sans configuration explicite.
@@ -111,8 +111,8 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 - [x] Comparer DeepSeek Search/Fetch aux options de recherche existantes et définir le contrat du premier pilote. [Choix proposé et critères](docs/RECHERCHE-WEB.md).
 
 - [x] Répartir le budget texte entre légende, audio, OCR et portions de vidéo ; signaler les preuves non envoyées au modèle.
-- [ ] Détecter et importer les pistes de sous-titres textuels disponibles, avec origine et horodatages, pour éviter une nouvelle reconnaissance.
-- [ ] Améliorer l’échantillonnage des captures pour les textes brefs, sans envoyer toutes les images à un LLM par défaut ; documenter la couverture.
+- [x] Détecter et conserver les pistes textuelles embarquées, avec origine et horodatages. Réutiliser une piste exploitable avant l’ASR quand l’option est activée.
+- [x] Proposer un échantillonnage par changements visuels, avec le même plafond d’envois. Vérifier sa pertinence pour les textes brefs lors du pilote.
 - [ ] Étudier découpage/reprise des vidéos longues ou volumineuses et la sélection d’un OCR/vision plus riche seulement lorsque nécessaire.
 
 ## P2 — Conversation, recherche avancée et long terme

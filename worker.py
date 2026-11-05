@@ -37,7 +37,7 @@ def video_asset(source):
 
 
 def pack_evidence(evidence,budget):
-    groups={kind:[e for e in evidence if e['kind']==kind and not e.get('archived')] for kind in ('caption','page','text','document','note','asr','ocr','pdf-page','image-text')}
+    groups={kind:[e for e in evidence if e['kind']==kind and not e.get('archived')] for kind in ('caption','page','text','document','note','asr','subtitle','ocr','pdf-page','image-text')}
     groups={kind:entries for kind,entries in groups.items() if entries}
     rows=[];coverage={}
     for kind,entries in groups.items():
@@ -140,6 +140,10 @@ def pipeline_key(source,settings):
     if source.get('document_asset_id') and not source.get('page_text'):
         parts.append(extraction_config(source['asset_type'],settings))
         parts.append(settings.media_max_mb)
+    if video_asset(source) and settings.reuse_subtitles:
+        parts.append(['subtitle-track-v1',settings.media_max_seconds])
+    if video_asset(source) and settings.vision_model and settings.vision_sample_mode=='changes':
+        parts.append('vision-changes-v1')
     return fingerprint(parts)
 
 
@@ -149,9 +153,12 @@ def archive(source,root):
 
 
 def extract_stage(kind,media,source,settings,ledger,draft,force=False):
-    key=fingerprint(['media-cache-v2',file_hash(media),kind,
+    config=['media-cache-v2',file_hash(media),kind,
         [settings.asr_url,settings.asr_model,settings.asr_timestamps] if kind=='asr' else
-        [settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.vision_thinking]])
+        [settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.vision_thinking]]
+    if kind=='vision' and settings.vision_sample_mode=='changes':
+        config.append('changes-v1')
+    key=fingerprint(config)
     cache=settings.root/'data/work'/source['id']/key
     cache.mkdir(parents=True,exist_ok=True)
     filename='transcript.json' if kind=='asr' else 'ocr.json'
@@ -251,8 +258,20 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                                 stages['download']='complete'
                         except Exception as exc:
                             errors.append(safe_error(exc,settings));stages['download']='failed';ordinary_error=True
+                        subtitles='disabled'
+                        if settings.reuse_subtitles and media.exists():
+                            from worker_media import extract_subtitles
+                            try:
+                                subtitles=extract_subtitles(media,draft/'data/extracted'/source['id'],settings)
+                            except Exception:
+                                # A malformed or unsupported track must not prevent the configured ASR fallback.
+                                subtitles='failed'
+                            stages['subtitle']=subtitles
                         for kind,model in [('asr',settings.asr_model),('vision',settings.vision_model)]:
                             stages[kind]='disabled' if not model else 'not_applicable'
+                            if kind=='asr' and model and subtitles=='complete' and not (forced and force_stage in ('all','asr')):
+                                stages[kind]='subtitles_reused'
+                                continue
                             if model and media.exists():
                                 try:
                                     status(settings,state='running',active_stage=kind)

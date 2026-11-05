@@ -102,10 +102,14 @@ class Settings:
     vision_output_usd: float=0
     asr_usd_per_hour: float=0
     pdf_max_pages: int=25
+    pdf_ocr_enabled: bool=False
+    pdf_ocr_max_pages: int=3
     image_ocr_enabled: bool=False
     web_research_enabled: bool=False
     web_research_key: str=field(default='',repr=False)
     web_request_usd: float=0.00075
+    reuse_subtitles: bool=False
+    vision_sample_mode: str='regular'
 
     @classmethod
     def from_env(cls):
@@ -135,11 +139,15 @@ class Settings:
             llm_input_usd=amount('LLM_INPUT_USD_PER_MILLION',0),llm_output_usd=amount('LLM_OUTPUT_USD_PER_MILLION',0),
             vision_input_usd=amount('VISION_INPUT_USD_PER_MILLION',0),vision_output_usd=amount('VISION_OUTPUT_USD_PER_MILLION',0),
             asr_usd_per_hour=amount('ASR_USD_PER_HOUR',0),pdf_max_pages=integer('PDF_MAX_PAGES',25,1,100),
+            pdf_ocr_enabled=boolean('PDF_OCR_ENABLED'),pdf_ocr_max_pages=integer('PDF_OCR_MAX_PAGES',3,1,10),
             image_ocr_enabled=boolean('IMAGE_OCR_ENABLED'),web_research_enabled=boolean('WEB_RESEARCH_ENABLED'),
             web_research_key=os.getenv('DEEPSEEK_RESEARCH_API_KEY') or (llm_key if urlsplit(llm_url).hostname=='api.deepseek.com' else ''),
-            web_request_usd=amount('WEB_REQUEST_USD',0.00075))
+            web_request_usd=amount('WEB_REQUEST_USD',0.00075),reuse_subtitles=boolean('REUSE_SUBTITLES'),
+            vision_sample_mode=os.getenv('VISION_SAMPLE_MODE','regular').strip())
 
     def validate_worker(self):
+        if self.vision_sample_mode not in ('regular','changes'):
+            raise ValueError('VISION_SAMPLE_MODE : regular ou changes attendu')
         if any(value not in ('','enabled','disabled') for value in (self.llm_thinking,self.vision_thinking)):
             raise ValueError('LLM_THINKING / VISION_THINKING : enabled, disabled ou vide attendu')
         if self.token_limit_param not in ('max_completion_tokens','max_tokens'):
@@ -162,6 +170,8 @@ class Settings:
             raise ValueError('VISION_MODEL nécessite VISION_BASE_URL ou LLM_BASE_URL')
         if self.image_ocr_enabled and not self.vision_model:
             raise ValueError('IMAGE_OCR_ENABLED nécessite VISION_MODEL')
+        if self.pdf_ocr_enabled and not self.vision_model:
+            raise ValueError('PDF_OCR_ENABLED nécessite VISION_MODEL')
         if self.web_research_enabled and (not self.web_research_key or self.web_request_usd<=0):
             raise ValueError('WEB_RESEARCH_ENABLED nécessite une clé DeepSeek et WEB_REQUEST_USD positif')
 
