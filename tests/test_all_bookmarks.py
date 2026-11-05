@@ -8,7 +8,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import cerveau
+import kararecall
 from controls import request_history, history_status, process_history
 from integrations import normalize_bookmark, chat, ServiceError
 from publication import active_root
@@ -39,7 +39,7 @@ class AllBookmarksTests(unittest.TestCase):
             published=active_root(self.root)
             self.assertEqual(run_cycle(self.config)['processed'],0)
             self.assertEqual(active_root(self.root),published)
-        data=cerveau.read_json(published/'data/catalog.json');sources={s['id']:s for s in data['sources']}
+        data=kararecall.read_json(published/'data/catalog.json');sources={s['id']:s for s in data['sources']}
         self.assertTrue(sources['article']['archived'])
         self.assertIn('Stockage thermique & solaire',sources['article']['page_text'])
         self.assertIn('https://example.com/source',sources['article']['page_text'])
@@ -51,7 +51,7 @@ class AllBookmarksTests(unittest.TestCase):
         self.assertFalse(sources['pdf']['processing']['audio_transcribed'])
         self.assertEqual(source_summary(sources['note'])['author'],'Note personnelle')
         for query,sid in [('thermique','article'),('hiver','article'),('potager','note'),('Facture','pdf'),('extrait','image')]:
-            self.assertIn(sid,[r['id'] for r in cerveau.search(query,data,20)])
+            self.assertIn(sid,[r['id'] for r in kararecall.search(query,data,20)])
 
     def test_manual_history_ignores_filters_and_auto_switch_without_ai_or_download(self):
         self.config.sync_enabled=False;self.config.url_filter='instagram.com';self.config.tag_filter='excluded'
@@ -68,7 +68,7 @@ class AllBookmarksTests(unittest.TestCase):
             self.assertEqual(active_root(self.root),selected)
         self.assertEqual(history_status(self.root)['state'],'completed')
         self.assertEqual(history_status(self.root)['processed'],0)
-        self.assertFalse((self.root/'data/usage.sqlite').exists() and cerveau.read_json(self.root/'data/usage-summary.json',{}).get('calls',0))
+        self.assertFalse((self.root/'data/usage.sqlite').exists() and kararecall.read_json(self.root/'data/usage-summary.json',{}).get('calls',0))
 
     def test_history_error_keeps_previous_publication_and_redacts_keys(self):
         request_history(self.root)
@@ -78,7 +78,7 @@ class AllBookmarksTests(unittest.TestCase):
         with patch('worker.Karakeep.bookmarks',side_effect=failed):process_history(self.config,run_cycle)
         state=history_status(self.root)
         self.assertEqual(state['state'],'error');self.assertNotIn(self.config.karakeep_key,state['message'])
-        self.assertEqual(cerveau.read_json(active_root(self.root)/'data/sources.json'),[])
+        self.assertEqual(kararecall.read_json(active_root(self.root)/'data/sources.json'),[])
         # A crashed running request is safely replayed after restart.
         request_history(self.root)
         from controls import update_history
@@ -97,13 +97,13 @@ class AllBookmarksTests(unittest.TestCase):
             selected=active_root(self.root)
             self.assertEqual(run_cycle(self.config)['processed'],0)
             self.assertEqual(active_root(self.root),selected)
-        data=cerveau.read_json(selected/'data/catalog.json')
+        data=kararecall.read_json(selected/'data/catalog.json')
         self.assertEqual(data['entities'],[])
-        self.assertEqual(cerveau.search('calorifique',data)[0]['id'],'article')
+        self.assertEqual(kararecall.search('calorifique',data)[0]['id'],'article')
         self.assertTrue(data['sources'][0]['reading']['evidence'][0].startswith('article#page-'))
         self.assertIn('Résumé de lecture',(selected/'vault/sources/article.md').read_text())
         bad=data['sources'][0];bad['reading']['evidence']=['article#invented']
-        with self.assertRaises(ValueError):cerveau.validate_reading(bad,{'article':bad})
+        with self.assertRaises(ValueError):kararecall.validate_reading(bad,{'article':bad})
 
     def test_deepseek_payload_uses_max_tokens_and_explicit_thinking_control(self):
         response={'choices':[{'message':{'content':'{}'},'finish_reason':'stop'}]}
@@ -141,7 +141,7 @@ class HistoryHTTPTests(unittest.TestCase):
                 self.assertEqual(send('POST','/api/import-history','{}',**{'Authorization':'bad'})[0],401)
                 self.assertEqual(send('POST','/api/import-history','{}')[0],403)
                 csrf=send('GET','/api/control')[1]['csrf_token']
-                headers={'X-Memoire-CSRF':csrf,'Content-Type':'application/json'}
+                headers={'X-KaraRecall-CSRF':csrf,'Content-Type':'application/json'}
                 self.assertEqual(send('POST','/api/import-history','{}',**headers,Origin='https://attacker.invalid')[0],403)
                 self.assertEqual(send('POST','/api/import-history','{"command":"rm"}',**headers)[0],400)
                 self.assertEqual(send('POST','/api/import-history','x'*1025,**headers)[0],400)

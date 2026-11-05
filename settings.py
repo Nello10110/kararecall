@@ -107,7 +107,7 @@ class Settings:
         load_env()
         llm_url=endpoint('LLM_BASE_URL')
         llm_key=os.getenv('LLM_API_KEY','')
-        return cls(root=Path(os.getenv('MEMOIRE_ROOT',str(Path(__file__).resolve().parent))).resolve(),
+        return cls(root=Path(os.getenv('KARARECALL_ROOT',str(Path(__file__).resolve().parent))).resolve(),
             karakeep_url=endpoint('KARAKEEP_BASE_URL'),karakeep_key=os.getenv('KARAKEEP_API_KEY',''),
             url_filter=os.getenv('KARAKEEP_URL_FILTER','').strip(),sync_enabled=boolean('SYNC_ENABLED'),
             sync_interval=integer('SYNC_INTERVAL_SECONDS',900,10,86400),download_media=boolean('DOWNLOAD_MEDIA',True),
@@ -155,11 +155,11 @@ class Settings:
 
 
 def initialize(root):
-    import cerveau
+    import kararecall
     (root/'data').mkdir(parents=True,exist_ok=True)
     for name in ('sources','entities'):
         path=root/'data'/f'{name}.json'
         if not path.exists():
-            cerveau.write_json(path,[])
+            kararecall.write_json(path,[])
     if not (root/'data/catalog.json').exists():
-        cerveau.build(root)
+        kararecall.build(root)

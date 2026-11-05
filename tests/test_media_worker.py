@@ -7,7 +7,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
-import cerveau
+import kararecall
 from settings import Settings
 from integrations import ServiceError
 
@@ -61,8 +61,8 @@ class MediaTests(unittest.TestCase):
         from worker_media import transcribe,recognize_frames
         transcribe(self.media,self.output,self.config)
         recognize_frames(self.media,self.output,self.config)
-        transcript=cerveau.read_json(self.output/'transcript.json')
-        ocr=cerveau.read_json(self.output/'ocr.json')
+        transcript=kararecall.read_json(self.output/'transcript.json')
+        ocr=kararecall.read_json(self.output/'ocr.json')
         self.assertEqual(transcript['segments'][0]['text'],'Audio de test synthétique.')
         self.assertEqual(transcript['timestamp_precision'],'segments')
         self.assertEqual(len(ocr['frames']),2)
@@ -97,7 +97,7 @@ class MediaTests(unittest.TestCase):
         self.fail_second_vision=False
         recognize_frames(self.media,self.output,self.config)
         self.assertEqual(len(self.calls),3)
-        self.assertEqual(len(cerveau.read_json(self.output/'ocr.json')['frames']),2)
+        self.assertEqual(len(kararecall.read_json(self.output/'ocr.json')['frames']),2)
 
     def test_video_without_audio_never_calls_audio_service(self):
         import av
@@ -111,7 +111,7 @@ class MediaTests(unittest.TestCase):
             for packet in stream.encode():container.mux(packet)
         self.assertEqual(transcribe(video,self.output,self.config),'not_applicable')
         self.assertEqual(self.calls,[])
-        self.assertEqual(cerveau.read_json(self.output/'transcript.json')['status'],'not_applicable')
+        self.assertEqual(kararecall.read_json(self.output/'transcript.json')['status'],'not_applicable')
 
 
 if __name__=='__main__':unittest.main()

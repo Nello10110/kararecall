@@ -10,9 +10,9 @@ Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, 
 
 | Paramètres `.env` | Rôle |
 |---|---|
-| `MEMOIRE_USERNAME`, `MEMOIRE_PASSWORD` | Accès web ; mot de passe d’exemple refusé |
-| `MEMOIRE_BIND_ADDRESS`, `MEMOIRE_PORT` | Adresse d’écoute de l’hôte et port ; défaut 127.0.0.1:8765 |
-| `MEMOIRE_VOLUME_NAME` | Nom du volume persistant, défaut `memoire-storage` |
+| `KARARECALL_USERNAME`, `KARARECALL_PASSWORD` | Accès web ; mot de passe d’exemple refusé |
+| `KARARECALL_BIND_ADDRESS`, `KARARECALL_PORT` | Adresse d’écoute de l’hôte et port ; défaut 127.0.0.1:8765 |
+| `KARARECALL_VOLUME_NAME` | Nom du volume persistant, défaut `kararecall-storage` |
 | `PUID`, `PGID` | UID/GID de l’utilisateur non privilégié créé dans l’image ; défaut 10001 |
 | `COMPOSE_PROFILES=automation` | Active le service worker avec un simple `docker compose up` |
 | `SYNC_ENABLED` | Autorise la collecte périodique ; défaut false |
@@ -67,7 +67,7 @@ Le web a une limite de 384 Mio et le worker de 768 Mio ; un seul média est trai
 
 ## Réseau
 
-Pour un accès LAN direct, utiliser `MEMOIRE_BIND_ADDRESS=0.0.0.0`. Pour un reverse proxy installé sur l’hôte, garder `127.0.0.1` et viser `http://127.0.0.1:8765`. Pour un proxy lui-même conteneurisé, connecter `web` au réseau Docker du proxy via un override Compose et viser `http://web:8765`. Conserver HTTPS, `Authorization` et les requêtes Range. Aucun certificat ni nom DNS n’est provisionné par ce dépôt.
+Pour un accès LAN direct, utiliser `KARARECALL_BIND_ADDRESS=0.0.0.0`. Pour un reverse proxy installé sur l’hôte, garder `127.0.0.1` et viser `http://127.0.0.1:8765`. Pour un proxy lui-même conteneurisé, connecter `web` au réseau Docker du proxy via un override Compose et viser `http://web:8765`. Conserver HTTPS, `Authorization` et les requêtes Range. Aucun certificat ni nom DNS n’est provisionné par ce dépôt.
 
 ## Sauvegarde et restauration
 
@@ -75,7 +75,7 @@ Sauvegarder **le volume et `.env`**, séparément du dépôt. Le volume contient
 
 ```sh
 docker compose stop
-docker compose run --rm --no-deps -T web tar -C /workspace -czf - data vault > memoire-backup.tar.gz
+docker compose run --rm --no-deps -T web tar -C /workspace -czf - data vault > kararecall-backup.tar.gz
 docker compose up -d
 ```
 
@@ -83,16 +83,18 @@ Restaurer dans un volume neuf, services arrêtés, puis vérifier l’intégrit�
 
 ```sh
 docker compose stop
-docker compose run --rm --no-deps -T web tar -C /workspace -xzf - < memoire-backup.tar.gz
+docker compose run --rm --no-deps -T web tar -C /workspace -xzf - < kararecall-backup.tar.gz
 docker compose run --rm --no-deps -T web python verify_storage.py
 docker compose up -d
 ```
 
 Pour importer le POC déjà présent sur une autre machine, créer une archive des dossiers `data/` et `vault/` depuis ce dossier, puis utiliser la même restauration. Exclure `data/models/` et les caches pour éviter de copier les modèles locaux ; conserver les JSON, réponses brutes, vérifications, médias et extractions. Ne jamais passer cette archive par Git. Le worker garde les fiches éditoriales existantes et remplace uniquement ses propres synthèses de la source traitée.
 
-Ne pas utiliser `docker compose down -v` sur l’installation réelle : cela supprime son volume de données. Un simple `down` conserve le volume. Changer `MEMOIRE_VOLUME_NAME` pointe vers une autre bibliothèque. Changer `PUID`/`PGID` après création du volume ne réattribue pas automatiquement ses fichiers ; conserver les mêmes valeurs ou migrer les droits lors d’un arrêt.
+Ne pas utiliser `docker compose down -v` sur l’installation réelle : cela supprime son volume de données. Un simple `down` conserve le volume. Changer `KARARECALL_VOLUME_NAME` pointe vers une autre bibliothèque. Changer `PUID`/`PGID` après création du volume ne réattribue pas automatiquement ses fichiers ; conserver les mêmes valeurs ou migrer les droits lors d’un arrêt.
 
 ## Mise à jour
+
+Pour une installation sous l’ancien nom, commence par la [migration vers KaraRecall](#passer-à-kararecall).
 
 ```sh
 git pull --ff-only
@@ -101,3 +103,37 @@ docker compose up -d --build
 ```
 
 Le dépôt n’inclut pas d’image publiée dans un registre : le NAS doit pouvoir cloner le dépôt privé et construire les images. Pour Portainer ou un gestionnaire de stacks Git, fournir l’accès privé au dépôt, le chemin `compose.yaml` et les valeurs du `.env` via son mécanisme de variables. Les conteneurs en fonctionnement n’ont pas besoin d’accès GitHub. La procédure a été testée localement ; le déploiement sur le NAS reste à effectuer.
+
+## Passer à KaraRecall
+
+Cette procédure s’applique aux installations dont le `.env` contient des variables `MEMOIRE_*`. Elle transfère le catalogue, les médias, les preuves et le suivi des traitements vers un nouveau volume.
+
+1. Dans l’ancien dossier d’installation, avant de mettre le code à jour, arrête les services et sauvegarde le volume et la configuration.
+
+   ```sh
+   umask 077
+   docker compose stop &&
+     docker compose run --rm --no-deps -T web tar -C /workspace -czf - data vault > kararecall-migration.tar.gz &&
+     cp -p .env .env.avant-kararecall
+   ```
+
+2. Pointe Git vers le nouveau nom du dépôt et récupère le code.
+
+   ```sh
+   git remote set-url origin https://github.com/Nello10110/kararecall.git
+   git pull --ff-only
+   ```
+
+   Si tu utilises SSH, l’adresse est `git@github.com:Nello10110/kararecall.git`.
+
+3. Dans `.env`, remplace le préfixe `MEMOIRE_` par `KARARECALL_` en conservant les valeurs. Mets `COMPOSE_PROJECT_NAME=kararecall` et `KARARECALL_VOLUME_NAME=kararecall-storage`. Vérifie avec `docker volume ls` que ce volume est neuf. Si ce nom est pris, choisis un autre nom de volume libre dans `KARARECALL_VOLUME_NAME`. Garde les mêmes `PUID` et `PGID`.
+
+4. Restaure la sauvegarde, vérifie le contenu, puis démarre KaraRecall.
+
+   ```sh
+   docker compose run --rm --no-deps --build -T web tar -C /workspace -xzf - < kararecall-migration.tar.gz &&
+     docker compose run --rm --no-deps -T web python verify_storage.py &&
+     docker compose up -d --build
+   ```
+
+   Vérifie que tes sources, fiches et preuves sont visibles dans l’interface. Garde la sauvegarde et l’ancien volume jusqu’à cette vérification.

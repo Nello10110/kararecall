@@ -21,8 +21,8 @@ class UsageLedger:
         self.publish()
 
     def publish(self):
-        import cerveau
-        cerveau.write_json(self.root/'data/usage-summary.json',{**self.summary(),'updated_at':datetime.now(timezone.utc).isoformat()})
+        import kararecall
+        kararecall.write_json(self.root/'data/usage-summary.json',{**self.summary(),'updated_at':datetime.now(timezone.utc).isoformat()})
 
     def connect(self):return sqlite3.connect(self.path,timeout=10)
 

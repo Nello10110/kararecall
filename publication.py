@@ -9,8 +9,8 @@ import uuid
 
 
 def active_root(root):
-    import cerveau
-    pointer=cerveau.read_json(root/'data/current.json',{})
+    import kararecall
+    pointer=kararecall.read_json(root/'data/current.json',{})
     if not pointer:
         return root
     relative=pointer.get('generation','')
@@ -58,20 +58,20 @@ def generation(root):
                 shutil.copytree(source,draft/'data'/name,copy_function=copier)
         def commit():
             nonlocal published
-            import cerveau
-            sources=cerveau.read_json(draft/'data/sources.json',[])
+            import kararecall
+            sources=kararecall.read_json(draft/'data/sources.json',[])
             for source in sources:
                 if source.get('evidence_schema')==2:
-                    evidence,_=cerveau.load_evidence(source,draft)
+                    evidence,_=kararecall.load_evidence(source,draft)
                     source['evidence_archive']=[{k:v for k,v in row.items() if k!='archived'} for row in evidence]
-            cerveau.write_json(draft/'data/sources.json',sources)
-            cerveau.build(draft)  # Validate all references before making any new file visible.
+            kararecall.write_json(draft/'data/sources.json',sources)
+            kararecall.build(draft)  # Validate all references before making any new file visible.
             relative=str(draft.relative_to(root))
             try:
-                cerveau.write_json(root/'data/current.json',{'schema_version':2,'generation':relative})
+                kararecall.write_json(root/'data/current.json',{'schema_version':2,'generation':relative})
             finally:
                 # Even an exception just after rename must not delete a selected generation.
-                try:published=cerveau.read_json(root/'data/current.json',{}).get('generation')==relative
+                try:published=kararecall.read_json(root/'data/current.json',{}).get('generation')==relative
                 except (OSError,ValueError):published=True
         yield draft,commit
     finally:
@@ -83,7 +83,7 @@ def generation(root):
 
 def freeze(source,evidence,root):
     """Content-address each proof, preserve its origin and immutable screenshot."""
-    import cerveau
+    import kararecall
     result=[]
     for original in evidence:
         row=copy.deepcopy(original)
@@ -109,11 +109,11 @@ def freeze(source,evidence,root):
 
 def migrate(sources,entities,root):
     """Bind legacy citations to their first frozen proof before any source is changed."""
-    import cerveau
+    import kararecall
     references={}
     for source in sources:
         if source.get('evidence_schema')==2:continue
-        evidence,_=cerveau.load_evidence(source,root)
+        evidence,_=kararecall.load_evidence(source,root)
         frozen=freeze(source,evidence,root)
         for old,new in zip(evidence,frozen):
             references[source['id']+'#'+old['id']]=source['id']+'#'+new['id']
@@ -122,7 +122,7 @@ def migrate(sources,entities,root):
         if source.get('reading'):
             source['reading']['evidence']=[references.get(ref,ref) for ref in source['reading'].get('evidence',[])]
     for entity in entities:
-        for claim in cerveau.entity_claims(entity):
+        for claim in kararecall.entity_claims(entity):
             claim['evidence']=[references.get(ref,ref) for ref in claim.get('evidence',[])]
         for link in entity.get('links',[]):
             if link.get('evidence'):link['evidence']=references.get(link['evidence'],link['evidence'])

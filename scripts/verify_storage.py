@@ -8,17 +8,17 @@ import sqlite3
 import sys
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import cerveau
+import kararecall
 from publication import active_root,file_hash
 
 
 def verify(root):
     selected=active_root(root)
-    catalog=cerveau.read_json(selected/'data/catalog.json')
+    catalog=kararecall.read_json(selected/'data/catalog.json')
     if not isinstance(catalog,dict):raise ValueError('Catalogue absent')
     lookup={source['id']:source for source in catalog['sources']}
-    for source in catalog['sources']:cerveau.validate_reading(source,lookup)
-    for entity in catalog['entities']:cerveau.validate_entity(entity,lookup,selected)
+    for source in catalog['sources']:kararecall.validate_reading(source,lookup)
+    for entity in catalog['entities']:kararecall.validate_entity(entity,lookup,selected)
     proofs=0
     for source in catalog['sources']:
         sid=source['id']
@@ -51,7 +51,7 @@ def verify(root):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--root',type=Path,default=cerveau.ROOT)
+    parser.add_argument('--root',type=Path,default=kararecall.ROOT)
     args=parser.parse_args()
     try:print(json.dumps(verify(args.root.resolve()),ensure_ascii=False))
     except (ValueError,OSError,KeyError,sqlite3.Error):

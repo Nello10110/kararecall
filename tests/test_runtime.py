@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
-import cerveau
+import kararecall
 from publication import active_root
 from integrations import ServiceError,normalize_bookmark
 from settings import Settings,initialize,load_env
@@ -21,20 +21,20 @@ class ConfigurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             root=Path(name)
             initialize(root)
-            self.assertEqual(cerveau.read_json(root/'data/catalog.json')['sources'],[])
+            self.assertEqual(kararecall.read_json(root/'data/catalog.json')['sources'],[])
             self.assertTrue((root/'vault/INDEX.md').is_file())
-            cerveau.write_json(root/'data/entities.json',[{'personal':'preserved'}])
+            kararecall.write_json(root/'data/entities.json',[{'personal':'preserved'}])
             initialize(root)
-            self.assertEqual(cerveau.read_json(root/'data/entities.json'),[{'personal':'preserved'}])
+            self.assertEqual(kararecall.read_json(root/'data/entities.json'),[{'personal':'preserved'}])
 
     def test_env_is_not_shell_and_environment_wins(self):
         with tempfile.TemporaryDirectory() as name:
             env=Path(name)/'.env'
-            env.write_text('MEMOIRE_TEST_A="hello world"\nMEMOIRE_TEST_B=$(touch /not-executed)\n')
-            with patch.dict(os.environ,{'MEMOIRE_TEST_A':'existing'},clear=True):
+            env.write_text('KARARECALL_TEST_A="hello world"\nKARARECALL_TEST_B=$(touch /not-executed)\n')
+            with patch.dict(os.environ,{'KARARECALL_TEST_A':'existing'},clear=True):
                 load_env(env)
-                self.assertEqual(os.environ['MEMOIRE_TEST_A'],'existing')
-                self.assertEqual(os.environ['MEMOIRE_TEST_B'],'$(touch /not-executed)')
+                self.assertEqual(os.environ['KARARECALL_TEST_A'],'existing')
+                self.assertEqual(os.environ['KARARECALL_TEST_B'],'$(touch /not-executed)')
 
     def test_worker_configuration_and_redaction(self):
         settings=Settings(root=Path('/tmp'),sync_enabled=True,karakeep_key='very-private-token')
@@ -103,7 +103,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_paged_read_only_sync_and_llm_are_idempotent(self):
         self.assertEqual(run_cycle(self.config),dict(synced=2,processed=2,failed=0))
-        catalog=cerveau.read_json(active_root(self.root)/'data/catalog.json')
+        catalog=kararecall.read_json(active_root(self.root)/'data/catalog.json')
         self.assertEqual(len(catalog['sources']),2)
         self.assertEqual(len(catalog['entities']),2)
         self.assertTrue(all(e['curation']=='machine-generated' for e in catalog['entities']))
@@ -111,7 +111,7 @@ class WorkerTests(unittest.TestCase):
         for e in catalog['entities']:
             self.assertEqual(len(e['links']),1)
             self.assertEqual(e['links'][0]['url'],'https://example.com/lamp')
-            self.assertTrue(all(c['status']=='source_claim' for c in cerveau.entity_claims(e)))
+            self.assertTrue(all(c['status']=='source_claim' for c in kararecall.entity_claims(e)))
         self.assertEqual(run_cycle(self.config),dict(synced=2,processed=0,failed=0))
         self.assertTrue(all(method=='GET' for method,path,_ in self.requests if path.startswith('/api/v1/')))
         self.assertTrue(all(auth=='Bearer private-token' for method,path,auth in self.requests if path.startswith('/api/v1/')))
@@ -121,7 +121,7 @@ class WorkerTests(unittest.TestCase):
         self.bad_refs=True
         result=run_cycle(self.config)
         self.assertEqual(result['failed'],2)
-        self.assertEqual(cerveau.read_json(active_root(self.root)/'data/entities.json'),[])
+        self.assertEqual(kararecall.read_json(active_root(self.root)/'data/entities.json'),[])
         self.assertEqual(run_cycle(self.config)['failed'],0)
         with sqlite3.connect(self.root/'data/worker.sqlite') as db:
             states=db.execute('SELECT state,attempts,next_retry FROM jobs').fetchall()
@@ -131,7 +131,7 @@ class WorkerTests(unittest.TestCase):
         self.repeat_cursor=True
         with self.assertRaisesRegex(ServiceError,'curseur'):
             run_cycle(self.config)
-        self.assertEqual(cerveau.read_json(active_root(self.root)/'data/sources.json'),[])
+        self.assertEqual(kararecall.read_json(active_root(self.root)/'data/sources.json'),[])
 
     def test_errors_do_not_expose_upstream_body_or_token(self):
         self.forbid=True
@@ -155,7 +155,7 @@ class WorkerTests(unittest.TestCase):
         initialize(self.root)
         raw={'id':'one','createdAt':'2026-11-01T12:00:00Z','content':{'videoAssetId':'old-video'},'assets':[]}
         old=normalize_bookmark(raw)
-        cerveau.write_json(self.root/'data/sources.json',[old])
+        kararecall.write_json(self.root/'data/sources.json',[old])
         media=self.root/'data/media/one.mp4'
         media.parent.mkdir(parents=True);media.write_bytes(b'old-media')
         new=copy.deepcopy(raw);new['content']['videoAssetId']='new-video'
@@ -163,8 +163,8 @@ class WorkerTests(unittest.TestCase):
             result=run_cycle(self.config)
         self.assertEqual(result,dict(synced=0,processed=0,failed=1))
         self.assertEqual(media.read_bytes(),b'old-media')
-        self.assertEqual(cerveau.read_json(active_root(self.root)/'data/sources.json'),[old])
-        self.assertEqual(cerveau.read_json(self.root/'data/service-status.json')['blocked_media_updates'],1)
+        self.assertEqual(kararecall.read_json(active_root(self.root)/'data/sources.json'),[old])
+        self.assertEqual(kararecall.read_json(self.root/'data/service-status.json')['blocked_media_updates'],1)
 
     def test_independent_vision_is_published_when_audio_fails(self):
         import hashlib
@@ -175,12 +175,12 @@ class WorkerTests(unittest.TestCase):
             if kind=='asr':raise ServiceError('ASR unavailable')
             output=draft/'data/extracted'/source['id'];output.mkdir(parents=True,exist_ok=True)
             (output/'test.jpg').write_bytes(b'synthetic-image')
-            cerveau.write_json(output/'ocr.json',{'status':'complete','media_sha256':hashlib.sha256(media.read_bytes()).hexdigest(),'interval':5,'frames':[{'time':0,'image':'test.jpg','lines':[{'text':'Lampe Flux'}]}]})
+            kararecall.write_json(output/'ocr.json',{'status':'complete','media_sha256':hashlib.sha256(media.read_bytes()).hexdigest(),'interval':5,'frames':[{'time':0,'image':'test.jpg','lines':[{'text':'Lampe Flux'}]}]})
             return 'complete'
         with patch('worker.extract_stage',side_effect=extract):
             result=run_cycle(self.config)
         self.assertEqual(result,dict(synced=2,processed=1,failed=1))
-        source=next(s for s in cerveau.read_json(active_root(self.root)/'data/catalog.json')['sources'] if s['id']=='one')
+        source=next(s for s in kararecall.read_json(active_root(self.root)/'data/catalog.json')['sources'] if s['id']=='one')
         self.assertEqual(source['stages']['asr'],'failed')
         self.assertEqual(source['stages']['vision'],'complete')
         self.assertTrue(source['processing']['ocr_sampled'])

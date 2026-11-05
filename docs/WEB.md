@@ -1,6 +1,6 @@
 # Interface et API
 
-L’interface est servie par `web_server.py`, sans compilation ni dépendance tierce. En développement local : `python3 web_server.py --open-browser`, ou le lanceur `Ouvrir Mémoire.command`. Le serveur écoute sur `127.0.0.1:8765` par défaut. Une configuration `.env` existante est chargée ; sans identifiants, seul le démarrage sur la boucle locale est autorisé. Le [guide homelab](HOMELAB.md) décrit le mode Docker avec authentification obligatoire.
+L’interface est servie par `web_server.py`, sans compilation ni dépendance tierce. En développement local : `python3 web_server.py --open-browser`, ou le lanceur `Ouvrir KaraRecall.command`. Le serveur écoute sur `127.0.0.1:8765` par défaut. Une configuration `.env` existante est chargée ; sans identifiants, seul le démarrage sur la boucle locale est autorisé. Le [guide homelab](HOMELAB.md) décrit le mode Docker avec authentification obligatoire.
 
 ## Parcours
 
@@ -30,6 +30,6 @@ Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont 
 
 Pages, API et médias sont protégés ensemble par HTTP Basic si configuré. Les fichiers `.env`, réponses API brutes, modèles et scripts ne sont pas servis. Le catalogue JSON est rechargé quand sa génération, sa date ou sa taille change. Une requête utilise une seule génération pour ses données et fichiers ; les preuves des anciennes versions restent accessibles depuis les fiches qui les citent. Les écritures de JSON utilisent un remplacement atomique. La consultation n’effectue aucune modification de favoris ou de fiches ; seul le worker écrit les résultats dans le volume partagé.
 
-Une seule route administrative est ajoutée : **`POST /api/import-history`**, corps `{}`, `Content-Type: application/json` et en-tête `X-Memoire-CSRF` obtenu via `/api/control`. Elle exige la même authentification, refuse les origines différentes et borne le corps à 1 Kio. Aucun autre paramètre ni chemin n’est accepté. Elle écrit uniquement sous `data/control/` ; le web ne reçoit toujours aucune clé API. Le bouton affiche attente, progression, résultat ou erreur et se rafraîchit pendant l’import.
+Une seule route administrative est ajoutée : **`POST /api/import-history`**, corps `{}`, `Content-Type: application/json` et en-tête `X-KaraRecall-CSRF` obtenu via `/api/control`. Elle exige la même authentification, refuse les origines différentes et borne le corps à 1 Kio. Aucun autre paramètre ni chemin n’est accepté. Elle écrit uniquement sous `data/control/` ; le web ne reçoit toujours aucune clé API. Le bouton affiche attente, progression, résultat ou erreur et se rafraîchit pendant l’import.
 
 Les requêtes `HEAD` et `Range` permettent la navigation vidéo. Le reverse proxy doit conserver ces en-têtes, le statut 206 et l’en-tête `Authorization`. Le serveur est prévu pour un usage personnel derrière un reverse proxy, avec un compte partagé configuré dans `.env` ; il n’a pas de gestion multi-utilisateur ni d’éditeur intégré.

@@ -12,8 +12,8 @@ def main():
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[1]
     target=root/'.env'
-    text=(root/'.env.example').read_text().replace('MEMOIRE_PASSWORD=change-me-before-start',
-        'MEMOIRE_PASSWORD='+secrets.token_urlsafe(32))
+    text=(root/'.env.example').read_text().replace('KARARECALL_PASSWORD=change-me-before-start',
+        'KARARECALL_PASSWORD='+secrets.token_urlsafe(32))
     values={}
     if args.profile=='deepseek':
         values={'LLM_BASE_URL':'https://api.deepseek.com','LLM_MODEL':'deepseek-flash',

@@ -79,7 +79,7 @@ function historyPanel(){
 }
 function bindHistory(){
  const button=$('#import-history');
- button.onclick=async()=>{button.disabled=true;try{const session=await api('/api/control');await api('/api/import-history',{method:'POST',headers:{'Content-Type':'application/json','X-Memoire-CSRF':session.csrf_token},body:'{}'});await bootstrap();toast('Import demandé. Aucun appel IA pour lire le catalogue.');}catch(error){toast(error.message);button.disabled=false;}};
+ button.onclick=async()=>{button.disabled=true;try{const session=await api('/api/control');await api('/api/import-history',{method:'POST',headers:{'Content-Type':'application/json','X-KaraRecall-CSRF':session.csrf_token},body:'{}'});await bootstrap();toast('Import demandé. Aucun appel IA pour lire le catalogue.');}catch(error){toast(error.message);button.disabled=false;}};
  clearTimeout(state.historyTimer);
  if(['queued','running'].includes(state.catalog.history_import?.state))state.historyTimer=setTimeout(async()=>{if(route().parts[0]==='processing')await bootstrap();},3000);
 }

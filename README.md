@@ -1,8 +1,10 @@
-# Mémoire — second cerveau personnel
+# KaraRecall
 
-Une interface web pour retrouver les découvertes enregistrées dans Karakeep, consulter leurs preuves et repartir avec une fiche utile : **description de l’outil, usages, fonctionnement, limites et liens pour approfondir**.
+KaraRecall est une application à héberger chez toi pour retrouver, résumer et explorer tes favoris Karakeep. Elle conserve les textes et preuves disponibles, ainsi que des fiches avec la description des outils, leurs usages, leur fonctionnement et des liens pour approfondir.
 
 Le manuel couvre la configuration du NAS, le premier import et l’activation de DeepSeek. Il inclut une méthode sans Python installé sur le NAS. **[Manuel d’installation](docs/INSTALLATION.md)**.
+
+Pour transférer une installation sous l’ancien nom et conserver son historique, suis la [migration vers KaraRecall](docs/HOMELAB.md#passer-à-kararecall).
 
 Les évolutions à discuter et les travaux restants sont dans le [backlog](backlog.md), avec un ordre de réalisation proposé et des critères vérifiables.
 
@@ -17,22 +19,22 @@ Le NAS conserve les données et sert l’interface. Un travailleur optionnel syn
 Avec Docker Compose v2 et un accès au dépôt GitHub privé, lance ces commandes depuis le dossier de tes applications sur le NAS.
 
 ```sh
-git clone https://github.com/Nello10110/second-cerveau.git
-cd second-cerveau
+git clone https://github.com/Nello10110/kararecall.git
+cd kararecall
 python3 scripts/setup_env.py --profile deepseek
 ```
 
-Ouvre `.env` et complète les lignes `KARAKEEP_BASE_URL` et `KARAKEEP_API_KEY`. Mets `COMPOSE_PROFILES=automation` pour démarrer le worker et `MEMOIRE_BIND_ADDRESS=0.0.0.0` pour accéder à l’interface depuis le réseau du NAS. Conserve `SYNC_ENABLED=false` et `LLM_ENABLED=false` pour le premier import. Les filtres URL/tags restent vides afin de prendre tous les favoris.
+Ouvre `.env` et complète les lignes `KARAKEEP_BASE_URL` et `KARAKEEP_API_KEY`. Mets `COMPOSE_PROFILES=automation` pour démarrer le worker et `KARARECALL_BIND_ADDRESS=0.0.0.0` pour accéder à l’interface depuis le réseau du NAS. Conserve `SYNC_ENABLED=false` et `LLM_ENABLED=false` pour le premier import. Les filtres URL/tags restent vides afin de prendre tous les favoris.
 
 ```sh
 docker compose up -d --build
 ```
 
-Ouvre **`http://IP_DU_NAS:8765`** avec `MEMOIRE_USERNAME` et `MEMOIRE_PASSWORD` indiqués dans `.env`, puis clique sur **Traitements → Importer tout l’historique**. Sur le Mac, garder l’écoute `127.0.0.1` et ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765).
+Ouvre **`http://IP_DU_NAS:8765`** avec `KARARECALL_USERNAME` et `KARARECALL_PASSWORD` indiqués dans `.env`, puis clique sur **Traitements → Importer tout l’historique**. Sur le Mac, garder l’écoute `127.0.0.1` et ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
 Les commandes pour un NAS sans Python et le premier essai DeepSeek figurent dans le manuel. Pour un accès distant, utilise un VPN ou le [reverse proxy HTTPS du homelab](docs/HOMELAB.md#réseau).
 
-**Une nouvelle installation démarre vide.** Les favoris, vidéos, notes et clés du POC ne sont pas inclus dans Git ni dans les images. Les données persistent dans le volume Docker `memoire-storage`, indépendamment des conteneurs. Le [guide homelab](docs/HOMELAB.md) explique aussi comment importer un corpus local existant.
+**Une nouvelle installation démarre vide.** Les favoris, vidéos, notes et clés du POC ne sont pas inclus dans Git ni dans les images. Les données persistent dans le volume Docker `kararecall-storage`, indépendamment des conteneurs. Le [guide homelab](docs/HOMELAB.md) explique aussi comment importer un corpus local existant.
 
 ## Activer la collecte et les fiches IA
 
@@ -85,8 +87,8 @@ Python 3.12 est utilisé dans les images. Le cœur et les tests HTTP n’ont auc
 ```sh
 python3 -m unittest discover -s tests -v
 python3 scripts/check_container.py
-docker build --target worker -t memoire-worker:local .
-docker run --rm --mount "type=bind,src=$PWD/tests,dst=/tests,readonly" -e PYTHONPATH=/app memoire-worker:local python -m unittest discover -s /tests -p test_media_worker.py -v
+docker build --target worker -t kararecall-worker:local .
+docker run --rm --mount "type=bind,src=$PWD/tests,dst=/tests,readonly" -e PYTHONPATH=/app kararecall-worker:local python -m unittest discover -s /tests -p test_media_worker.py -v
 ```
 
 Les tests distribués utilisent un corpus fictif, des API locales simulées et une petite vidéo synthétique. Ils couvrent la pagination, la déduplication, les références inventées, les reprises sur erreur, l’authentification, les chemins autorisés, les exports, les requêtes vidéo partielles et les étapes ASR/vision. La CI reproduit ces contrôles sur Linux, y compris sauvegarde/restauration sur un volume neuf. Le test Compose crée puis supprime son propre volume temporaire.

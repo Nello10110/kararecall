@@ -19,12 +19,12 @@ def main():
     defaults=dict(line.split('=',1) for line in (ROOT/'.env.example').read_text().splitlines() if line and not line.startswith('#'))
     # Never inherit the real installation's connections or enabled automation.
     env=dict(os.environ,**defaults)
-    env.update(MEMOIRE_USERNAME='smoke-test',MEMOIRE_PASSWORD=secrets.token_urlsafe(30),MEMOIRE_PORT='18765',MEMOIRE_VOLUME_NAME='memoire-smoke-'+secrets.token_hex(6),COMPOSE_PROFILES='automation',SYNC_ENABLED='false',LLM_ENABLED='false',ASR_MODEL='',VISION_MODEL='')
-    command=['docker','compose','--project-name','memoire-smoke','--file',str(ROOT/'compose.yaml')]
+    env.update(KARARECALL_USERNAME='smoke-test',KARARECALL_PASSWORD=secrets.token_urlsafe(30),KARARECALL_PORT='18765',KARARECALL_VOLUME_NAME='kararecall-smoke-'+secrets.token_hex(6),COMPOSE_PROFILES='automation',SYNC_ENABLED='false',LLM_ENABLED='false',ASR_MODEL='',VISION_MODEL='')
+    command=['docker','compose','--project-name','kararecall-smoke','--file',str(ROOT/'compose.yaml')]
     def compose(*args):
         return subprocess.run(command+list(args),cwd=ROOT,env=env,check=True,capture_output=True,text=True)
-    restored_volume=env['MEMOIRE_VOLUME_NAME']+'-restore'
-    auth='Basic '+base64.b64encode((env['MEMOIRE_USERNAME']+':'+env['MEMOIRE_PASSWORD']).encode()).decode()
+    restored_volume=env['KARARECALL_VOLUME_NAME']+'-restore'
+    auth='Basic '+base64.b64encode((env['KARARECALL_USERNAME']+':'+env['KARARECALL_PASSWORD']).encode()).decode()
     base='http://127.0.0.1:18765'
     def request(path,authenticated=True,headers=None,data=None):
         request=urllib.request.Request(base+path,data=data,headers={**({'Authorization':auth} if authenticated else {}),**(headers or {})})
@@ -55,7 +55,7 @@ def main():
             if time.monotonic()>deadline:raise AssertionError('Disabled worker did not report its state')
             time.sleep(.25)
         with request('/api/control') as r:csrf=json.load(r)['csrf_token']
-        with request('/api/import-history',headers={'Content-Type':'application/json','X-Memoire-CSRF':csrf},data=b'{}') as r:
+        with request('/api/import-history',headers={'Content-Type':'application/json','X-KaraRecall-CSRF':csrf},data=b'{}') as r:
             assert r.status==202 and json.load(r)['state']=='queued'
         deadline=time.monotonic()+10
         while True:
@@ -67,12 +67,12 @@ def main():
             time.sleep(.25)
         container=compose('ps','--quiet','web').stdout.strip()
         fixture=(ROOT/'tests/fixtures.py').read_text()+'''
-corpus(cerveau.ROOT)
+corpus(kararecall.ROOT)
 from publication import generation,migrate
-with generation(cerveau.ROOT) as (draft,publish):
-    sources,entities=migrate(cerveau.read_json(draft/'data/sources.json'),cerveau.read_json(draft/'data/entities.json'),draft)
-    cerveau.write_json(draft/'data/sources.json',sources)
-    cerveau.write_json(draft/'data/entities.json',entities)
+with generation(kararecall.ROOT) as (draft,publish):
+    sources,entities=migrate(kararecall.read_json(draft/'data/sources.json'),kararecall.read_json(draft/'data/entities.json'),draft)
+    kararecall.write_json(draft/'data/sources.json',sources)
+    kararecall.write_json(draft/'data/entities.json',entities)
     publish()
 '''
         subprocess.run(['docker','exec','-i',container,'python','-'],input=fixture,text=True,check=True,capture_output=True)
@@ -99,7 +99,7 @@ with generation(cerveau.ROOT) as (draft,publish):
         assert json.loads(restored.stdout)==verified
         usage=subprocess.check_output(['docker','stats','--no-stream','--format','{{.MemUsage}}',container],text=True).strip()
         print('Docker/OrbStack : import demandé depuis le web et consommé par le worker désactivé (configuration manquante signalée), corpus synthétique, auth, recherche, exports, vidéo, sauvegarde/restauration vérifiés.')
-        print('Mémoire observée au repos après les requêtes :',usage)
+        print('RAM observée au repos après les requêtes :',usage)
     finally:
         subprocess.run(['docker','volume','rm',restored_volume],capture_output=True)
         compose('down','--remove-orphans','--volumes')

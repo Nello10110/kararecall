@@ -1,3 +1,5 @@
+name: kararecall
+
 services:
   web:
     build:
@@ -7,10 +9,10 @@ services:
         PUID: ${PUID:-10001}
         PGID: ${PGID:-10001}
     ports:
-      - "${MEMOIRE_BIND_ADDRESS:-127.0.0.1}:${MEMOIRE_PORT:-8765}:8765"
+      - "${KARARECALL_BIND_ADDRESS:-127.0.0.1}:${KARARECALL_PORT:-8765}:8765"
     environment:
-      MEMOIRE_USERNAME: ${MEMOIRE_USERNAME:?Définir MEMOIRE_USERNAME dans .env}
-      MEMOIRE_PASSWORD: ${MEMOIRE_PASSWORD:?Définir MEMOIRE_PASSWORD dans .env}
+      KARARECALL_USERNAME: ${KARARECALL_USERNAME:?Définir KARARECALL_USERNAME dans .env}
+      KARARECALL_PASSWORD: ${KARARECALL_PASSWORD:?Définir KARARECALL_PASSWORD dans .env}
     volumes:
       - storage:/workspace
     read_only: true
@@ -97,4 +99,4 @@ services:
 
 volumes:
   storage:
-    name: ${MEMOIRE_VOLUME_NAME:-memoire-storage}
+    name: ${KARARECALL_VOLUME_NAME:-kararecall-storage}

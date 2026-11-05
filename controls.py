@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import fcntl
 import uuid
 
-import cerveau
+import kararecall
 
 
 def now():
@@ -21,7 +21,7 @@ def locked(root,name,blocking=True):
 
 
 def history_status(root):
-    return cerveau.read_json(root/'data/control/history.json',{'state':'none'})
+    return kararecall.read_json(root/'data/control/history.json',{'state':'none'})
 
 
 def request_history(root):
@@ -30,14 +30,14 @@ def request_history(root):
         if current['state'] in ('queued','running'):return current
         current={'id':uuid.uuid4().hex,'state':'queued','requested_at':now(),
                  'message':'En attente du worker. Import du catalogue sans appel IA.'}
-        cerveau.write_json(root/'data/control/history.json',current)
+        kararecall.write_json(root/'data/control/history.json',current)
         return current
 
 
 def update_history(root,**fields):
     with locked(root,'state.lock'):
         current=history_status(root);current.update(fields,updated_at=now())
-        cerveau.write_json(root/'data/control/history.json',current)
+        kararecall.write_json(root/'data/control/history.json',current)
         return current
 
 

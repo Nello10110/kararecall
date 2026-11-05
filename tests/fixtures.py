@@ -1,7 +1,7 @@
 """Synthetic corpus for distributable tests. No real bookmarks or user media."""
 import hashlib
 from pathlib import Path
-import cerveau
+import kararecall
 
 
 def corpus(root):
@@ -14,9 +14,9 @@ def corpus(root):
         extracted=root/'data/extracted'/sid
         extracted.mkdir(parents=True,exist_ok=True)
         (extracted/'frame.jpg').write_bytes(b'synthetic-image')
-        cerveau.write_json(extracted/'transcript.json',{'status':'complete','duration':30,'media_sha256':digest,
+        kararecall.write_json(extracted/'transcript.json',{'status':'complete','duration':30,'media_sha256':digest,
             'segments':[{'start':18,'end':20,'text':'Le nom de cet outil est présent dans cette source synthétique.'}]})
-        cerveau.write_json(extracted/'ocr.json',{'status':'complete','duration':30,'interval':1,'media_sha256':digest,
+        kararecall.write_json(extracted/'ocr.json',{'status':'complete','duration':30,'interval':1,'media_sha256':digest,
             'frames':[{'time':21,'image':'frame.jpg','lines':[{'text':'theo-buildz / tv-detox' if sid=='demo-tv' else 'Un nom de modèle', 'confidence':None}]}]})
         raw='data/raw/'+sid+'.txt'
         (root/'data/raw').mkdir(exist_ok=True)
@@ -29,7 +29,7 @@ def corpus(root):
         text='Un outil pour enlever les pubs et les applis inutiles de sa télé.' if sid=='demo-tv' else 'Un modèle de démonstration qui ne répond plus non.'
         entry=dict(text=text,status='source_claim',evidence=[sid+'#asr-000'])
         entities.append(dict(id=eid,name=name,description=text,aliases=['démonstration'],source_ids=[sid],claims=[entry],
-            details={key:[entry] for key,_ in cerveau.DETAIL_SECTIONS},links=[dict(url='https://example.com/'+sid,label='Source de démonstration',status='source_publication',evidence=sid+'#caption')],follow_up='Comparer les preuves synthétiques.'))
-    cerveau.write_json(root/'data/sources.json',sources)
-    cerveau.write_json(root/'data/entities.json',entities)
-    return cerveau.build(root)
+            details={key:[entry] for key,_ in kararecall.DETAIL_SECTIONS},links=[dict(url='https://example.com/'+sid,label='Source de démonstration',status='source_publication',evidence=sid+'#caption')],follow_up='Comparer les preuves synthétiques.'))
+    kararecall.write_json(root/'data/sources.json',sources)
+    kararecall.write_json(root/'data/entities.json',entities)
+    return kararecall.build(root)

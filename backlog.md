@@ -1,4 +1,4 @@
-# Backlog — Mémoire
+# Backlog de KaraRecall
 
 Mise à jour du 5 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Ordre de réalisation proposé : **P0 avant usage autonome sur le NAS, P1 pour l’usage quotidien enrichi, P2 selon les résultats du pilote**. Les travaux ne sont pas encore réalisés sauf cases cochées ; les vérifications techniques locales ne remplacent pas la qualification avec les services réels et le NAS. Les fournisseurs et dépenses ne sont pas sélectionnés automatiquement.
 

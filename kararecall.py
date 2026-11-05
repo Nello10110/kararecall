@@ -21,7 +21,7 @@ from urllib.parse import urlsplit
 
 from settings import load_env
 load_env()
-ROOT = Path(os.getenv('MEMOIRE_ROOT',str(Path(__file__).resolve().parent))).resolve()
+ROOT = Path(os.getenv('KARARECALL_ROOT',str(Path(__file__).resolve().parent))).resolve()
 STOP = set("a au aux avec ce ces cet cette dans de des du elle en est et il je la le les leur lui ma mais me mes moi mon ne nos notre on ou par pas plus pour qu que quel quelle qui sa se ses si son sur ta te tes toi ton tu un une vos votre vous y outil outils video videos retrouve cherche recherche utilise utiliser permet faire comme comment c etait avait dont celui celle".split())
 DETAIL_SECTIONS = [('description', 'Description'), ('usefulness', 'À quoi ça sert'),
                    ('operation', 'Comment ça fonctionne'), ('limitations', 'Limites et points à confirmer')]
@@ -326,7 +326,7 @@ def build(root=ROOT):
                        [(s["id"], "source", json.dumps(s, ensure_ascii=False)) for s in catalog["sources"]] +
                        [(e["id"], "entity", json.dumps(e, ensure_ascii=False)) for e in entities])
     db.close()
-    index = ["# Second cerveau", "", "## Outils et usages", ""]
+    index = ["# KaraRecall", "", "## Outils et usages", ""]
     index += [f"- [{e['name']}](outils/{e['id']}.md) — {e['description']}" for e in entities]
     index += ["", f"## {len(sources)} sources importées", ""]
     index += [f"- [{s['title'][:100]}](sources/{s['id']}.md) · audio={s['processing']['audio_transcribed']}, OCR={s['processing']['ocr_sampled']}" for s in catalog["sources"]]
@@ -397,7 +397,7 @@ def search(query, catalog, limit=5):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Second cerveau local, sans appel IA pour la recherche")
+    p = argparse.ArgumentParser(description="KaraRecall, recherche locale dans vos favoris")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("ingest", help="Importer les réponses texte du connecteur Karakeep")
     sub.add_parser("build", help="Générer le catalogue, SQLite et le coffre Markdown")

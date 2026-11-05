@@ -8,7 +8,7 @@ import wave
 import uuid
 from publication import file_hash
 
-import cerveau
+import kararecall
 from integrations import chat, json_result, request, ServiceError
 
 
@@ -16,7 +16,7 @@ def transcribe(media,output,settings,ledger=None):
     import av
     digest=file_hash(media)
     cache_key=hashlib.sha256(json.dumps(['asr-v2',settings.asr_url,settings.asr_model,settings.asr_timestamps]).encode()).hexdigest()
-    old=cerveau.read_json(output/'transcript.json',{})
+    old=kararecall.read_json(output/'transcript.json',{})
     if old.get('media_sha256')==digest and old.get('cache_key')==cache_key and old.get('status') in ('complete','not_applicable'):
         return
     with tempfile.TemporaryDirectory() as temporary:
@@ -24,7 +24,7 @@ def transcribe(media,output,settings,ledger=None):
         samples=0
         with av.open(str(media)) as container:
             if not container.streams.audio:
-                cerveau.write_json(output/'transcript.json',{'engine':'configured-asr-api','model':settings.asr_model,'media_sha256':digest,'cache_key':cache_key,'status':'not_applicable','segments':[]})
+                kararecall.write_json(output/'transcript.json',{'engine':'configured-asr-api','model':settings.asr_model,'media_sha256':digest,'cache_key':cache_key,'status':'not_applicable','segments':[]})
                 return 'not_applicable'
             resampler=av.AudioResampler(format='s16',layout='mono',rate=16000)
             with wave.open(str(wav),'wb') as target:
@@ -66,11 +66,11 @@ def transcribe(media,output,settings,ledger=None):
             if not isinstance(result.get('text'),str):
                 raise ServiceError('Le service ASR ne renvoie aucun texte.')
             if not result['text'].strip():
-                cerveau.write_json(output/'transcript.json',{'engine':'configured-asr-api','model':settings.asr_model,'media_sha256':digest,'cache_key':cache_key,'status':'complete','duration':duration,'segments':[]})
+                kararecall.write_json(output/'transcript.json',{'engine':'configured-asr-api','model':settings.asr_model,'media_sha256':digest,'cache_key':cache_key,'status':'complete','duration':duration,'segments':[]})
                 return
             segments=[{'start':0,'end':duration,'text':str(result['text'])}]
             precision='whole_media'
-        cerveau.write_json(output/'transcript.json',{'engine':'configured-asr-api','model':settings.asr_model,
+        kararecall.write_json(output/'transcript.json',{'engine':'configured-asr-api','model':settings.asr_model,
             'cache_key':cache_key,'media_sha256':digest,'duration':duration,'language':result.get('language','unknown'),
             'timestamp_precision':precision,'status':'complete','segments':segments})
 
@@ -79,12 +79,12 @@ def recognize_frames(media,output,settings,ledger=None):
     import av
     digest=file_hash(media)
     cache_key=hashlib.sha256(json.dumps(['vision-v2',settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.vision_thinking]).encode()).hexdigest()
-    old=cerveau.read_json(output/'ocr.json',{})
+    old=kararecall.read_json(output/'ocr.json',{})
     if old.get('media_sha256')==digest and old.get('cache_key')==cache_key and old.get('status')=='complete':
         return
     rows=[]
     progress_path=output/('vision-progress-'+cache_key+'.json')
-    progress=cerveau.read_json(progress_path,{})
+    progress=kararecall.read_json(progress_path,{})
     if progress.get('media_sha256')!=digest:progress={'media_sha256':digest,'frames':{}}
     with av.open(str(media)) as container:
         stream=container.streams.video[0]
@@ -114,11 +114,11 @@ def recognize_frames(media,output,settings,ledger=None):
                     raise ServiceError('Réponse vision non conforme ; OCR non publié.')
                 row={'time':frame.time,'image':filename,'lines':[{'text':line,'confidence':None,'box':None} for line in extracted['text'].splitlines() if line.strip()]}
                 progress['frames'][cache_id]=row
-                cerveau.write_json(progress_path,progress)
+                kararecall.write_json(progress_path,progress)
             rows.append(row)
             next_time+=step
             if len(rows)>=settings.vision_max_frames:
                 break
-    cerveau.write_json(output/'ocr.json',{'engine':'configured-vision-api','model':settings.vision_model,
+    kararecall.write_json(output/'ocr.json',{'engine':'configured-vision-api','model':settings.vision_model,
         'cache_key':cache_key,'media_sha256':digest,'duration':duration,'interval':step,'requested_interval':settings.vision_interval,
         'max_frames':settings.vision_max_frames,'sampling':'bounded_regular','status':'complete','frames':rows})

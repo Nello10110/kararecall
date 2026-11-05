@@ -1,4 +1,4 @@
-# Architecture de Mémoire
+# Architecture de KaraRecall
 
 État décrit le 5 novembre 2026. Ce document explique le fonctionnement du code livré et distingue les services disponibles des raccordements encore à réaliser. Pour les commandes de déploiement, voir [HOMELAB.md](HOMELAB.md) ; pour les évolutions à décider, voir le [backlog](../backlog.md).
 
@@ -107,11 +107,11 @@ Orientation après l’[étude des coûts](ETUDE-EXPLOITATION.md), **pas encore 
 
 FFmpeg sert à décoder, convertir, extraire des pistes, découper un média ou produire des captures. Ces opérations n’exigent pas de modèle IA. Le worker utilise déjà les bibliothèques FFmpeg à travers PyAV ; il ne lance pas le programme `ffmpeg` et n’embarque pas son filtre Whisper.
 
-Pour reconnaître des paroles nouvelles, un moteur de reconnaissance vocale reste nécessaire. **FFmpeg dispose aussi d’un filtre `whisper`**, qui s’appuie sur la bibliothèque whisper.cpp et sur un modèle téléchargé ; il faut une compilation avec `--enable-whisper`. Cette option permet une transcription locale, mais elle utilise toujours un modèle IA. Son intégration à Mémoire reste à réaliser et la présence du filtre ne doit pas être supposée dans toute installation de FFmpeg.
+Pour reconnaître des paroles nouvelles, un moteur de reconnaissance vocale reste nécessaire. **FFmpeg dispose aussi d’un filtre `whisper`**, qui s’appuie sur la bibliothèque whisper.cpp et sur un modèle téléchargé ; il faut une compilation avec `--enable-whisper`. Cette option permet une transcription locale, mais elle utilise toujours un modèle IA. Son intégration à KaraRecall reste à réaliser et la présence du filtre ne doit pas être supposée dans toute installation de FFmpeg.
 
 Pour éviter les traitements inutiles : les transcriptions et OCR sont déjà réutilisés lorsque le média, le modèle et les paramètres de cache applicables correspondent. Chercher ou ouvrir une fiche ne relance aucun modèle. Une piste de sous-titres textuels déjà disponible pourrait aussi être réutilisée sans nouvelle reconnaissance ; la détection et l’import de telles pistes ne sont pas encore implémentés. Une légende ou un résumé Karakeep ne devient pas une transcription par ce mécanisme.
 
-Le format produit par FFmpeg/Whisper devrait être converti vers les preuves JSON de Mémoire, avec temps, statut et empreinte média. Remplacer un appel distant par un moteur local nécessite donc un raccordement explicite, pas seulement l’ajout du mot « FFmpeg » dans la configuration.
+Le format produit par FFmpeg/Whisper devrait être converti vers les preuves JSON de KaraRecall, avec temps, statut et empreinte média. Remplacer un appel distant par un moteur local nécessite donc un raccordement explicite, pas seulement l’ajout du mot « FFmpeg » dans la configuration.
 
 ## 7. Consultation et recherche
 
@@ -149,7 +149,7 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 | `worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
 | `publication.py`, `usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
 | `worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |
-| `cerveau.py` | Preuves, validation des fiches, catalogue, Markdown et recherche. |
+| `kararecall.py` | Preuves, validation des fiches, catalogue, Markdown et recherche. |
 | `web_server.py`, `web/` | Interface, authentification, API de lecture et médias. |
 | `scripts/transcribe.py`, `scripts/process.py`, `scripts/ocr.swift` | Pipeline local historique : faster-whisper et OCR Apple Vision sur macOS, distinct du worker Docker. |
 

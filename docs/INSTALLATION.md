@@ -1,4 +1,4 @@
-# Installer Mémoire sur son NAS
+# Installer KaraRecall sur son NAS
 
 Ce guide mène jusqu’à la consultation de tous les favoris Karakeep. La première installation importe les textes et métadonnées avec l’IA désactivée. Les résumés DeepSeek s’activent ensuite, à l’étape 6.
 
@@ -15,15 +15,17 @@ Les commandes se lancent dans le terminal du NAS, par exemple en SSH. Pour essay
 Lance ces commandes depuis le dossier du NAS où tu ranges tes applications.
 
 ```sh
-git clone https://github.com/Nello10110/second-cerveau.git
-cd second-cerveau
+git clone https://github.com/Nello10110/kararecall.git
+cd kararecall
 ```
 
-L’accès Git au dépôt privé doit être configuré sur cette machine. Si tu utilises une clé SSH GitHub, remplace l’adresse HTTPS par `git@github.com:Nello10110/second-cerveau.git`.
+L’accès Git au dépôt privé doit être configuré sur cette machine. Si tu utilises une clé SSH GitHub, remplace l’adresse HTTPS par `git@github.com:Nello10110/kararecall.git`.
 
 **Si ton NAS n’a pas Git**, télécharge le ZIP du dépôt depuis ton compte GitHub, décompresse-le sur le NAS, puis ouvre un terminal dans ce dossier. Conserve les fichiers cachés, notamment `.env.example` et `.dockerignore`.
 
-Si Mémoire est déjà installé, conserve son `.env` et suis la procédure de [mise à jour](#mise-à-jour).
+Si KaraRecall est déjà installé, conserve son `.env` et suis la procédure de [mise à jour](#mise-à-jour).
+
+Si ta configuration utilise encore les anciens noms, suis d’abord la [migration vers KaraRecall](HOMELAB.md#passer-à-kararecall).
 
 ## 2. Créer la configuration
 
@@ -49,12 +51,12 @@ Ouvre `.env` dans ton éditeur habituel ou avec `nano .env`. **Modifie les quatr
 
 ```dotenv
 COMPOSE_PROFILES=automation
-MEMOIRE_BIND_ADDRESS=0.0.0.0
+KARARECALL_BIND_ADDRESS=0.0.0.0
 KARAKEEP_BASE_URL='https://karakeep.example.net'
 KARAKEEP_API_KEY='REMPLACER_PAR_TA_CLE_KARAKEEP'
 ```
 
-Remplace l’adresse d’exemple par celle de **ton** Karakeep, accessible depuis le NAS. Utilise son adresse réseau ou son nom DNS. `localhost` désigne le conteneur de Mémoire. Renseigne l’adresse de base du serveur.
+Remplace l’adresse d’exemple par celle de **ton** Karakeep, accessible depuis le NAS. Utilise son adresse réseau ou son nom DNS. `localhost` désigne le conteneur de KaraRecall. Renseigne l’adresse de base du serveur.
 
 Conserve les valeurs suivantes pour le premier import.
 
@@ -67,7 +69,7 @@ KARAKEEP_TAG_FILTER=
 
 Les deux filtres vides incluent les sites, articles, notes, fichiers et vidéos. `automation` démarre le service de collecte. Avec `SYNC_ENABLED=false`, le service attend la demande d’import.
 
-Tes identifiants pour l’interface figurent dans **`MEMOIRE_USERNAME`** et **`MEMOIRE_PASSWORD`**. Le mot de passe généré peut être conservé. Les clés restent dans `.env` sur le NAS, hors du dépôt Git.
+Tes identifiants pour l’interface figurent dans **`KARARECALL_USERNAME`** et **`KARARECALL_PASSWORD`**. Le mot de passe généré peut être conservé. Les clés restent dans `.env` sur le NAS, hors du dépôt Git.
 
 L’adresse d’écoute `0.0.0.0` permet l’accès depuis ton réseau domestique. Pour un essai limité au Mac lui-même, garde `127.0.0.1`. Pour un accès distant, utilise ton VPN ou le [reverse proxy HTTPS du homelab](HOMELAB.md#réseau).
 
@@ -136,8 +138,8 @@ Le service passe immédiatement, puis toutes les quinze minutes. Il traite au pl
 |---|---|
 | Impossible de cloner le dépôt | Configure l’accès Git au dépôt privé sur le NAS ou utilise la méthode ZIP de l’étape 1. |
 | `.env existe déjà` | Ouvre le fichier existant et complète-le à partir de l’étape 3. |
-| Page inaccessible | Remplacer `IP_DU_NAS`, vérifier `MEMOIRE_BIND_ADDRESS=0.0.0.0`, le pare-feu local et `docker compose ps`. |
-| Port 8765 déjà utilisé | Mettre `MEMOIRE_PORT=8766` dans `.env`, relancer `docker compose up -d`, puis ouvrir ce nouveau port. |
+| Page inaccessible | Remplacer `IP_DU_NAS`, vérifier `KARARECALL_BIND_ADDRESS=0.0.0.0`, le pare-feu local et `docker compose ps`. |
+| Port 8765 déjà utilisé | Mettre `KARARECALL_PORT=8766` dans `.env`, relancer `docker compose up -d`, puis ouvrir ce nouveau port. |
 | Import bloqué « En attente » | Vérifier `COMPOSE_PROFILES=automation` et la présence du service worker dans `docker compose ps`. |
 | Erreur Karakeep ou HTTP 401/403 | Vérifier l’adresse accessible depuis le conteneur et la clé dans `.env`. |
 | Erreur IA | Vérifier la clé DeepSeek, le modèle et le crédit du compte. Consulter l’état dans Traitements. |
@@ -161,4 +163,4 @@ docker compose up -d --build
 
 Compare `.env.example` et `.env` pour repérer les nouveaux paramètres. Conserve tes valeurs. Pour une installation par ZIP, remplace le code en conservant ton `.env`, puis reconstruis avec la seconde commande.
 
-Les données restent dans le volume Docker `memoire-storage`. Sauvegarde le volume et ton `.env` en suivant la [procédure de sauvegarde](HOMELAB.md#sauvegarde-et-restauration). Pour arrêter les services en conservant les données, utilise `docker compose stop`.
+Les données restent dans le volume Docker `kararecall-storage`. Sauvegarde le volume et ton `.env` en suivant la [procédure de sauvegarde](HOMELAB.md#sauvegarde-et-restauration). Pour arrêter les services en conservant les données, utilise `docker compose stop`.

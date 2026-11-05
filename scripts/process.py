@@ -9,7 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-import cerveau
+import kararecall
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
     if args.interval <= 0:
         p.error('interval doit être positif')
     paths = [Path(v).resolve() for v in args.videos]
-    known = {s['id'] for s in cerveau.read_json(ROOT/'data/sources.json', [])}
+    known = {s['id'] for s in kararecall.read_json(ROOT/'data/sources.json', [])}
     for path in paths:
         if path.parent != ROOT/'data/media' or path.suffix != '.mp4' or path.stem not in known:
             p.error('Chaque vidéo doit être dans data/media, nommée avec un ID déjà importé.')
@@ -49,7 +49,7 @@ def main():
             for path in paths:
                 directory = ROOT/'data/extracted'/path.stem
                 digest = hashlib.sha256(path.read_bytes()).hexdigest()
-                current = cerveau.read_json(directory/'ocr.json', {})
+                current = kararecall.read_json(directory/'ocr.json', {})
                 if current.get('media_sha256') == digest and current.get('interval') == args.interval and current.get('status') == 'complete':
                     print('OCR déjà extrait:', path.name, flush=True)
                     continue
@@ -57,8 +57,8 @@ def main():
                 subprocess.run([str(binary), str(directory)], check=True)
         except (subprocess.CalledProcessError, ImportError, OSError) as exc:
             errors.append({'stage': 'ocr', 'error': str(exc)})
-    cerveau.write_json(ROOT/'data/last-process.json', {'errors': errors, 'media': [p.name for p in paths]})
-    cerveau.build()
+    kararecall.write_json(ROOT/'data/last-process.json', {'errors': errors, 'media': [p.name for p in paths]})
+    kararecall.build()
     if errors:
         print(json.dumps(errors, ensure_ascii=False), file=sys.stderr)
         return 1
