@@ -40,6 +40,12 @@ def entity_claims(entity):
     return entity['claims'] + [entry for key, _ in DETAIL_SECTIONS for entry in entity.get('details', {}).get(key, [])]
 
 
+def coverage_notice(entity):
+    if any(row.get('text_truncated') or row.get('included',0)<row.get('available',0) for row in entity.get('coverage',{}).values()):
+        return 'Cette fiche repose sur une sélection d’extraits. Certains éléments des sources n’ont pas été pris en compte dans la synthèse.'
+    return ''
+
+
 def validate_reference(ref, lookup):
     sid, eid = ref.split('#', 1)
     if sid not in lookup or eid not in {e['id'] for e in lookup[sid]['evidence']}:
@@ -268,6 +274,7 @@ def build(root=ROOT):
                  "# " + entity["name"], "", entity["description"], "",
                  "Repères de recherche : " + ", ".join(entity.get("aliases", [])), "",
                  "Les informations sont attribuées à la vidéo ou à la documentation de l’éditeur. Une lecture documentaire ne constitue pas un essai du produit.", ""]
+        if coverage_notice(entity):lines += [coverage_notice(entity),'']
         for key, title in DETAIL_SECTIONS:
             lines += [f'## {title}', '']
             for entry in entity.get('details', {}).get(key, []):

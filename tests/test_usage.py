@@ -7,6 +7,7 @@ from settings import Settings
 from usage import UsageLedger,BudgetExceeded
 from integrations import chat,ServiceError
 from worker import pack_evidence
+from web_server import context_for
 
 
 class UsageTests(unittest.TestCase):
@@ -56,3 +57,5 @@ class UsageTests(unittest.TestCase):
         rows,coverage=pack_evidence(evidence,1200)
         self.assertEqual({row['kind'] for row in rows},{'caption','asr','ocr'})
         self.assertLess(coverage['asr']['included'],coverage['asr']['available'])
+        packet=context_for({'name':'Test','description':'Résumé','claims':[],'source_ids':[],'coverage':coverage},{})
+        self.assertIn('sélection d’extraits',packet)
