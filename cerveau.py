@@ -162,17 +162,25 @@ def load_evidence(source, root=ROOT):
     transcript = read_json(directory / "transcript.json", {})
     ocr = read_json(directory / "ocr.json", {})
     media = root / "data/media" / (sid + ".mp4")
-    digest = hashlib.sha256(media.read_bytes()).hexdigest() if media.exists() else None
+    from publication import file_hash
+    digest = file_hash(media) if media.exists() else None
     for artifact in (transcript, ocr):
         if artifact and (not digest or artifact.get("media_sha256") != digest):
             raise ValueError(f"Extraction périmée ou média absent: {sid}")
     for i, segment in enumerate(transcript.get("segments", [])):
         evidence.append({"id": f"asr-{i:03}", "kind": "asr", "text": segment["text"],
-                         "start": segment["start"], "end": segment["end"]})
+                         "start": segment["start"], "end": segment["end"],
+                         "recognition":{key:transcript.get(key) for key in ('engine','model','cache_key')},"media_sha256":digest})
     for i, frame in enumerate(ocr.get("frames", [])):
         evidence.append({"id": f"ocr-{i:03}", "kind": "ocr", "start": frame["time"],
                          "text": "\n".join(line["text"] for line in frame["lines"]),
-                         "image": str((directory / frame["image"]).relative_to(root))})
+                         "image": str((directory / frame["image"]).relative_to(root)),
+                         "recognition":{key:ocr.get(key) for key in ('engine','model','cache_key')},"media_sha256":digest})
+    if source.get('evidence_schema')==2:
+        from publication import freeze
+        evidence=freeze(source,evidence,root)
+        current={row['id'] for row in evidence}
+        evidence += [dict(row,archived=True) for row in source.get('evidence_archive',[]) if row['id'] not in current]
     return evidence, {"media_downloaded": media.exists(), "media_sha256": digest,
                       "audio_transcribed": transcript.get("status") == "complete",
                       "ocr_sampled": ocr.get("status") == "complete",
@@ -247,6 +255,7 @@ def build(root=ROOT):
         lines += ["", "## Preuves", ""]
         for evidence in source["evidence"]:
             eid, kind = evidence["id"], evidence["kind"]
+            if evidence.get('archived'):kind+=' · version antérieure conservée'
             lines += [f'<a id="{eid}"></a>', "", f"### {eid} · {kind}", ""]
             if "start" in evidence:
                 lines += [f"[{stamp(evidence['start'])} · vidéo locale](../../data/media/{sid}.mp4#t={evidence['start']:.2f})", ""]
@@ -318,7 +327,7 @@ def search(query, catalog, limit=5):
                           "description": e['description'], 'details': e.get('details', {}),
                           'links': e.get('links', []), 'follow_up': e.get('follow_up', '')})
     for s in catalog["sources"]:
-        body = " ".join([s["title"], memory_context(s)] + [e["text"] for e in s["evidence"]])
+        body = " ".join([s["title"], memory_context(s)] + [e["text"] for e in s["evidence"] if not e.get('archived')])
         documents.append({"id": s["id"], "kind": "source", "title": s["title"][:160], "body": body,
                           "path": f"vault/sources/{s['id']}.md", "source_ids": [s["id"]], "refs": []})
     q = set(tokens(query))
@@ -353,7 +362,7 @@ def search(query, catalog, limit=5):
                 overlap = len(q & set(tokens(evidence['text'])))
                 if overlap:
                     snippets.append({'source_id': sid, 'evidence_id': evidence['id'],
-                                     'kind': evidence['kind'], 'start': evidence.get('start'),
+                                     'kind': evidence['kind'], 'archived':evidence.get('archived',False), 'start': evidence.get('start'),
                                      'image': evidence.get('image'), 'text': evidence['text'][:700], 'overlap': overlap})
         item['snippets'] = sorted(snippets, key=lambda x: -x['overlap'])[:2]
         results.append(item)
@@ -370,13 +379,22 @@ def main():
     q.add_argument("--json", action="store_true")
     q.add_argument("--limit", type=int, default=5)
     args = p.parse_args()
+    from publication import active_root, generation
+    active=active_root(ROOT)
+    if args.command == 'build' and active!=ROOT:
+        with generation(ROOT) as (draft,publish):
+            publish()
+        print('Nouvelle génération publiée ; anciennes preuves conservées.')
+        return
+    if args.command == 'ingest' and active!=ROOT:
+        p.error('Une bibliothèque publiée utilise le worker REST ; importer un corpus avant sa première publication.')
     if args.command == "ingest":
         print(f"{ingest()} sources importées (Karakeep inchangé).")
     elif args.command == "build":
         catalog = build()
         print(f"{len(catalog['sources'])} sources, {len(catalog['entities'])} fiches d’outils.")
     else:
-        catalog = read_json(ROOT / "data/catalog.json", {"sources": [], "entities": []})
+        catalog = read_json(active / "data/catalog.json", {"sources": [], "entities": []})
         results = search(args.query, catalog, args.limit)
         if args.json:
             print(json.dumps(results, ensure_ascii=False, indent=2))
@@ -384,7 +402,7 @@ def main():
             print("Aucune correspondance suffisamment étayée dans ce corpus.")
         for r in [] if args.json else results:
             print(f"\n{r['title']} [{r['kind']}] — score {r['score']} (pertinence, pas fiabilité)")
-            print("  Fiche :", ROOT / r["path"])
+            print("  Fiche :", active / r["path"])
             if r.get('description'):
                 print('  Description :', r['description'])
             for key, label in [('usefulness', 'Utilité'), ('operation', 'Fonctionnement')]:

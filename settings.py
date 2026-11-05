@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
+import math
 from urllib.parse import urlsplit
 
 
@@ -31,7 +32,8 @@ def boolean(name,default=False):
 
 
 def integer(name,default,minimum=1,maximum=1000000):
-    value=int(os.getenv(name,str(default)))
+    try:value=int(os.getenv(name,str(default)))
+    except ValueError:raise ValueError(f'{name} : entier attendu') from None
     if not minimum<=value<=maximum:
         raise ValueError(f'{name} : valeur hors limites')
     return value
@@ -43,6 +45,14 @@ def endpoint(name,default=''):
         parsed=urlsplit(value)
         if parsed.scheme not in ('http','https') or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
             raise ValueError(f'{name} : URL HTTP(S) sans identifiant ni paramètre attendue')
+    return value
+
+
+def amount(name,default):
+    try:value=float(os.getenv(name,str(default)))
+    except ValueError:raise ValueError(f'{name} : montant attendu') from None
+    if not math.isfinite(value) or value<0:
+        raise ValueError(f'{name} : montant positif ou nul attendu')
     return value
 
 
@@ -72,6 +82,23 @@ class Settings:
     vision_model: str=''
     vision_max_frames: int=12
     vision_interval: int=5
+    tag_filter: str=''
+    max_attempts: int=3
+    llm_max_tokens: int=2000
+    vision_max_tokens: int=600
+    llm_reasoning: str=''
+    vision_reasoning: str=''
+    token_limit_param: str='max_completion_tokens'
+    asr_timestamps: bool=True
+    monthly_budget_usd: float=2.0
+    call_reserve_usd: float=0.05
+    daily_call_limit: int=50
+    monthly_call_limit: int=400
+    llm_input_usd: float=0
+    llm_output_usd: float=0
+    vision_input_usd: float=0
+    vision_output_usd: float=0
+    asr_usd_per_hour: float=0
 
     @classmethod
     def from_env(cls):
@@ -89,11 +116,31 @@ class Settings:
             asr_url=endpoint('ASR_BASE_URL'),asr_key=os.getenv('ASR_API_KEY',''),asr_model=os.getenv('ASR_MODEL','').strip(),
             vision_url=endpoint('VISION_BASE_URL') or llm_url,vision_key=os.getenv('VISION_API_KEY') or llm_key,
             vision_model=os.getenv('VISION_MODEL','').strip(),vision_max_frames=integer('VISION_MAX_FRAMES',12,1,120),
-            vision_interval=integer('VISION_INTERVAL_SECONDS',5,1,120))
+            vision_interval=integer('VISION_INTERVAL_SECONDS',5,1,120),
+            tag_filter=os.getenv('KARAKEEP_TAG_FILTER','').strip(),max_attempts=integer('WORKER_MAX_ATTEMPTS',3,1,20),
+            llm_max_tokens=integer('LLM_MAX_OUTPUT_TOKENS',2000,100,16000),
+            vision_max_tokens=integer('VISION_MAX_OUTPUT_TOKENS',600,50,4000),
+            llm_reasoning=os.getenv('LLM_REASONING_EFFORT','').strip(),vision_reasoning=os.getenv('VISION_REASONING_EFFORT','').strip(),
+            token_limit_param=os.getenv('AI_TOKEN_LIMIT_PARAM','max_completion_tokens'),asr_timestamps=boolean('ASR_SEGMENT_TIMESTAMPS',True),
+            monthly_budget_usd=amount('AI_MONTHLY_BUDGET_USD',2),call_reserve_usd=amount('AI_CALL_RESERVE_USD',0.05),
+            daily_call_limit=integer('AI_MAX_CALLS_PER_DAY',50,1,10000),monthly_call_limit=integer('AI_MAX_CALLS_PER_MONTH',400,1,100000),
+            llm_input_usd=amount('LLM_INPUT_USD_PER_MILLION',0),llm_output_usd=amount('LLM_OUTPUT_USD_PER_MILLION',0),
+            vision_input_usd=amount('VISION_INPUT_USD_PER_MILLION',0),vision_output_usd=amount('VISION_OUTPUT_USD_PER_MILLION',0),
+            asr_usd_per_hour=amount('ASR_USD_PER_HOUR',0))
 
     def validate_worker(self):
+        if self.token_limit_param not in ('max_completion_tokens','max_tokens'):
+            raise ValueError('AI_TOKEN_LIMIT_PARAM non reconnu')
+        if any(effort not in ('','none','minimal','low','medium','high','xhigh','max') for effort in (self.llm_reasoning,self.vision_reasoning)):
+            raise ValueError('Effort de raisonnement non reconnu')
+        if self.call_reserve_usd<=0:
+            raise ValueError('AI_CALL_RESERVE_USD doit être strictement positif')
         if self.sync_enabled and not (self.karakeep_url and self.karakeep_key):
             raise ValueError('SYNC_ENABLED nécessite KARAKEEP_BASE_URL et KARAKEEP_API_KEY')
+        if self.sync_enabled:
+            for role,url,key,enabled in [('LLM',self.llm_url,self.llm_key,self.llm_enabled),('VISION',self.vision_url,self.vision_key,bool(self.vision_model)),('ASR',self.asr_url,self.asr_key,bool(self.asr_model))]:
+                if enabled and urlsplit(url).hostname in ('api.openai.com','api.groq.com') and not key:
+                    raise ValueError(f'{role}_API_KEY est nécessaire pour ce fournisseur')
         if self.llm_enabled and not (self.llm_url and self.llm_model):
             raise ValueError('LLM_ENABLED nécessite LLM_BASE_URL et LLM_MODEL')
         if self.asr_model and not self.asr_url:

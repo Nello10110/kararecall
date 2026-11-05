@@ -10,6 +10,7 @@ from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
 import cerveau
+from publication import active_root
 from integrations import ServiceError,normalize_bookmark
 from settings import Settings,initialize,load_env
 from worker import run_cycle,check_connections,redacted
@@ -83,8 +84,10 @@ class WorkerTests(unittest.TestCase):
                 owner.requests.append(('POST',self.path,self.headers.get('Authorization')))
                 payload=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
                 assert payload['model']=='test-model'
+                evidence=json.loads(payload['messages'][-1]['content'])['evidence']
+                caption=next(e['id'] for e in evidence if e['kind']=='caption')
                 answer={'tools':[{'name':'Lampe Flux','description':'Une lampe qui éclaire le bureau.',
-                    'aliases':['éclairage','bureau'],'evidence_ids':['invented' if owner.bad_refs else 'caption'],
+                    'aliases':['éclairage','bureau'],'evidence_ids':['invented' if owner.bad_refs else caption],
                     'details':dict(description='Une lampe.',usefulness='Éclairer le bureau.',operation='Le fonctionnement détaillé n’est pas précisé.',limitations='Données issues de la source ; à relire.'),
                     'links':[{'url':'https://example.com/lamp','label':'Lien dans la source','purpose':'Approfondir'},
                              {'url':'https://invented.example.com','label':'Invention','purpose':'À refuser'}]}]}
@@ -100,7 +103,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_paged_read_only_sync_and_llm_are_idempotent(self):
         self.assertEqual(run_cycle(self.config),dict(synced=2,processed=2,failed=0))
-        catalog=cerveau.read_json(self.root/'data/catalog.json')
+        catalog=cerveau.read_json(active_root(self.root)/'data/catalog.json')
         self.assertEqual(len(catalog['sources']),2)
         self.assertEqual(len(catalog['entities']),2)
         self.assertTrue(all(e['curation']=='machine-generated' for e in catalog['entities']))
@@ -118,7 +121,7 @@ class WorkerTests(unittest.TestCase):
         self.bad_refs=True
         result=run_cycle(self.config)
         self.assertEqual(result['failed'],2)
-        self.assertEqual(cerveau.read_json(self.root/'data/entities.json'),[])
+        self.assertEqual(cerveau.read_json(active_root(self.root)/'data/entities.json'),[])
         self.assertEqual(run_cycle(self.config)['failed'],0)
         with sqlite3.connect(self.root/'data/worker.sqlite') as db:
             states=db.execute('SELECT state,attempts,next_retry FROM jobs').fetchall()
@@ -128,7 +131,7 @@ class WorkerTests(unittest.TestCase):
         self.repeat_cursor=True
         with self.assertRaisesRegex(ServiceError,'curseur'):
             run_cycle(self.config)
-        self.assertEqual(cerveau.read_json(self.root/'data/sources.json'),[])
+        self.assertEqual(cerveau.read_json(active_root(self.root)/'data/sources.json'),[])
 
     def test_errors_do_not_expose_upstream_body_or_token(self):
         self.forbid=True
@@ -160,8 +163,64 @@ class WorkerTests(unittest.TestCase):
             result=run_cycle(self.config)
         self.assertEqual(result,dict(synced=0,processed=0,failed=1))
         self.assertEqual(media.read_bytes(),b'old-media')
-        self.assertEqual(cerveau.read_json(self.root/'data/sources.json'),[old])
+        self.assertEqual(cerveau.read_json(active_root(self.root)/'data/sources.json'),[old])
         self.assertEqual(cerveau.read_json(self.root/'data/service-status.json')['blocked_media_updates'],1)
+
+    def test_independent_vision_is_published_when_audio_fails(self):
+        import hashlib
+        media=self.root/'data/media/one.mp4';media.parent.mkdir(parents=True);media.write_bytes(b'synthetic-video')
+        self.config.asr_model='asr';self.config.vision_model='vision'
+        self.config.asr_url=self.config.llm_url;self.config.vision_url=self.config.llm_url
+        def extract(kind,media,source,settings,ledger,draft,force):
+            if kind=='asr':raise ServiceError('ASR unavailable')
+            output=draft/'data/extracted'/source['id'];output.mkdir(parents=True,exist_ok=True)
+            (output/'test.jpg').write_bytes(b'synthetic-image')
+            cerveau.write_json(output/'ocr.json',{'status':'complete','media_sha256':hashlib.sha256(media.read_bytes()).hexdigest(),'interval':5,'frames':[{'time':0,'image':'test.jpg','lines':[{'text':'Lampe Flux'}]}]})
+            return 'complete'
+        with patch('worker.extract_stage',side_effect=extract):
+            result=run_cycle(self.config)
+        self.assertEqual(result,dict(synced=2,processed=1,failed=1))
+        source=next(s for s in cerveau.read_json(active_root(self.root)/'data/catalog.json')['sources'] if s['id']=='one')
+        self.assertEqual(source['stages']['asr'],'failed')
+        self.assertEqual(source['stages']['vision'],'complete')
+        self.assertTrue(source['processing']['ocr_sampled'])
+
+    def test_retry_ceiling_survives_passes_and_manual_retry_is_targeted(self):
+        self.bad_refs=True;self.config.max_attempts=2
+        run_cycle(self.config)
+        with sqlite3.connect(self.root/'data/worker.sqlite') as db:db.execute('UPDATE jobs SET next_retry=0')
+        run_cycle(self.config)
+        with sqlite3.connect(self.root/'data/worker.sqlite') as db:db.execute('UPDATE jobs SET next_retry=0')
+        self.assertEqual(run_cycle(self.config)['failed'],0)
+        self.assertEqual(len([r for r in self.requests if r[0]=='POST']),4)
+        self.bad_refs=False
+        self.assertEqual(run_cycle(self.config,force_id='one',force_stage='llm')['processed'],1)
+        self.assertEqual(len([r for r in self.requests if r[0]=='POST']),5)
+
+    def test_tag_scope_and_budget_stop_without_paid_request(self):
+        self.config.tag_filter='absent'
+        self.assertEqual(run_cycle(self.config)['synced'],0)
+        self.config.tag_filter='Éclairage';self.config.monthly_budget_usd=0
+        self.assertEqual(run_cycle(self.config)['failed'],2)
+        self.assertFalse(any(method=='POST' for method,_,_ in self.requests))
+
+    def test_budget_pause_preserves_retry_allowance_and_resumes_when_available(self):
+        self.config.monthly_budget_usd=0;self.config.max_attempts=1
+        run_cycle(self.config)
+        first=active_root(self.root)
+        self.assertEqual(run_cycle(self.config)['processed'],0)
+        self.assertEqual(active_root(self.root),first)
+        with sqlite3.connect(self.root/'data/worker.sqlite') as db:
+            self.assertTrue(all(state=='paused' and attempts==0 for state,attempts in db.execute('SELECT state,attempts FROM jobs')))
+        self.config.monthly_budget_usd=1
+        self.assertEqual(run_cycle(self.config)['processed'],2)
+
+    def test_restart_after_publication_does_not_repeat_completed_calls(self):
+        run_cycle(self.config)
+        sent=len([r for r in self.requests if r[0]=='POST'])
+        with sqlite3.connect(self.root/'data/worker.sqlite') as db:db.execute("UPDATE jobs SET state='running'")
+        self.assertEqual(run_cycle(self.config)['processed'],0)
+        self.assertEqual(len([r for r in self.requests if r[0]=='POST']),sent)
 
 
 if __name__=='__main__':

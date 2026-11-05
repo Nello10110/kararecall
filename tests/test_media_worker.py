@@ -34,12 +34,15 @@ class MediaTests(unittest.TestCase):
             for packet in audio.encode(sound):container.mux(packet)
             for packet in audio.encode():container.mux(packet)
         self.calls=[]
+        self.fail_second_vision=False
         owner=self
         class Mock(BaseHTTPRequestHandler):
             def log_message(self,*args):pass
             def do_POST(self):
                 body=self.rfile.read(int(self.headers['Content-Length']))
                 owner.calls.append((self.path,body))
+                if owner.fail_second_vision and len(owner.calls)==2:
+                    self.send_response(503);self.send_header('Content-Length','0');self.end_headers();return
                 if self.path=='/v1/audio/transcriptions':
                     data={'language':'fr','segments':[{'start':0,'end':0.7,'text':'Audio de test synthétique.'}]}
                 else:
@@ -79,6 +82,36 @@ class MediaTests(unittest.TestCase):
         with self.assertRaisesRegex(ServiceError,'MEDIA_MAX_SECONDS'):
             transcribe(self.media,self.output,self.config)
         self.assertEqual(self.calls,[])
+
+    def test_provider_change_invalidates_audio_cache(self):
+        from worker_media import transcribe
+        transcribe(self.media,self.output,self.config)
+        self.config.asr_url=self.config.asr_url.replace('127.0.0.1','localhost')
+        transcribe(self.media,self.output,self.config)
+        self.assertEqual(len(self.calls),2)
+
+    def test_completed_vision_frames_resume_after_failure(self):
+        from worker_media import recognize_frames
+        self.fail_second_vision=True
+        with self.assertRaises(ServiceError):recognize_frames(self.media,self.output,self.config)
+        self.fail_second_vision=False
+        recognize_frames(self.media,self.output,self.config)
+        self.assertEqual(len(self.calls),3)
+        self.assertEqual(len(cerveau.read_json(self.output/'ocr.json')['frames']),2)
+
+    def test_video_without_audio_never_calls_audio_service(self):
+        import av
+        import numpy as np
+        from worker_media import transcribe
+        video=self.media.parent/'silent.mp4'
+        with av.open(str(video),'w') as container:
+            stream=container.add_stream('mpeg4',rate=5);stream.width=64;stream.height=64;stream.pix_fmt='yuv420p'
+            frame=av.VideoFrame.from_ndarray(np.zeros((64,64,3),dtype=np.uint8),format='rgb24')
+            for packet in stream.encode(frame):container.mux(packet)
+            for packet in stream.encode():container.mux(packet)
+        self.assertEqual(transcribe(video,self.output,self.config),'not_applicable')
+        self.assertEqual(self.calls,[])
+        self.assertEqual(cerveau.read_json(self.output/'transcript.json')['status'],'not_applicable')
 
 
 if __name__=='__main__':unittest.main()

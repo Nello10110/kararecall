@@ -131,12 +131,16 @@ def normalize_bookmark(bookmark):
         'raw_file':'data/raw/api/'+sid+'-'+hashlib.sha256(json.dumps(bookmark,sort_keys=True).encode()).hexdigest()[:12]+'.json'}
 
 
-def chat(base,key,model,messages,timeout=120):
+def chat(base,key,model,messages,timeout=120,*,max_tokens=2000,reasoning='',token_limit_param='max_completion_tokens',ledger=None,stage='llm'):
     if not (base and model):
         raise ServiceError('Adresse et modèle IA non configurés.')
-    data=request_json(base.rstrip('/')+'/chat/completions',key,
-        {'model':model,'messages':messages,'stream':False},timeout)
+    payload={'model':model,'messages':messages,'stream':False,token_limit_param:max_tokens}
+    if reasoning:payload['reasoning_effort']=reasoning
+    operation=lambda:request_json(base.rstrip('/')+'/chat/completions',key,payload,timeout)
+    data=ledger.call(stage,base,model,operation) if ledger else operation()
     try:
+        if data['choices'][0].get('finish_reason')=='length':
+            raise ServiceError('Sortie du modèle tronquée par la limite ; résultat non publié.')
         text=data['choices'][0]['message']['content']
         if not isinstance(text,str):
             raise KeyError()

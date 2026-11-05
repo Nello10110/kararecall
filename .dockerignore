@@ -9,3 +9,9 @@
 !requirements.worker.txt
 !web/
 !web/**
+
+!publication.py
+!usage.py
+
+!scripts/
+!scripts/verify_storage.py

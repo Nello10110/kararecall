@@ -2,11 +2,11 @@
 
 Une interface web pour retrouver les découvertes enregistrées dans Karakeep, consulter leurs preuves et repartir avec une fiche utile : **description de l’outil, usages, fonctionnement, limites et liens pour approfondir**.
 
-Les évolutions à discuter et les travaux restants sont dans le [backlog](backlog.md), sans ordre de priorité.
+Les évolutions à discuter et les travaux restants sont dans le [backlog](backlog.md), avec un ordre de réalisation proposé et des critères vérifiables.
 
 Le [document d’architecture](docs/ARCHITECTURE.md) décrit le fonctionnement global, le rôle de chaque modèle, les options locales et les raccordements encore à réaliser.
 
-L’[étude pour l’usage quotidien](docs/ETUDE-EXPLOITATION.md) compare les options et les coûts. Elle identifie les travaux P0 à terminer avant une exploitation autonome sur le NAS, notamment la conservation des versions de preuves lors des retraitements.
+L’[étude pour l’usage quotidien](docs/ETUDE-EXPLOITATION.md) compare les options et les coûts. Le [socle P0](docs/P0.md) implémente maintenant les générations cohérentes, preuves versionnées, reprises et budgets. La qualification des API réelles et du NAS reste à effectuer.
 
 Le NAS conserve les données et sert l’interface. Un travailleur optionnel synchronise Karakeep en lecture seule, extrait les médias et appelle les services IA configurés. Les modèles tournent sur une autre machine ou chez un fournisseur API : aucun gros modèle n’est chargé sur le NAS.
 
@@ -17,7 +17,7 @@ Prérequis : Docker avec Compose v2, accès GitHub au dépôt privé. Depuis le 
 ```sh
 git clone https://github.com/Nello10110/second-cerveau.git
 cd second-cerveau
-python3 scripts/setup_env.py
+python3 scripts/setup_env.py --profile api
 # Consulter .env pour les identifiants et ajuster la configuration.
 docker compose up -d --build
 ```
@@ -30,26 +30,11 @@ Ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765) avec les identifiants de `
 
 ## Activer la collecte et les fiches IA
 
-Tout se règle dans `.env`. Exemple de configuration, à compléter avec vos propres valeurs :
+Le profil API généré prépare Groq `whisper-large-v3-turbo` pour la transcription et OpenAI `gpt-6-luna` pour les captures et la synthèse. Aucun compte ni clé n’est fourni ; aucun appel n’est activé par la création du fichier. Les fournisseurs et modèles restent modifiables.
 
-```dotenv
-COMPOSE_PROFILES=automation
-SYNC_ENABLED=true
-KARAKEEP_BASE_URL=https://karakeep.exemple.fr
-KARAKEEP_API_KEY=VOTRE_CLE
+Dans `.env`, renseigner `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY`, `LLM_API_KEY` et `ASR_API_KEY`. La vision hérite de la clé LLM si `VISION_API_KEY` est vide. La collecte est limitée aux URL contenant `instagram.com` par défaut ; `KARAKEEP_TAG_FILTER` permet aussi de sélectionner des noms de tags.
 
-LLM_ENABLED=true
-LLM_BASE_URL=http://IP_DU_MAC:11434/v1
-LLM_MODEL=NOM_DU_MODELE_INSTALLE
-LLM_API_KEY=
-```
-
-Créer la clé Karakeep dans ses paramètres API. Le serveur LLM doit exposer `chat/completions` compatible OpenAI et produire du JSON. L’exemple utilise un Ollama déjà installé et joignable sur le Mac ; une API distante compatible peut être configurée avec sa propre URL, clé et modèle. `localhost` dans le conteneur désigne le conteneur, pas le Mac.
-
-Pour analyser les vidéos, configurer aussi :
-
-- `ASR_BASE_URL`, `ASR_API_KEY`, `ASR_MODEL` : transcription via `audio/transcriptions`, multipart et `verbose_json`.
-- `VISION_BASE_URL`, `VISION_API_KEY`, `VISION_MODEL` : lecture du texte des captures via `chat/completions` multimodal. URL et clé vides héritent de celles du LLM ; le modèle reste explicite.
+Le [guide P0](docs/P0.md) donne le premier passage manuel puis l’activation de `SYNC_ENABLED=true`, `LLM_ENABLED=true` et du profil Compose `automation`. Commencer avec `WORKER_BATCH_SIZE=1`, contrôler les preuves, puis démarrer la boucle. `ASR_MODEL` et `VISION_MODEL` vides désactivent leurs étapes.
 
 Ces services sont indépendants et facultatifs. Un modèle ASR ou vision vide désactive l’étape et aucun audio/image n’est envoyé à ce service. Sans ces étapes, une fiche peut être produite depuis la légende et le texte de page ; elle ne constitue pas une analyse vidéo. L’ASR doit prendre en charge le contrat `verbose_json` : la seule compatibilité texte avec OpenAI ne suffit pas.
 
@@ -61,7 +46,7 @@ docker compose up -d --build
 docker compose logs --tail=50 worker
 ```
 
-Le contrôle de connexion ne lance pas d’inférence. Les premières analyses permettront de vérifier la compatibilité réelle du modèle et de son JSON. Le worker démarre immédiatement, puis repasse toutes les 15 minutes, trois sources par passage par défaut. Les erreurs sont réessayées avec délai croissant ; les résultats déjà traités sont réutilisés. Aucune tâche Codex n’est nécessaire.
+Le contrôle de connexion ne lance pas d’inférence. Les premières analyses permettront de vérifier la compatibilité réelle du modèle et de son JSON. Le worker démarre immédiatement, puis repasse toutes les 15 minutes, trois sources par passage par défaut. Les erreurs sont réessayées avec délai croissant, trois tentatives au maximum par configuration ; les résultats déjà traités sont réutilisés. Aucune tâche Codex n’est nécessaire.
 
 ## Consulter et poursuivre
 
@@ -79,7 +64,7 @@ Karakeep (GET uniquement) → worker → volume persistant
                  LLM / transcription / vision configurés
 ```
 
-`data/sources.json`, `data/entities.json`, réponses brutes, médias et extractions constituent le corpus portable. `vault/` contient les fiches Markdown générées et `data/catalog.json` le catalogue. SQLite sert aux tâches et à un index régénérable. La consultation fonctionne sans IA ni accès internet une fois les données présentes. AFFiNE et Wiki.js restent utilisables pour les notes personnelles ou des copies Markdown ; aucun connecteur vers eux n’est implémenté.
+Les réponses brutes, médias, extractions et JSON de sources/fiches constituent le corpus portable. Après publication, `data/current.json` sélectionne une génération complète sous `data/generations/…` ; les chemins du catalogue sont relatifs à cette génération et les anciennes preuves restent conservées. `vault/` contient les fiches Markdown générées et `data/catalog.json` le catalogue. SQLite conserve les tâches et le journal d’usage, ainsi qu’un index régénérable. La consultation fonctionne sans IA ni accès internet une fois les données présentes. AFFiNE et Wiki.js restent utilisables pour les notes personnelles ou des copies Markdown ; aucun connecteur vers eux n’est implémenté.
 
 Le web est limité à 384 Mio et le worker à 768 Mio avec traitement séquentiel. Ces limites ne couvrent pas le serveur de modèles extérieur. [Exploitation, sauvegarde, mise à jour et paramètres](docs/HOMELAB.md) · [Interface et API de lecture](docs/WEB.md).
 
@@ -94,10 +79,10 @@ docker build --target worker -t memoire-worker:local .
 docker run --rm --mount "type=bind,src=$PWD/tests,dst=/tests,readonly" -e PYTHONPATH=/app memoire-worker:local python -m unittest discover -s /tests -p test_media_worker.py -v
 ```
 
-Les tests distribués utilisent un corpus fictif, des API locales simulées et une petite vidéo synthétique. Ils couvrent la pagination, la déduplication, les références inventées, les reprises sur erreur, l’authentification, les chemins autorisés, les exports, les requêtes vidéo partielles et les étapes ASR/vision. La CI reproduit ces contrôles sur Linux. Le test Compose crée puis supprime son propre volume temporaire.
+Les tests distribués utilisent un corpus fictif, des API locales simulées et une petite vidéo synthétique. Ils couvrent la pagination, la déduplication, les références inventées, les reprises sur erreur, l’authentification, les chemins autorisés, les exports, les requêtes vidéo partielles et les étapes ASR/vision. La CI reproduit ces contrôles sur Linux, y compris sauvegarde/restauration sur un volume neuf. Le test Compose crée puis supprime son propre volume temporaire.
 
 Les scripts historiques `scripts/process.py`, `transcribe.py`, `frames.py` et `ocr.swift` permettent toujours un traitement local sur macOS avec `requirements.txt` ; ils ne sont pas utilisés par le worker Docker. Les lanceurs `.command` démarrent la consultation locale depuis ce dossier.
 
-**Limites connues :** aucune connexion réelle à vos futurs endpoints ni aucun déploiement sur le NAS n’a encore été validé. Les vidéos sont limitées à 100 Mio et 300 secondes par défaut ; la vision échantillonne au plus 12 images et peut manquer un texte bref. Les modèles peuvent se tromper et les références valides ne garantissent pas l’exactitude d’une reformulation. Les suppressions Karakeep ne sont pas répercutées localement. Un remplacement de pièce jointe déjà conservée est bloqué pour préserver ses preuves et demande une intervention. Il n’y a pas encore d’éditeur de fiches dans le navigateur.
+**Limites connues :** aucune connexion réelle à vos futurs endpoints ni aucun déploiement sur le NAS n’a encore été validé. Les vidéos sont limitées à 100 Mio et 300 secondes par défaut ; la vision échantillonne au plus 12 images et peut manquer un texte bref. Les modèles peuvent se tromper et les références valides ne garantissent pas l’exactitude d’une reformulation. La recherche internet automatique et MCP ne sont pas encore implémentés. Le budget comptable par défaut est de 2 USD/mois ; les tarifs et usages estimés ne remplacent pas la facture fournisseur. Les suppressions Karakeep ne sont pas répercutées localement. Un remplacement de pièce jointe déjà conservée est bloqué pour préserver ses preuves et demande une intervention. Il n’y a pas encore d’éditeur de fiches dans le navigateur.
 
 Documentation des contrats utilisés : [API Karakeep](https://github.com/karakeep-app/karakeep/blob/main/packages/open-api/karakeep-openapi-spec.json), [compatibilité OpenAI d’Ollama](https://docs.ollama.com/api/openai-compatibility), [transcription audio](https://platform.openai.com/docs/guides/speech-to-text), [variables Compose](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/).

@@ -19,6 +19,8 @@ def main():
     p.add_argument('--interval', type=float, default=1.0)
     p.add_argument('--offline', action='store_true')
     args = p.parse_args()
+    if (ROOT/'data/current.json').exists():
+        p.error('Bibliothèque publiée : utiliser worker.py retry pour préserver les générations.')
     if args.interval <= 0:
         p.error('interval doit être positif')
     paths = [Path(v).resolve() for v in args.videos]

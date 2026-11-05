@@ -2,7 +2,7 @@
 
 État décrit le 5 novembre 2026. Ce document explique le fonctionnement du code livré et distingue les services disponibles des raccordements encore à réaliser. Pour les commandes de déploiement, voir [HOMELAB.md](HOMELAB.md) ; pour les évolutions à décider, voir le [backlog](../backlog.md).
 
-L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cette vue : quatre limites de retraitement/cache/couverture ont été reproduites sur des données fictives. Le Compose est utilisable pour un pilote ; une exploitation autonome demande les corrections et validations P0 du backlog.
+L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cette vue : quatre limites de retraitement/cache/couverture ont été reproduites sur des données fictives. Les corrections techniques sont maintenant décrites dans [P0.md](P0.md) ; les validations avec les services réels et sur le NAS restent à effectuer.
 
 ## 1. Ce qui fonctionne aujourd’hui
 
@@ -18,7 +18,7 @@ L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cet
 | NAS | Compose prêt à construire ; déploiement, ressources réelles et connexions restent à valider sur le matériel. |
 | Recherche internet automatique et MCP | Non implémentés ; consignés dans le backlog. |
 
-Le fait que le POC ait produit une transcription ne signifie donc pas qu’un moteur de transcription est déjà fourni dans le Compose. Le script local existe ; son exposition comme service utilisable par le NAS reste à choisir et à mettre en place.
+Le fait que le POC ait produit une transcription ne signifie donc pas qu’un moteur de transcription est déjà fourni dans le Compose. Le script local existe ; son exposition comme service serait nécessaire pour un profil Mac. Le profil API proposé n’en dépend pas et peut être généré avec `scripts/setup_env.py --profile api`.
 
 ## 2. Vue d’ensemble
 
@@ -71,7 +71,7 @@ Le worker sait appeler les services suivants :
 
 - Audio : `POST <ASR_BASE_URL>/audio/transcriptions`, fichier WAV mono 16 kHz, modèle choisi, `response_format=verbose_json` et demande de granularité par segment. Les débuts/fins reçus sont contrôlés avant conservation. Si seul le texte est renvoyé, il est marqué avec une précision couvrant le média entier, sans fabriquer des horodatages détaillés.
 - Vision : `POST <VISION_BASE_URL>/chat/completions` avec captures JPEG et demande de réponse JSON. Les images sont réduites à 1280 pixels maximum et échantillonnées à au plus 12 captures, espacées d’au moins 5 secondes par défaut. Les indices de confiance ne sont pas inventés.
-- Synthèse : `POST <LLM_BASE_URL>/chat/completions` avec preuves textuelles dans un budget d’entrée de 24 000 caractères par défaut. Le modèle propose des outils et des références ; le code vérifie la présence des références, refuse les fiches incomplètes et ne conserve les URL proposées que si elles figurent parmi les candidats détectés dans les preuves.
+- Synthèse : `POST <LLM_BASE_URL>/chat/completions` avec preuves textuelles dans un budget d’entrée de 24 000 caractères par défaut. Les sorties sont bornées en tokens, le raisonnement est réglable et les appels passent par un journal de budget. Le modèle propose des outils et des références ; le code vérifie la présence des références, refuse les fiches incomplètes et ne conserve les URL proposées que si elles figurent parmi les candidats détectés dans les preuves.
 
 Un serveur simplement « compatible OpenAI » peut ne prendre en charge qu’une partie de ces routes ou paramètres. Chaque rôle doit être validé avec le modèle réellement choisi. Les références contrôlées empêchent les références inexistantes ; elles ne prouvent pas que la reformulation du modèle est fidèle. Les fiches automatiques restent marquées **À relire**.
 
@@ -83,10 +83,10 @@ Un serveur simplement « compatible OpenAI » peut ne prendre en charge qu’une
 4. Le worker télécharge la pièce jointe vidéo si nécessaire et autorisé. Limites par défaut : 100 Mio pour le téléchargement et 300 secondes pour l’analyse. Si aucune vidéo n’est jointe, seuls les textes disponibles peuvent être exploités.
 5. PyAV décode le média sur le NAS. Le son est converti en WAV et les captures sont préparées sans modèle IA. Seules les étapes configurées appellent ensuite un moteur audio ou vision.
 6. Le LLM texte, s’il est activé, rédige les fiches à partir des preuves disponibles. Sans audio/vision, il peut produire une fiche à partir du texte source, mais cela ne constitue pas une analyse vidéo.
-7. Le programme conserve les extractions, valide les références, met à jour les fiches et reconstruit catalogue et Markdown. Les fiches éditoriales existantes sont préservées ; le worker remplace ses propres synthèses de la source traitée.
+7. Le programme fige les preuves par contenu/provenance, conserve leurs captures, valide les références et reconstruit catalogue et Markdown dans une génération de travail. Seul le remplacement atomique de `data/current.json` rend cette génération visible. Les fiches éditoriales existantes sont préservées ; le worker remplace ses propres synthèses de la source traitée.
 8. L’interface recharge le catalogue lors des requêtes s’il a changé ; actualiser l’écran permet d’afficher les nouvelles données.
 
-Le traitement est séquentiel. Un échec audio interrompt cette source avant les étapes suivantes ; la tâche sera réessayée avec un délai croissant. Les anciennes fiches publiées restent consultables. Une tâche terminée signifie seulement que les étapes configurées ont fini, pas que toutes les modalités ont été analysées.
+Le traitement des sources est séquentiel, mais audio et vision sont indépendants : un échec audio ne bloque pas un OCR réussi. La synthèse attend les étapes en échec. Les reprises sont bornées à trois tentatives automatiques par configuration, puis demandent une relance volontaire. Les anciennes fiches publiées restent consultables. Une tâche terminée signifie seulement que les étapes configurées ont fini, pas que toutes les modalités ont été analysées.
 
 ## 5. Où s’exécute la transcription ?
 
@@ -126,12 +126,13 @@ Le bouton de contexte fournit un texte à copier dans un assistant ; il ne trans
 | Dépôt Git privé | Code, documentation, exemple de configuration et tests synthétiques. Aucun corpus utilisateur ni secret. |
 | `.env` sur l’hôte | Identifiants web, adresses, modèles, clés et activation des services. Compose transmet explicitement les variables requises à chaque conteneur ; le web ne reçoit pas les clés IA/Karakeep. Modifier ce fichier puis recréer les services pour appliquer les changements. |
 | Volume Docker du NAS | Sources normalisées, réponses brutes versionnées, médias, extractions et fiches ; données privées à sauvegarder séparément. |
-| `data/catalog.json` et `vault/` | Catalogue de consultation et Markdown reconstruits à partir des données conservées. |
+| `data/current.json`, `data/generations/…` | Pointeur vers le catalogue et les Markdown d’une génération validée ; les chemins du catalogue sont relatifs à cette génération. |
+| `data/work/…` et `data/usage.sqlite` | Cache de travail reprenable et journal comptable des requêtes, hors générations publiées. |
 | `data/worker.sqlite` | État durable des tâches, erreurs contrôlées et délais de reprise. Ce n’est pas un historique de conversation avec un modèle. |
 | `data/index.sqlite` | Index dérivé régénérable ; la recherche web actuelle parcourt le catalogue JSON. |
 | Serveur de modèles | Modèles et ressources de calcul indépendants du volume applicatif ; peut être local ou distant. |
 
-Les preuves brutes, synthèses et vérifications externes sont séparées. Les extractions portent l’empreinte du média ; une extraction associée à un autre média est refusée. Le remplacement d’une pièce jointe déjà conservée est bloqué pour préserver la cohérence de l’ancienne version. Les suppressions de favoris ne sont pas répercutées localement.
+Les preuves brutes, synthèses et vérifications externes sont séparées. Les extractions portent l’empreinte du média ; une extraction associée à un autre média est refusée. Les références des fiches utilisent des preuves par contenu et provenance ; les versions antérieures citées sont conservées. Le lecteur suit une génération complète par requête. Le remplacement d’une pièce jointe déjà conservée est bloqué pour préserver la cohérence de l’ancienne version. Les suppressions de favoris ne sont pas répercutées localement.
 
 Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur de modèle chargé. La bibliothèque existante reste consultable si le Mac est éteint ou si une API IA tombe en panne ; les nouveaux traitements qui en dépendent échouent puis reprennent plus tard. Le volume et le `.env` doivent être sauvegardés. Pour un accès distant, HTTPS via reverse proxy ou VPN ; l’application utilise HTTP Basic, avec un compte personnel partagé.
 
@@ -143,12 +144,13 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 | `settings.py`, `.env.example` | Paramètres, validations et activation des étapes. |
 | `integrations.py` | Lecture REST Karakeep et client de conversation compatible OpenAI. |
 | `worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
+| `publication.py`, `usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
 | `worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |
 | `cerveau.py` | Preuves, validation des fiches, catalogue, Markdown et recherche. |
 | `web_server.py`, `web/` | Interface, authentification, API de lecture et médias. |
 | `scripts/transcribe.py`, `scripts/process.py`, `scripts/ocr.swift` | Pipeline local historique : faster-whisper et OCR Apple Vision sur macOS, distinct du worker Docker. |
 
-Les prochaines décisions concernent le moteur audio et son hébergement, les modèles vision/texte, le déploiement réel sur le NAS et la politique d’enrichissement web. FFmpeg/Whisper local, les sous-titres existants, MCP et la recherche sémantique sont des pistes à comparer ; aucune n’est activée par la rédaction de ce document. Voir le [backlog](../backlog.md), sans ordre de priorité imposé.
+Les prochaines décisions concernent le moteur audio et son hébergement, les modèles vision/texte, le déploiement réel sur le NAS et la politique d’enrichissement web. FFmpeg/Whisper local, les sous-titres existants, MCP et la recherche sémantique sont des pistes à comparer ; aucune n’est activée par la rédaction de ce document. Voir le [backlog](../backlog.md), avec priorités et état des réalisations.
 
 ## Références techniques
 

@@ -9,11 +9,14 @@ import os
 from pathlib import Path
 import re
 import threading
+import time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 import cerveau
 from settings import initialize
+from publication import active_root
 
 ROOT = cerveau.ROOT
 WEB = Path(__file__).resolve().parent / 'web'
@@ -24,13 +27,14 @@ def source_summary(source):
     author, _, caption = title.partition(' on Instagram:')
     if not caption:
         caption = title
-    images = [e for e in source['evidence'] if e.get('image')]
+    current=[e for e in source['evidence'] if not e.get('archived')]
+    images = [e for e in current if e.get('image')]
     preferred = next((e for e in images if e['start'] >= 14), images[0] if images else None)
     return {key: source[key] for key in ('id', 'url', 'created_at', 'tags', 'processing')} | {
         'title': caption.strip(' “”:"'), 'author': author.strip(' @'),
         'thumbnail': '/assets/' + preferred['image'] if preferred else None,
-        'transcript_count': sum(e['kind'] == 'asr' for e in source['evidence']),
-        'frame_count': len(images)}
+        'transcript_count': sum(e['kind'] == 'asr' for e in current),
+        'frame_count': len(images), 'stages':source.get('stages',{})}
 
 
 class Corpus:
@@ -40,13 +44,14 @@ class Corpus:
         self.signature = None
         self.data = None
 
-    def load(self):
+    def view(self):
         if not (self.root/'data/catalog.json').exists():
             with self.lock:
                 initialize(self.root)
-        path = self.root / 'data/catalog.json'
+        selected=active_root(self.root)
+        path = selected / 'data/catalog.json'
         stat = path.stat()
-        signature = (stat.st_mtime_ns, stat.st_size)
+        signature = (str(selected),stat.st_mtime_ns,stat.st_size)
         with self.lock:
             if signature != self.signature:
                 data = json.loads(path.read_text())
@@ -56,15 +61,19 @@ class Corpus:
                     if not re.fullmatch(r'[a-zA-Z0-9_-]+', sid):
                         raise ValueError('Invalid source identifier')
                     media = 'data/media/' + sid + '.mp4'
-                    assets[media] = self.root / media
+                    assets[media] = selected / media
                     for evidence in source['evidence']:
                         if evidence.get('image'):
                             rel = evidence['image']
-                            target = (self.root / rel).resolve()
-                            target.relative_to((self.root / 'data/extracted' / sid).resolve())
+                            target = (selected / rel).resolve()
+                            if not any(target.is_relative_to((selected/'data'/kind/sid).resolve()) for kind in ('extracted','evidence')):
+                                raise ValueError('Chemin de preuve non autorisé')
                             assets[rel] = target
                 self.data, self.assets, self.signature = data, assets, signature
-            return self.data
+            return self.data,selected,dict(self.assets)
+
+    def load(self):
+        return self.view()[0]
 
 
 def context_for(entity, sources):
@@ -87,7 +96,9 @@ def context_for(entity, sources):
                 source = sources[sid]
                 ev = next(e for e in source['evidence'] if e['id'] == eid)
                 at = f" à {cerveau.stamp(ev['start'])}" if ev.get('start') is not None else ''
-                lines += [f"  Preuve {ref}{at} : {source['url']}", '  Extrait : ' + ev['text'].replace('\n', ' ')[:1200]]
+                original_url=ev.get('source_url',source['url'])
+                if ev.get('archived'):at+=' (preuve conservée d’une version antérieure)'
+                lines += [f"  Preuve {ref}{at} : {original_url}", '  Extrait : ' + ev['text'].replace('\n', ' ')[:1200]]
         lines += ['']
     lines += ['## Liens pour approfondir', '']
     lines += [f"- {link.get('label', 'Lien')} : {link['url']} ({cerveau.LINK_LABELS[link['status']]})" for link in entity.get('links', [])]
@@ -195,20 +206,27 @@ def make_handler(corpus, username='', password=''):
             static = {'/': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/icon.svg': 'icon.svg'}
             if path in static:
                 return self.serve_file(WEB / static[path])
-            data = corpus.load()
+            data,view_root,assets = corpus.view()
             sources = {s['id']: s for s in data['sources']}
             entities = {e['id']: e for e in data['entities']}
             if path == '/api/health':
                 return self.send_json({'status': 'ok'})
             if path == '/api/catalog':
+                worker=cerveau.read_json(corpus.root/'data/service-status.json',{})
+                usage=cerveau.read_json(corpus.root/'data/usage-summary.json',worker.get('usage',{}))
+                if usage:worker['usage']=usage
+                if worker.get('sync_enabled'):
+                    moments=[worker.get('heartbeat_at'),usage.get('updated_at')]
+                    latest=max((datetime.fromisoformat(t).timestamp() for t in moments if t),default=0)
+                    worker['stale']=time.time()-latest>max(300,worker.get('sync_interval_seconds',900)*2)
                 summaries = [source_summary(s) for s in data['sources']]
                 complete = sum(s['processing']['audio_transcribed'] and s['processing']['ocr_sampled'] for s in summaries)
                 return self.send_json({'entities': data['entities'], 'sources': summaries,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if cerveau.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',
-                    'worker': cerveau.read_json(corpus.root/'data/service-status.json',{}),
-                    'updated_at': (corpus.root / 'data/catalog.json').stat().st_mtime,
-                    'last_process': cerveau.read_json(corpus.root / 'data/last-process.json', {})})
+                    'worker': worker,
+                    'updated_at': (view_root / 'data/catalog.json').stat().st_mtime,
+                    'last_process': cerveau.read_json(view_root / 'data/last-process.json', {})})
             if path == '/api/search':
                 params = parse_qs(parts.query)
                 query = params.get('q', [''])[0].strip()
@@ -238,10 +256,10 @@ def make_handler(corpus, username='', password=''):
                 if sid not in (entities if kind == 'tool' else sources):
                     return self.send_json({'error': 'Fiche introuvable'}, 404)
                 directory = 'outils' if kind == 'tool' else 'sources'
-                return self.serve_file(corpus.root / 'vault' / directory / (sid + '.md'), sid + '.md')
+                return self.serve_file(view_root / 'vault' / directory / (sid + '.md'), sid + '.md')
             if path.startswith('/assets/'):
                 key = path[len('/assets/'):]
-                target = corpus.assets.get(key)
+                target = assets.get(key)
                 if target:
                     return self.serve_file(target)
             return self.send_json({'error': 'Ressource introuvable'}, 404)

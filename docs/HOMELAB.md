@@ -1,10 +1,10 @@
 # Déploiement sur le homelab
 
-Ce guide décrit les commandes disponibles. Avant un usage autonome, consulter l’[étude d’exploitation](ETUDE-EXPLOITATION.md) et terminer le lot P0 du [backlog](../backlog.md), notamment la cohérence des preuves après retraitement et la validation des moteurs réels.
+Ce guide décrit les commandes disponibles. Le [guide P0](P0.md) détaille le profil API, les limites et les commandes de reprise/vérification. Les preuves sont désormais versionnées et publiées par génération ; la qualification des moteurs réels et du NAS reste à réaliser selon le [backlog](../backlog.md).
 
 ## Configuration
 
-Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, cloner le dépôt puis exécuter `python3 scripts/setup_env.py` ou créer `.env` depuis `.env.example`. Garder ce fichier sur le serveur : Compose transmet explicitement les variables requises à chaque service. Le service web ne reçoit aucune clé Karakeep ou IA.
+Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, cloner le dépôt puis exécuter `python3 scripts/setup_env.py --profile api` ou créer `.env` depuis `.env.example`. Garder ce fichier sur le serveur : Compose transmet explicitement les variables requises à chaque service. Le service web ne reçoit aucune clé Karakeep ou IA.
 
 | Paramètres `.env` | Rôle |
 |---|---|
@@ -53,7 +53,7 @@ docker compose up -d
 
 Un verrou empêche deux workers de modifier le même volume. La synchronisation parcourt toutes les pages de favoris à chaque passage pour détecter les modifications ; elle conserve les suppressions et ne modifie jamais Karakeep. Les identifiants servent à dédupliquer, les réponses brutes sont conservées par version et les tâches réussies ne sont pas rejouées sans changement de source ou de configuration du pipeline. Changer uniquement une clé n’invalide pas les résultats réussis ; les échecs reprendront après leur délai.
 
-Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Traitements. Le statut `done` d’une tâche signifie que les étapes **configurées** ont fini ; sans ASR/vision, il ne signifie pas qu’une vidéo a été analysée. Une erreur ASR interrompt le traitement de cette source avant les étapes suivantes. Une nouvelle pièce jointe remplaçant une vidéo locale est bloquée, avec conservation de l’ancienne version et de ses références ; la migration de versions n’est pas automatisée.
+Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Traitements. Le statut `done` d’une tâche signifie que les étapes **configurées** ont fini ; sans ASR/vision, il ne signifie pas qu’une vidéo a été analysée. Une erreur ASR laisse la vision progresser et publier ses résultats ; la synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `worker.py retry --source ID --stage asr|vision|llm|all` permet une reprise explicite. Une nouvelle pièce jointe remplaçant une vidéo locale est bloquée, avec conservation de l’ancienne version et de ses références ; la migration de versions n’est pas automatisée.
 
 Le web a une limite de 384 Mio et le worker de 768 Mio ; un seul média est traité à la fois. Les images utilisent `python:3.12-slim` et sont construites pour l’architecture du NAS. Le parcours web a été testé sous OrbStack Linux ARM64, autour de 21 Mio au repos avec le petit corpus de test. Ce n’est pas une mesure de charge du worker ni une garantie mémoire pour un gros corpus. Une limite trop basse peut provoquer un arrêt OOM, à diagnostiquer via `docker compose ps` et les journaux.
 
@@ -63,7 +63,7 @@ Pour un accès LAN direct, utiliser `MEMOIRE_BIND_ADDRESS=0.0.0.0`. Pour un reve
 
 ## Sauvegarde et restauration
 
-Sauvegarder **le volume et `.env`**, séparément du dépôt. Le volume contient `data/` et `vault/` ; il contient des données privées. Pour un instantané cohérent, arrêter les services avant de l’archiver :
+Sauvegarder **le volume et `.env`**, séparément du dépôt. Le volume contient `data/` et `vault/`, dont `data/current.json`, toutes les générations, les caches et le journal d’usage ; il contient des données privées. Les anciens JSON à la racine ne représentent plus nécessairement la publication courante. Pour un instantané cohérent, arrêter les services avant de l’archiver :
 
 ```sh
 docker compose stop
@@ -71,11 +71,12 @@ docker compose run --rm --no-deps -T web tar -C /workspace -czf - data vault > m
 docker compose up -d
 ```
 
-Restaurer dans un volume initialisé, services arrêtés :
+Restaurer dans un volume neuf, services arrêtés, puis vérifier l’intégrité avant de relancer :
 
 ```sh
 docker compose stop
 docker compose run --rm --no-deps -T web tar -C /workspace -xzf - < memoire-backup.tar.gz
+docker compose run --rm --no-deps -T web python verify_storage.py
 docker compose up -d
 ```
 
