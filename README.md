@@ -10,6 +10,8 @@ Les évolutions à discuter et les travaux restants sont dans le [backlog](backl
 
 Le [document d’architecture](docs/ARCHITECTURE.md) décrit le fonctionnement global, le rôle de chaque modèle, les options locales et les raccordements encore à réaliser.
 
+Le [guide du pilote](docs/PILOTE.md) permet de vérifier l’installation sur le NAS. Les décisions de stockage, de mise à jour et d’export sont dans le [guide d’exploitation à long terme](docs/EXPLOITATION-LONG-TERME.md).
+
 L’[étude pour l’usage quotidien](docs/ETUDE-EXPLOITATION.md) compare les options et les coûts. Le [socle P0](docs/P0.md) implémente maintenant les générations cohérentes, preuves versionnées, reprises et budgets. La qualification des API réelles et du NAS reste à effectuer.
 
 Le NAS conserve les données et sert l’interface. Un travailleur optionnel synchronise Karakeep en lecture seule, extrait les médias et appelle les services IA configurés. Les modèles tournent sur une autre machine ou chez un fournisseur API : aucun gros modèle n’est chargé sur le NAS.

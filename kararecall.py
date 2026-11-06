@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import shutil
 import tempfile
 import unicodedata
 from datetime import datetime
@@ -42,6 +43,10 @@ def entity_claims(entity):
 
 
 def coverage_notice(entity):
+    document=entity.get('coverage',{}).get('long_document')
+    if document:
+        return (f"{document['included']} caractères sur {document['available']} du texte disponible "
+                f"représentés par {document['sections']} résumés de passages.")
     if any(row.get('text_truncated') or row.get('included',0)<row.get('available',0) for row in entity.get('coverage',{}).values()):
         return 'Cette fiche repose sur une sélection d’extraits. Certains éléments des sources n’ont pas été pris en compte dans la synthèse.'
     return ''
@@ -232,6 +237,9 @@ def load_evidence(source, root=ROOT):
     from worker_documents import load_document_evidence
     document_rows, attachment = load_document_evidence(source, root, directory)
     evidence.extend(document_rows)
+    if source.get('reading_chunks'):
+        from reading import document_passages
+        evidence.extend(document_passages(evidence,source['reading_chunks']))
     if source.get('evidence_schema')==2:
         from publication import freeze
         evidence=freeze(source,evidence,root)
@@ -279,15 +287,27 @@ def candidates(catalog):
     return list(found.values())
 
 
-def build(root=ROOT):
+def build(root=ROOT, *, prepared=None, previous_root=None):
     sources = read_json(root / "data/sources.json", [])
     entities = read_json(root / "data/entities.json", [])
-    catalog = {"schema_version": 1, "sources": [], "entities": entities}
+    catalog = {"schema_version": 1, "source_markdown_version": 2, "sources": [], "entities": entities}
+    previous = read_json(previous_root/'data/catalog.json', {}) if previous_root else {}
+    reusable = previous.get('source_markdown_version')==catalog['source_markdown_version']
+    old_sources = {source['id']:source for source in previous.get('sources',[])} if reusable else {}
+
+    def linked_tools(items):
+        linked = {}
+        for entity in items:
+            for sid in entity['source_ids']:
+                linked.setdefault(sid,[]).append((entity['id'],entity['name']))
+        return linked
+
     vault = root / "vault"
     (vault / "sources").mkdir(parents=True, exist_ok=True)
     (vault / "outils").mkdir(exist_ok=True)
     for source in sources:
-        evidence, status = load_evidence(source, root)
+        cached = (prepared or {}).get(source['id'])
+        evidence, status = cached if cached is not None else load_evidence(source, root)
         source = dict(source, evidence=evidence, processing=status)
         catalog["sources"].append(source)
     lookup = {s["id"]: s for s in catalog["sources"]}
@@ -297,8 +317,16 @@ def build(root=ROOT):
         if not re.fullmatch(r"[a-z0-9-]+", entity["id"]):
             raise ValueError("Invalid entity ID")
         validate_entity(entity, lookup, root)
+    related = linked_tools(entities)
+    old_related = linked_tools(previous.get('entities',[])) if reusable else {}
     for source in catalog["sources"]:
         sid, status = source["id"], source["processing"]
+        filename = vault / 'sources' / (sid+'.md')
+        if source==old_sources.get(sid) and related.get(sid)==old_related.get(sid):
+            old_file = previous_root/'vault/sources'/filename.name
+            if old_file.is_file():
+                shutil.copy2(old_file,filename)
+                continue
         lines = ["---", f"id: {sid}", "type: source", f"saved_at: {source['created_at']}",
                  f"audio_transcribed: {str(status['audio_transcribed']).lower()}",
                  f"ocr_sampled: {str(status['ocr_sampled']).lower()}", "---", "",
@@ -322,8 +350,7 @@ def build(root=ROOT):
             lines += ['', '## Résumé de lecture · à relire', '']+render_claim(source['reading'],lookup)
             if coverage_notice(source['reading']):lines += [coverage_notice(source['reading']),'']
         lines += ["", "Les transcriptions et l’OCR sont des extractions automatiques, à relire. Les propos de l’auteur ne sont pas des faits vérifiés.", "", "## Fiches liées", ""]
-        related = [e for e in entities if sid in e["source_ids"]]
-        lines += [f"- [{e['name']}](../outils/{e['id']}.md)" for e in related] or ["Aucune synthèse relue pour cette source."]
+        lines += [f"- [{name}](../outils/{identifier}.md)" for identifier,name in related.get(sid,[])] or ["Aucune synthèse relue pour cette source."]
         lines += ["", "## Preuves", ""]
         for evidence in source["evidence"]:
             eid, kind = evidence["id"], evidence["kind"]
@@ -336,7 +363,7 @@ def build(root=ROOT):
             if evidence.get("image"):
                 lines += [f"[Image source](../../{evidence['image']})", ""]
             lines += ["> " + evidence["text"].replace("\n", "\n> "), ""]
-        (vault / "sources" / (sid + ".md")).write_text("\n".join(lines))
+        filename.write_text("\n".join(lines))
     for entity in entities:
         lines = ["---", f"id: {entity['id']}", "type: tool", f"curation: {entity.get('curation','assistant-reviewed')}", "---", "",
                  "# " + entity["name"], "", entity["description"], "",
@@ -404,7 +431,7 @@ def search(query, catalog, limit=5):
                           'links': e.get('links', []), 'follow_up': e.get('follow_up', '')})
     for s in catalog["sources"]:
         reading=s.get('reading',{})
-        body = " ".join([s["title"], memory_context(s), ' '.join(s.get('tags',[])), reading.get('text',''), ' '.join(reading.get('keywords',[]))] + [e["text"] for e in s["evidence"] if not e.get('archived')])
+        body = " ".join([s["title"], memory_context(s), ' '.join(s.get('tags',[])), reading.get('text',''), ' '.join(reading.get('keywords',[]))] + [e["text"] for e in s["evidence"] if not e.get('archived') and e['kind']!='passage'])
         documents.append({"id": s["id"], "kind": "source", "title": s["title"][:160], "body": body,
                           "path": f"vault/sources/{s['id']}.md", "source_ids": [s["id"]], "refs": []})
     q = set(tokens(query))
@@ -434,7 +461,7 @@ def search(query, catalog, limit=5):
         snippets = []
         for sid in doc['source_ids']:
             for evidence in lookup[sid]['evidence']:
-                if doc['kind']=='source' and evidence.get('archived'):
+                if doc['kind']=='source' and (evidence.get('archived') or evidence['kind']=='passage'):
                     continue
                 if doc['refs'] and sid + '#' + evidence['id'] not in doc['refs']:
                     continue

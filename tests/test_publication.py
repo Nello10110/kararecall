@@ -1,4 +1,5 @@
 import copy
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,7 +7,7 @@ from unittest.mock import patch
 
 import kararecall
 from fixtures import corpus
-from publication import active_root,generation,migrate
+from publication import active_root,file_hash,generation,migrate
 from web_server import Corpus,context_for,source_summary
 
 
@@ -86,6 +87,20 @@ class PublicationTests(unittest.TestCase):
     def test_pointer_cannot_escape_storage(self):
         kararecall.write_json(self.root/'data/current.json',{'generation':'../../outside'})
         with self.assertRaises(ValueError):active_root(self.root)
+
+    def test_media_hash_is_reused_across_generations_and_detects_modified_bytes(self):
+        media=active_root(self.root)/'data/media/demo-model.mp4'
+        digest=file_hash(media)
+        with generation(self.root) as (draft,_):
+            linked=draft/'data/media/demo-model.mp4'
+            with patch('publication._hash_stream',side_effect=AssertionError('Unexpected rehash')):
+                self.assertEqual(file_hash(linked),digest)
+            previous=linked.stat()
+            linked.write_bytes(b'X'*previous.st_size)
+            os.utime(linked,ns=(previous.st_atime_ns,previous.st_mtime_ns))
+            self.assertNotEqual(file_hash(linked),digest)
+            with self.assertRaisesRegex(ValueError,'Extraction périmée'):
+                kararecall.build(draft)
 
     def test_exception_after_pointer_switch_never_deletes_selected_generation(self):
         oldroot=active_root(self.root);write=kararecall.write_json

@@ -4,7 +4,9 @@ import argparse
 from collections import Counter
 import json
 from pathlib import Path
+import resource
 import shutil
+from statistics import median
 import sys
 import tempfile
 import time
@@ -61,15 +63,19 @@ def benchmark(catalog, questions):
         raise ValueError('Fichier de questions invalide.')
     known={row['id'] for row in catalog['sources']}
     ranks=[]
+    timings=[]
     for case in questions:
         if not isinstance(case,dict):raise ValueError('Cas de recherche invalide.')
         query=case.get('query')
         expected=case.get('source_id')
         if not isinstance(query,str) or not 1<=len(query.strip())<=1000 or not isinstance(expected,str) or expected not in known:
             raise ValueError('Chaque cas exige une requête et une source présente dans le catalogue.')
+        started=time.monotonic()
         results=kararecall.search(query,catalog,3)
+        timings.append((time.monotonic()-started)*1000)
         ranks.append(next((rank for rank,row in enumerate(results,1) if expected in row['source_ids']),None))
-    return {'questions':len(ranks),'top_1':ranks.count(1),'top_3':sum(rank is not None for rank in ranks),'ranks':ranks}
+    return {'questions':len(ranks),'top_1':ranks.count(1),'top_3':sum(rank is not None for rank in ranks),'ranks':ranks,
+            'latence_mediane_ms':round(median(timings),1),'latence_max_ms':round(max(timings),1)}
 
 
 def main():
@@ -86,7 +92,12 @@ def main():
             'volume_mio_libres':disk.free//(1024*1024),
             'usage':kararecall.read_json(settings.root/'data/usage-summary.json',{})}
     if args.probe_karakeep or args.probe_media:report['karakeep']=probe(settings,args.probe_media)
-    if args.questions:report['recherche']=benchmark(catalog,kararecall.read_json(args.questions))
+    if args.questions:
+        report['recherche']=benchmark(catalog,kararecall.read_json(args.questions))
+        peak=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        report['recherche']['memoire_processus_max_mio']=round(peak/(1024**2 if sys.platform=='darwin' else 1024),1)
+    timing=kararecall.read_json(settings.root/'data/service-status.json',{}).get('publication_timing')
+    if timing:report['derniere_publication']=timing
     print(json.dumps(report,ensure_ascii=False,indent=2))
 
 

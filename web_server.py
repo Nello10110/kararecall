@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 import kararecall
-from settings import initialize
+from settings import initialize, integer
 from publication import active_root
 from controls import history_status, request_history
 from editorial import EditConflict, edit_tool, revision
@@ -46,12 +46,17 @@ def source_summary(source):
         'has_reading':bool(source.get('reading'))}
 
 
+def fully_analyzed(summary):
+    return summary['processing']['audio_transcribed'] and summary['processing']['ocr_sampled']
+
+
 class Corpus:
     def __init__(self, root=ROOT):
         self.root = root
         self.lock = threading.Lock()
         self.signature = None
         self.data = None
+        self.source_summaries = None
 
     def view(self):
         if not (self.root/'data/catalog.json').exists():
@@ -79,10 +84,21 @@ class Corpus:
                                 raise ValueError('Chemin de preuve non autorisé')
                             assets[rel] = target
                 self.data, self.assets, self.signature = data, assets, signature
-            return self.data,selected,dict(self.assets)
+                self.source_summaries = None
+            return self.data,selected,self.assets
 
     def load(self):
         return self.view()[0]
+
+    def summaries(self, data):
+        with self.lock:
+            if data is self.data and self.source_summaries is not None:
+                return self.source_summaries
+            summaries = sorted((source_summary(source) for source in data['sources']),
+                               key=lambda row: (row['created_at'],row['id']), reverse=True)
+            if data is self.data:
+                self.source_summaries = summaries
+            return summaries
 
 
 def context_for(entity, sources):
@@ -266,16 +282,40 @@ def make_handler(corpus, username='', password=''):
                     threshold=max(300,worker.get('sync_interval_seconds',900)*2) if worker.get('state')=='running' else 300
                     worker['stale']=time.time()-latest>threshold
                 disk=shutil.disk_usage(corpus.root)
-                storage={'free_mb':disk.free//(1024*1024),'low_space':disk.free<256*1024*1024}
-                summaries = [source_summary(s) for s in data['sources']]
-                complete = sum(s['processing']['audio_transcribed'] and s['processing']['ocr_sampled'] for s in summaries)
+                minimum=integer('STORAGE_MIN_FREE_MB',256,0,1048576)
+                storage={'free_mb':disk.free//(1024*1024),'minimum_free_mb':minimum,'low_space':disk.free<minimum*1024*1024}
+                summaries = corpus.summaries(data)
+                complete = sum(fully_analyzed(s) for s in summaries)
+                recent = summaries[:6]
+                videos_pending = sum(s['has_video'] and not fully_analyzed(s) for s in summaries)
+                if parse_qs(parts.query).get('compact') == ['1']:
+                    linked = {e['source_ids'][0] for e in data['entities'] if e['source_ids']}
+                    linked.update(s['id'] for s in recent)
+                    summaries = [s for s in summaries if s['id'] in linked]
                 return self.send_json({'entities': data['entities'], 'sources': summaries,
+                    'recent_sources': recent, 'videos_pending': videos_pending,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if kararecall.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',
                     'worker': worker, 'history_import':history_status(corpus.root), 'storage':storage,
                     'research':kararecall.read_json(corpus.root/'data/research-status.json',{}),
                     'updated_at': (view_root / 'data/catalog.json').stat().st_mtime,
                     'last_process': kararecall.read_json(view_root / 'data/last-process.json', {})})
+            if path == '/api/sources':
+                params = parse_qs(parts.query)
+                limit = int(params.get('limit',['24'])[0])
+                offset = int(params.get('offset',['0'])[0])
+                stage = params.get('stage',['all'])[0]
+                query = params.get('q',[''])[0].strip()
+                if not 1<=limit<=100 or offset<0 or len(query)>150 or stage not in ('all','complete','partial'):
+                    return self.send_json({'error':'Filtre ou pagination non valide.'},400)
+                query = kararecall.normalize(query)
+                matches = [s for s in corpus.summaries(data) if
+                           (stage=='all' or (stage=='complete')==fully_analyzed(s))
+                           and (not query or query in kararecall.normalize(' '.join([s['title'],s['author'],*s['tags']])))]
+                last_offset = max(0,(len(matches)-1)//limit*limit)
+                offset = min(offset,last_offset)
+                return self.send_json({'sources':matches[offset:offset+limit], 'total':len(matches),
+                                       'offset':offset, 'limit':limit})
             if path == '/api/search':
                 params = parse_qs(parts.query)
                 query = params.get('q', [''])[0].strip()
@@ -286,6 +326,8 @@ def make_handler(corpus, username='', password=''):
                     return self.send_json({'error': 'Filtre inconnu'}, 400)
                 results = kararecall.search(query, data, 100)
                 results = [r for r in results if scope == 'all' or (scope == 'tools') == (r['kind'] == 'outil')]
+                for result in results:
+                    result['source_summary'] = source_summary(sources[result['source_ids'][0]])
                 return self.send_json({'query': query, 'results': results, 'search_mode': 'lexical'})
             match = re.fullmatch(r'/api/(tools|sources|context|research|editorial)/([a-zA-Z0-9_-]+)', path)
             if match:

@@ -1,6 +1,6 @@
 # Architecture de KaraRecall
 
-État décrit le 5 novembre 2026. Ce document explique le fonctionnement du code livré et distingue les services disponibles des raccordements encore à réaliser. Pour les commandes de déploiement, voir [HOMELAB.md](HOMELAB.md) ; pour les évolutions à décider, voir le [backlog](../backlog.md).
+État décrit le 6 novembre 2026. Ce document distingue le code livré des raccordements encore à réaliser. Les commandes de déploiement et les essais restants sont dans les guides [homelab](HOMELAB.md) et [pilote](PILOTE.md).
 
 L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cette vue : quatre limites de retraitement/cache/couverture ont été reproduites sur des données fictives. Les corrections techniques sont maintenant décrites dans [P0.md](P0.md) ; les validations avec les services réels et sur le NAS restent à effectuer.
 
@@ -82,11 +82,12 @@ Un serveur simplement « compatible OpenAI » peut ne prendre en charge qu’une
 1. Si le profil `automation` et la synchronisation sont activés, le worker lit toutes les pages de favoris Karakeep. Il prépare l’import complet avant de publier les métadonnées locales. Par défaut tous les favoris sont retenus, y compris sites, articles, notes et fichiers. Des filtres URL/tags restent facultatifs. Le bouton d’import historique ignore ces filtres pour lire tout le catalogue sans téléchargement ni appel IA.
 2. Les réponses brutes sont archivées par version, puis les sources sont dédupliquées par identifiant. La description et le texte de page sont des preuves distinctes ; le résumé IA de Karakeep n’est pas utilisé comme preuve des paroles ou des images.
 3. Une file durable sélectionne les sources à traiter : trois par passage, toutes les quinze minutes par défaut. Les sources déjà traitées sont reconnues par leur empreinte de source/configuration.
-4. Le worker télécharge la pièce jointe vidéo si nécessaire et autorisé. Limites par défaut : 100 Mio pour le téléchargement et 300 secondes pour l’analyse. Si aucune vidéo n’est jointe, seuls les textes disponibles peuvent être exploités.
+4. Le worker télécharge les vidéos et les documents sans texte disponible si le téléchargement est activé. Les plafonds par défaut sont de 100 Mio et 300 secondes pour une vidéo, 20 Mio pour un document et 256 Mio d’espace libre réservé pendant les téléchargements.
 5. PyAV décode le média sur le NAS. Le son est converti en WAV et les captures sont préparées sans modèle IA. Seules les étapes configurées appellent ensuite un moteur audio ou vision.
 6. Le LLM texte, s’il est activé, rédige un résumé de lecture sourcé pour chaque favori, puis des fiches pour les seuls outils identifiés explicitement. Les résumés sont recherchables et exportés avec leurs preuves. Sans audio/vision, il peut produire une fiche à partir du texte source, mais cela ne constitue pas une analyse vidéo.
 7. Le programme fige les preuves par contenu/provenance, conserve leurs captures, valide les références et reconstruit catalogue et Markdown dans une génération de travail. Seul le remplacement atomique de `data/current.json` rend cette génération visible. Les fiches éditoriales existantes sont préservées ; le worker remplace ses propres synthèses de la source traitée.
 8. L’interface recharge le catalogue lors des requêtes s’il a changé ; actualiser l’écran permet d’afficher les nouvelles données.
+9. Si la recherche web est activée, le worker relève et consulte des pages via DeepSeek après la publication. Les pistes et traces de lecture sont séparées des preuves d’origine. Une note documentaire publiée demande une revue. [Enrichissement web](RECHERCHE-WEB.md).
 
 Le traitement des sources est séquentiel, mais audio et vision sont indépendants : un échec audio ne bloque pas un OCR réussi. La synthèse attend les étapes en échec. Les reprises sont bornées à trois tentatives automatiques par configuration, puis demandent une relance volontaire. Les anciennes fiches publiées restent consultables. Une tâche terminée signifie seulement que les étapes configurées ont fini, pas que toutes les modalités ont été analysées.
 
@@ -109,7 +110,9 @@ FFmpeg sert à décoder, convertir, extraire des pistes, découper un média ou 
 
 Pour reconnaître des paroles nouvelles, un moteur de reconnaissance vocale reste nécessaire. **FFmpeg dispose aussi d’un filtre `whisper`**, qui s’appuie sur la bibliothèque whisper.cpp et sur un modèle téléchargé ; il faut une compilation avec `--enable-whisper`. Cette option permet une transcription locale, mais elle utilise toujours un modèle IA. Son intégration à KaraRecall reste à réaliser et la présence du filtre ne doit pas être supposée dans toute installation de FFmpeg.
 
-Pour éviter les traitements inutiles : les transcriptions et OCR sont déjà réutilisés lorsque le média, le modèle et les paramètres de cache applicables correspondent. Chercher ou ouvrir une fiche ne relance aucun modèle. Une piste de sous-titres textuels déjà disponible pourrait aussi être réutilisée sans nouvelle reconnaissance ; la détection et l’import de telles pistes ne sont pas encore implémentés. Une légende ou un résumé Karakeep ne devient pas une transcription par ce mécanisme.
+Les transcriptions et OCR sont réutilisés lorsque le média, le modèle et les paramètres de cache correspondent. Chercher ou ouvrir une fiche ne relance aucun modèle. Avec `REUSE_SUBTITLES`, le worker conserve une piste textuelle exploitable avec ses horodatages et peut éviter l’appel ASR. Le mode optionnel `VISION_SAMPLE_MODE=changes` sélectionne localement les changements visuels avec le même plafond d’images envoyées.
+
+Poppler extrait le texte PDF incorporé. Sur activation explicite, le service vision peut lire des aperçus JPEG des pages sans texte. Le traitement optionnel des documents longs résume des passages et conserve leurs références vers le texte original ainsi qu’une mesure de couverture. [Paramètres](HOMELAB.md#pdf-et-images).
 
 Le format produit par FFmpeg/Whisper devrait être converti vers les preuves JSON de KaraRecall, avec temps, statut et empreinte média. Remplacer un appel distant par un moteur local nécessite donc un raccordement explicite, pas seulement l’ajout du mot « FFmpeg » dans la configuration.
 
@@ -118,6 +121,8 @@ Le format produit par FFmpeg/Whisper devrait être converti vers les preuves JSO
 Le navigateur consulte le corpus en lecture seule ; une commande authentifiée et protégée contre les requêtes intersites peut demander un import global. Elle écrit une demande locale, exécutée par le worker, sans modification de Karakeep. Le service web lit le catalogue JSON, classe les résultats et sert les médias/images autorisés. La recherche examine les titres, descriptions, usages, preuves citées et textes des sources, y compris les transcriptions et l’OCR. Elle normalise les accents et rapproche certaines fautes d’orthographe. **Elle n’est pas limitée à une correspondance de phrase exacte, mais elle n’est pas sémantique** et ne fait appel à aucun LLM ni embedding.
 
 Une source expose sa transcription à côté de la vidéo. Les passages disponibles sont cliquables pour naviguer à l’instant cité. Le panneau permet de rechercher et surligner des mots. Les résultats globaux peuvent ouvrir directement la preuve horodatée. Les preuves PDF sont repérées par page.
+
+Les listes Sources et Traitements chargent 24 entrées par requête. L’adaptateur MCP est un processus local stdio séparé qui appelle l’API web authentifiée en lecture seule. Les outils renvoient les références et l’URL source. [Guide MCP](MCP.md).
 
 Le bouton de contexte fournit un texte à copier dans un assistant ; il ne transmet rien automatiquement. L’adaptateur MCP local réutilise les routes de lecture. Les routes de lecture existantes sont détaillées dans [WEB.md](WEB.md).
 
@@ -134,7 +139,7 @@ Le bouton de contexte fournit un texte à copier dans un assistant ; il ne trans
 | `data/index.sqlite` | Index dérivé régénérable ; la recherche web actuelle parcourt le catalogue JSON. |
 | Serveur de modèles | Modèles et ressources de calcul indépendants du volume applicatif ; peut être local ou distant. |
 
-Les preuves brutes, synthèses et vérifications externes sont séparées. Les extractions portent l’empreinte du média ; une extraction associée à un autre média est refusée. Les références des fiches utilisent des preuves par contenu et provenance ; les versions antérieures citées sont conservées. Le lecteur suit une génération complète par requête. Le remplacement d’une pièce jointe déjà conservée est bloqué pour préserver la cohérence de l’ancienne version. Les suppressions de favoris ne sont pas répercutées localement.
+Les preuves brutes, synthèses et vérifications externes sont séparées. Une extraction associée à une autre empreinte média est refusée. Les références des fiches utilisent des preuves par contenu et provenance. Le lecteur suit une génération complète par requête. Les remplacements vidéo restent bloqués pour préserver les anciennes citations. Les PDF et images portant un nouvel identifiant sont archivés séparément. Les favoris absents restent dans le catalogue local. [Politique de conservation](EXPLOITATION-LONG-TERME.md#conservation).
 
 Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur de modèle chargé. La bibliothèque existante reste consultable si le Mac est éteint ou si une API IA tombe en panne ; les nouveaux traitements qui en dépendent échouent puis reprennent plus tard. Le volume et le `.env` doivent être sauvegardés. Pour un accès distant, HTTPS via reverse proxy ou VPN ; l’application utilise HTTP Basic, avec un compte personnel partagé.
 
@@ -149,11 +154,14 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 | `worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
 | `publication.py`, `usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
 | `worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |
+| `worker_documents.py`, `reading.py` | Extraction PDF/image et synthèses par passages. |
+| `web_research.py`, `editorial.py` | Recherche web séparée, revue humaine et conservation des révisions. |
+| `kararecall_mcp.py` | Adaptateur stdio vers l’API web en lecture seule. |
 | `kararecall.py` | Preuves, validation des fiches, catalogue, Markdown et recherche. |
 | `web_server.py`, `web/` | Interface, authentification, API de lecture et médias. |
 | `scripts/transcribe.py`, `scripts/process.py`, `scripts/ocr.swift` | Pipeline local historique : faster-whisper et OCR Apple Vision sur macOS, distinct du worker Docker. |
 
-Les prochaines décisions concernent le moteur audio et son hébergement, les modèles vision/texte, le déploiement réel sur le NAS et la politique d’enrichissement web. FFmpeg/Whisper local, les sous-titres existants, MCP et la recherche sémantique sont des pistes à comparer ; aucune n’est activée par la rédaction de ce document. Voir le [backlog](../backlog.md), avec priorités et état des réalisations.
+Les essais restants portent sur les services réels, les modèles, le NAS et l’usage du MCP depuis un assistant. Un raccordement audio local et une recherche hybride dépendent des résultats du pilote. [Backlog](../backlog.md).
 
 ## Références techniques
 

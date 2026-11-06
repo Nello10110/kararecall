@@ -78,6 +78,9 @@ with generation(kararecall.ROOT) as (draft,publish):
         subprocess.run(['docker','exec','-i',container,'python','-'],input=fixture,text=True,check=True,capture_output=True)
         with request('/api/catalog') as r:
             assert json.load(r)['stats']==dict(tools=2,sources=2,processed=2)
+        with request('/api/sources?limit=1&offset=1') as r:
+            page=json.load(r)
+            assert page['offset']==1 and page['total']==2 and len(page['sources'])==1
         with request('/api/search?q=pubs%20applis%20inutiles%20tele&scope=tools') as r:
             assert json.load(r)['results'][0]['id']=='tv-detox'
         with request('/api/context/heretic') as r:

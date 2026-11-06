@@ -105,7 +105,7 @@ def make_server(api):
         """Lire les preuves d’un favori. Pour les paroles, utiliser kind='asr'."""
         bounded(offset,0,100000,'Décalage')
         bounded(limit,1,20,'Nombre de preuves')
-        if kind not in ('all','caption','page','text','note','asr','ocr','document','pdf-page','image-text','subtitle'):
+        if kind not in ('all','caption','page','text','note','asr','ocr','document','pdf-page','image-text','subtitle','passage'):
             raise ValueError('Type de preuve inconnu.')
         data=api.get('/api/sources/'+valid_id(source_id))
         if data is None:return {'found':False}

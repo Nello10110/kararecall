@@ -110,6 +110,8 @@ class Settings:
     web_request_usd: float=0.00075
     reuse_subtitles: bool=False
     vision_sample_mode: str='regular'
+    llm_document_sections: int=0
+    storage_min_free_mb: int=256
 
     @classmethod
     def from_env(cls):
@@ -143,7 +145,9 @@ class Settings:
             image_ocr_enabled=boolean('IMAGE_OCR_ENABLED'),web_research_enabled=boolean('WEB_RESEARCH_ENABLED'),
             web_research_key=os.getenv('DEEPSEEK_RESEARCH_API_KEY') or (llm_key if urlsplit(llm_url).hostname=='api.deepseek.com' else ''),
             web_request_usd=amount('WEB_REQUEST_USD',0.00075),reuse_subtitles=boolean('REUSE_SUBTITLES'),
-            vision_sample_mode=os.getenv('VISION_SAMPLE_MODE','regular').strip())
+            vision_sample_mode=os.getenv('VISION_SAMPLE_MODE','regular').strip(),
+            llm_document_sections=integer('LLM_DOCUMENT_SECTIONS',0,0,10),
+            storage_min_free_mb=integer('STORAGE_MIN_FREE_MB',256,0,1048576))
 
     def validate_worker(self):
         if self.vision_sample_mode not in ('regular','changes'):

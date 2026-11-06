@@ -3,6 +3,7 @@ import http.client
 from http.server import ThreadingHTTPServer
 import json
 from pathlib import Path
+import sqlite3
 import tempfile
 import threading
 import unittest
@@ -112,6 +113,37 @@ class AllBookmarksTests(unittest.TestCase):
         payload=request.call_args.args[2]
         self.assertEqual(payload['thinking'],{'type':'disabled'})
         self.assertEqual(payload['max_tokens'],600);self.assertNotIn('max_completion_tokens',payload)
+
+    def test_long_article_summary_uses_bounded_passages_and_reuses_cached_sections(self):
+        self.config.llm_enabled=True;self.config.llm_url='https://example.invalid';self.config.llm_model='test'
+        self.config.llm_max_chars=3000
+        self.config.llm_document_sections=2
+        article=bookmarks()[0]
+        text='Introduction. '+'paragraphes intermédiaires. '*200+' Conclusion finale.'
+        article['content']['text']=text
+        def final_answer(*args,**kwargs):
+            payload=json.loads(args[3][-1]['content'])
+            sections=[row for row in payload['evidence'] if row['kind']=='passage']
+            self.assertEqual(len(sections),2)
+            self.assertEqual(payload['coverage']['long_document']['available'],len(text))
+            self.assertEqual(sections[-1]['text'],'Résumé de la conclusion.')
+            return json.dumps({'reading':{'summary':'Une conclusion relue.','evidence_ids':[sections[-1]['id']]},'tools':[]})
+        source=lambda:iter([article])
+        with patch('worker.Karakeep.bookmarks',side_effect=source),patch('reading.chat',side_effect=[
+            '{"summary":"Résumé initial."}',ServiceError('Test de reprise')]) as model:
+            self.assertEqual(run_cycle(self.config)['failed'],1)
+            self.assertEqual(model.call_count,2)
+        with sqlite3.connect(self.root/'data/worker.sqlite') as db:
+            db.execute('UPDATE jobs SET next_retry=0')
+        with patch('worker.Karakeep.bookmarks',side_effect=source),patch('reading.chat',return_value='{"summary":"Résumé de la conclusion."}') as model,patch('worker.chat',side_effect=final_answer):
+            self.assertEqual(run_cycle(self.config)['processed'],1)
+            self.assertEqual(model.call_count,1)
+        selected=active_root(self.root)
+        item=kararecall.read_json(selected/'data/catalog.json')['sources'][0]
+        proof=next(row for row in item['evidence'] if item['reading']['evidence']==['article#'+row['id']])
+        self.assertTrue(proof['text'].endswith('Conclusion finale.'))
+        self.assertEqual(proof['text'],text[proof['text_start']:proof['text_end']])
+        self.assertLess(item['reading']['coverage']['long_document']['included'],len(text))
 
     def test_repeated_bookmark_across_pages_does_not_repeat_inference(self):
         self.config.llm_enabled=True;self.config.llm_url='https://example.invalid';self.config.llm_model='test'

@@ -1,6 +1,6 @@
 # Backlog de KaraRecall
 
-Mise à jour du 5 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Ordre de réalisation proposé : **P0 avant usage autonome sur le NAS, P1 pour l’usage quotidien enrichi, P2 selon les résultats du pilote**. Les travaux ne sont pas encore réalisés sauf cases cochées ; les vérifications techniques locales ne remplacent pas la qualification avec les services réels et le NAS. Les fournisseurs et dépenses ne sont pas sélectionnés automatiquement.
+Mise à jour du 6 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le NAS est en attente d’installation.** Le propriétaire lancera le [pilote](docs/PILOTE.md) depuis son réseau.
 
 Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimensionner la première version pour ce volume, sans service Mac obligatoire ni abonnement de recherche payant par défaut. Les optimisations de débit passent après la fiabilité et l’usage quotidien.
 
@@ -40,8 +40,6 @@ Acceptation : panne du Mac, erreur API et redémarrage reprennent sans perte ni 
 ### Raccorder les moteurs et qualifier un pilote réel
 
 - [x] Choisir un premier profil de traitement : proposition d’un profil API économique pour rendre le NAS indépendant du Mac, si la transmission convient. Garder le profil Mac audio/OCR comme alternative ; son économie seule ne le rend pas prioritaire aux volumes estimés.
-- [ ] Exposer les briques faster-whisper/Apple Vision locales derrière un service authentifié sur le réseau privé, si le profil Mac est retenu ; prévoir démarrage et redémarrage du service.
-- [ ] Comparer la vitesse/qualité avec whisper.cpp si nécessaire ; FFmpeg/Whisper reste une variante locale à adapter, pas une suppression du besoin de reconnaissance vocale.
 - [ ] Valider les contrats réels d’audio, vision et texte, y compris les paramètres non pris en charge, les horodatages et les réponses JSON ; `check` seul ne suffit pas.
 - [ ] Lire des favoris et télécharger au moins un média avec l’API REST Karakeep réelle, sans modifier les favoris et sans retourner sur Instagram.
 - [x] Inclure tous les favoris par défaut : sites, articles, notes, fichiers et vidéos, sans filtre Instagram ; conserver les filtres URL/tags facultatifs.
@@ -84,7 +82,7 @@ Acceptation : restauration et mise à jour vérifiées ; le web reste consultabl
 
 - [x] Rechercher après publication et afficher les sites, documents et dépôts candidats, avec lecture ciblée via DeepSeek.
 - [x] Permettre la revue de l’identité de l’éditeur et l’ajout de notes de description, d’usage et de fonctionnement attribuées à une page effectivement consultée.
-- [ ] Évaluer la rédaction automatique de notes documentaires avec abstention lorsque l’identité de l’éditeur reste incertaine.
+- [x] Évaluer l’attribution des notes documentaires et retenir la revue avant publication pour le pilote. [Critères](docs/RECHERCHE-WEB.md#rédaction-des-notes-documentaires).
 - [x] Appliquer une recherche et jusqu’à deux pages par nouvel outil, avec cache partagé, date de passage et budget persistant.
 - [x] Comparer Brave et Firecrawl pour la recherche et la lecture, avec un scénario de vingt outils par mois. [Comparatif](docs/RECHERCHE-WEB.md).
 - [x] Conserver les URL, dates et traces immuables, séparées des affirmations et preuves initiales.
@@ -107,13 +105,13 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 
 ### Couverture et traitements économes
 
-- [ ] Adapter le traitement des longs articles/documents : découpage avec couverture mesurée, résumés hiérarchiques et citations précises ; actuellement la sélection dans le budget texte est signalée.
+- [x] Proposer un traitement optionnel des longs articles et documents avec résumés de passages, reprise, couverture en caractères et citations du texte original.
 - [x] Comparer DeepSeek Search/Fetch aux options de recherche existantes et définir le contrat du premier pilote. [Choix proposé et critères](docs/RECHERCHE-WEB.md).
 
 - [x] Répartir le budget texte entre légende, audio, OCR et portions de vidéo ; signaler les preuves non envoyées au modèle.
 - [x] Détecter et conserver les pistes textuelles embarquées, avec origine et horodatages. Réutiliser une piste exploitable avant l’ASR quand l’option est activée.
 - [x] Proposer un échantillonnage par changements visuels, avec le même plafond d’envois. Vérifier sa pertinence pour les textes brefs lors du pilote.
-- [ ] Étudier découpage/reprise des vidéos longues ou volumineuses et la sélection d’un OCR/vision plus riche seulement lorsque nécessaire.
+- [x] Étudier le découpage et la reprise des médias longs, ainsi que le recours ciblé à la vision selon la couverture. [Décision](docs/EXPLOITATION-LONG-TERME.md#médias-longs).
 
 ## P2 — Conversation, recherche avancée et long terme
 
@@ -127,20 +125,26 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 ### Mesurer avant de passer au sémantique
 
 - [ ] Constituer vingt questions de souvenirs indépendantes des fiches et mesurer le moteur lexical ; proposition initiale : bonne source dans les trois premiers résultats sur au moins seize questions.
-- [ ] Si ce niveau est insuffisant, comparer lexical et recherche hybride multilingue ; conserver les preuves et mesurer les faux positifs.
-- [ ] Garder les embeddings comme index dérivé reconstruisible ; n’ajouter une base vectorielle séparée que si l’échelle mesurée le justifie.
+- [x] Définir les conditions d’un index sémantique dérivé et reconstruisible. [Critères](docs/EXPLOITATION-LONG-TERME.md#recherche-et-exports).
 
 ### Stockage, performances et maintenance
 
 - [x] Séparer import du catalogue historique et analyses par lots bornées avec les quotas existants.
-- [ ] Mesurer les copies/reconstructions de générations et la pagination HTTP sur un grand historique ; optimiser selon les résultats du NAS.
-- [ ] Hacher les médias en flux, réutiliser les empreintes connues et éviter de relire tout le corpus pour chaque nouvelle fiche.
-- [ ] Ajouter pagination côté interface et reconstruction ciblée ; mesurer recherche et mémoire avec un corpus représentatif avant une nouvelle base serveur.
-- [ ] Définir quotas, espace libre, rétention des médias/versions et conservation des traces ; ne pas supprimer automatiquement les preuves citées.
-- [ ] Définir le traitement des favoris supprimés et des pièces jointes remplacées. Actuellement les suppressions restent locales et les remplacements sont bloqués.
-- [ ] Prévoir migrations de schéma, vérification des dépendances et modèles dépréciés, tests périodiques de restauration et mise à jour.
-- [ ] Étudier les exports utiles vers AFFiNE/Wiki.js et une image Docker dans un registre privé si ces besoins se confirment.
+- [x] Mesurer copie, publication et pagination sur un catalogue de 2 002 sources synthétiques. [Mesures locales](docs/PILOTE.md#mesures-locales-de-référence).
+- [ ] Mesurer les copies/reconstructions et la pagination HTTP sur l’historique réel du NAS.
+- [x] Hacher en flux et réutiliser les empreintes des fichiers inchangés lors des publications, avec invalidation si les métadonnées du fichier changent.
+- [x] Paginer les sources côté HTTP et interface, réutiliser les exports Markdown des sources stables et mesurer copie et publication.
+- [ ] Relever latence de recherche et mémoire sur le corpus représentatif du NAS avant de choisir un nouveau moteur ou une base serveur.
+- [x] Définir quotas, réserve d’espace libre pour les téléchargements, conservation des versions et des traces.
+- [x] Définir le traitement des favoris absents et des pièces jointes remplacées, avec conservation des preuves locales.
+- [x] Documenter migrations, vérification des dépendances et modèles, mise à jour et restauration périodique. [Maintenance](docs/EXPLOITATION-LONG-TERME.md#maintenance).
+- [x] Étudier les exports ciblés vers AFFiNE et Wiki.js et les conditions d’un registre Docker privé. [Options](docs/EXPLOITATION-LONG-TERME.md#recherche-et-exports).
 
 ## Critère de passage à l’exploitation
 
 Les critères et charges indicatives sont dans l’[étude](docs/ETUDE-EXPLOITATION.md#critères-proposés-pour-donner-le-feu-vert-au-nas). Le chantier peut commencer sur l’architecture actuelle ; le feu vert à l’usage autonome demande la validation du lot P0, et non la seule existence du Compose.
+
+## Évolutions conditionnelles après le pilote
+
+- Si le profil Mac est retenu, exposer la transcription locale derrière un service authentifié et comparer faster-whisper et whisper.cpp sur les mêmes extraits. L’OCR Apple Vision peut faire l’objet du même raccordement.
+- Si le test de souvenirs passe sous le seuil proposé, comparer la recherche lexicale et une recherche hybride sur les mêmes questions, preuves et faux positifs.

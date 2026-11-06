@@ -11,12 +11,23 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
 import kararecall
 from publication import active_root
-from integrations import ServiceError,normalize_bookmark
+from integrations import Karakeep,ServiceError,normalize_bookmark
 from settings import Settings,initialize,load_env
 from worker import run_cycle,check_connections,redacted
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_download_respects_disk_reserve_before_requesting_media(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as name:
+            root=Path(name)
+            config=Settings(root=root,karakeep_url='https://example.invalid',storage_min_free_mb=32)
+            with patch('integrations.shutil.disk_usage',return_value=SimpleNamespace(free=31*1024**2)),patch('integrations.request') as request:
+                with self.assertRaisesRegex(ServiceError,'Espace libre insuffisant'):
+                    Karakeep(config).download('asset-id',root/'media.mp4')
+                request.assert_not_called()
+            self.assertFalse((root/'media.mp4.part').exists())
+
     def test_fresh_volume_starts_empty_and_preserves_existing_data(self):
         with tempfile.TemporaryDirectory() as name:
             root=Path(name)

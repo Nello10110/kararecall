@@ -20,6 +20,7 @@ Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, 
 | `KARAKEEP_URL_FILTER` | Sous-chaîne d’URL facultative ; ex. `instagram.com` ; vide = tous les favoris |
 | `SYNC_INTERVAL_SECONDS`, `WORKER_BATCH_SIZE` | Période et maximum de traitements par passage ; défaut 900 s et 3 |
 | `DOWNLOAD_MEDIA` | Téléchargement des vidéos et des PDF/images sans texte fourni par Karakeep ; défaut true |
+| `STORAGE_MIN_FREE_MB` | Espace libre réservé pendant les nouveaux téléchargements. Défaut 256 Mio |
 | `REUSE_SUBTITLES` | Détecte les pistes de sous-titres textuelles embarquées et les réutilise avant l’ASR ; défaut false |
 | `PDF_MAX_PAGES` | Nombre de pages analysées localement par PDF ; défaut 25, maximum 100 |
 | `PDF_OCR_ENABLED`, `PDF_OCR_MAX_PAGES` | OCR des pages sans texte via le service vision. Désactivé par défaut, plafond de 3 pages par PDF si activé, maximum 10 |
@@ -31,6 +32,7 @@ Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, 
 | `LLM_THINKING`, `VISION_THINKING` | Paramètre `thinking.type` facultatif ; profil DeepSeek : `disabled` |
 | `AI_TOKEN_LIMIT_PARAM` | `max_tokens` pour DeepSeek ; `max_completion_tokens` pour les serveurs le demandant |
 | `LLM_MAX_INPUT_CHARS` | Budget de texte source transmis à une synthèse ; défaut 24000 caractères |
+| `LLM_DOCUMENT_SECTIONS` | Nombre maximal de résumés de passages avant la synthèse d’un article ou d’un document long. Défaut 0, maximum 10 |
 | `ASR_BASE_URL`, `ASR_API_KEY`, `ASR_MODEL` | API `audio/transcriptions` compatible avec WAV/multipart/`verbose_json` |
 | `VISION_BASE_URL`, `VISION_API_KEY`, `VISION_MODEL` | API multimodale pour lire le texte visible ; URL/clé héritent du LLM si vides |
 | `VISION_INTERVAL_SECONDS`, `VISION_MAX_FRAMES` | Échantillonnage réparti sur la vidéo ; défaut minimum 5 s et maximum 12 images |
@@ -53,6 +55,8 @@ Voir le [guide import et DeepSeek](IMPORT-ET-DEEPSEEK.md). Renseigner les accès
 Avec `VISION_SAMPLE_MODE=changes`, le worker compare des images réduites environ toutes les demi-secondes en local. Il privilégie un changement par fenêtre tout en respectant l’espacement et le plafond d’images envoyées au modèle. Un texte très bref entre deux sondes ou une scène déjà chargée peut passer inaperçu. Le mode et l’intervalle sont conservés avec le résultat.
 
 ## PDF et images
+
+Avec `LLM_DOCUMENT_SECTIONS` activé, un texte long est découpé à proximité des paragraphes ou des espaces. Les passages sont répartis sur le document disponible. Chaque résumé intermédiaire est mis en cache et la synthèse finale cite les extraits originaux, avec page pour un PDF. La couverture indique la proportion de caractères représentés dans la synthèse. Le réglage ajoute jusqu’à un appel texte par passage aux appels habituels, soumis au même budget.
 
 Le worker télécharge l’original des PDF et images sans texte fourni par Karakeep lorsque `DOWNLOAD_MEDIA=true`. La limite est de 20 Mio par fichier, ou moins si `MEDIA_MAX_MB` est inférieur. L’original est accessible en téléchargement dans la fiche source. Les preuves restent liées à l’empreinte du fichier, y compris lorsqu’une pièce jointe est remplacée dans Karakeep.
 
@@ -82,7 +86,7 @@ docker compose up -d
 
 Un verrou empêche deux workers de modifier le même volume. La synchronisation parcourt toutes les pages de favoris à chaque passage pour détecter les modifications ; elle conserve les suppressions et ne modifie jamais Karakeep. Les identifiants servent à dédupliquer, les réponses brutes sont conservées par version et les tâches réussies ne sont pas rejouées sans changement de source ou de configuration du pipeline. Changer uniquement une clé n’invalide pas les résultats réussis ; les échecs reprendront après leur délai.
 
-Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Traitements. Le worker actualise son signal de présence pendant l’attente entre deux passages. La vue signale un état ancien et indique un espace disque faible sous 256 Mio disponibles sur le système de fichiers du volume. Le statut `done` d’une tâche signifie que les étapes **configurées** ont fini ; sans ASR/vision, il ne signifie pas qu’une vidéo a été analysée. Une erreur ASR laisse la vision progresser et publier ses résultats ; la synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `worker.py retry --source ID --stage asr|vision|document|llm|all` permet une reprise explicite. Une nouvelle pièce jointe remplaçant une vidéo locale est bloquée, avec conservation de l’ancienne version et de ses références ; la migration de versions n’est pas automatisée.
+Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Traitements. Le worker actualise son signal de présence pendant l’attente entre deux passages. La vue signale un état ancien et un espace libre inférieur à `STORAGE_MIN_FREE_MB`. Un téléchargement qui atteindrait ce seuil est interrompu. Le statut `done` signifie que les étapes configurées ont fini. L’interface affiche séparément la transcription et l’OCR réellement disponibles. Une erreur ASR laisse la vision progresser et publier ses résultats. La synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `worker.py retry --source ID --stage asr|vision|document|llm|all` permet une reprise explicite. [Politique de conservation et de versionnement](EXPLOITATION-LONG-TERME.md#conservation).
 
 Le web a une limite de 384 Mio et le worker de 768 Mio ; un seul média est traité à la fois. Les images utilisent `python:3.12-slim` et sont construites pour l’architecture du NAS. Le parcours web a été testé sous OrbStack Linux ARM64, autour de 21 Mio au repos avec le petit corpus de test. Ce n’est pas une mesure de charge du worker ni une garantie mémoire pour un gros corpus. Une limite trop basse peut provoquer un arrêt OOM, à diagnostiquer via `docker compose ps` et les journaux.
 
@@ -95,21 +99,22 @@ Pour un accès LAN direct, utiliser `KARARECALL_BIND_ADDRESS=0.0.0.0`. Pour un r
 Sauvegarder **le volume et `.env`**, séparément du dépôt. Le volume contient `data/` et `vault/`, dont `data/current.json`, toutes les générations, les caches et le journal d’usage ; il contient des données privées. Les anciens JSON à la racine ne représentent plus nécessairement la publication courante. Pour un instantané cohérent, arrêter les services avant de l’archiver :
 
 ```sh
-docker compose stop
+umask 077
+docker compose --profile automation stop
 docker compose run --rm --no-deps -T web tar -C /workspace -czf - data vault > kararecall-backup.tar.gz
-docker compose up -d
+cp -p .env .env.sauvegarde
 ```
 
-Restaurer dans un volume neuf, services arrêtés, puis vérifier l’intégrité avant de relancer :
+Relance les services utilisés avant la sauvegarde avec `docker compose up -d` ou `docker compose --profile automation up -d` selon ton installation.
+
+Restaure et vérifie dans un volume neuf, avec un projet Compose séparé. Choisis un nom de volume libre différent du volume utilisé en production.
 
 ```sh
-docker compose stop
-docker compose run --rm --no-deps -T web tar -C /workspace -xzf - < kararecall-backup.tar.gz
-docker compose run --rm --no-deps -T web python verify_storage.py
-docker compose up -d
+KARARECALL_VOLUME_NAME=kararecall-restore-test docker compose -p kararecall-restore run --rm --no-deps -T web tar -C /workspace -xzf - < kararecall-backup.tar.gz
+KARARECALL_VOLUME_NAME=kararecall-restore-test docker compose -p kararecall-restore run --rm --no-deps -T web python verify_storage.py
 ```
 
-Pour importer le POC déjà présent sur une autre machine, créer une archive des dossiers `data/` et `vault/` depuis ce dossier, puis utiliser la même restauration. Exclure `data/models/` et les caches pour éviter de copier les modèles locaux ; conserver les JSON, réponses brutes, vérifications, médias et extractions. Ne jamais passer cette archive par Git. Le worker garde les fiches éditoriales existantes et remplace uniquement ses propres synthèses de la source traitée.
+Pour importer le POC déjà présent sur une autre machine, crée une archive des dossiers `data/` et `vault/` depuis ce dossier, puis utilise la même restauration. Exclure `data/models/` et les caches pour éviter de copier les modèles locaux. Conserve les JSON, réponses brutes, vérifications, médias et extractions. Transfère l’archive par ton réseau privé. Le worker conserve les fiches relues et remplace ses propres synthèses. Pour activer un volume restauré, arrête d’abord les services de production, indique son nom dans `KARARECALL_VOLUME_NAME` et redémarre avec le profil utilisé. Garde le volume précédent jusqu’à validation.
 
 Ne pas utiliser `docker compose down -v` sur l’installation réelle : cela supprime son volume de données. Un simple `down` conserve le volume. Changer `KARARECALL_VOLUME_NAME` pointe vers une autre bibliothèque. Changer `PUID`/`PGID` après création du volume ne réattribue pas automatiquement ses fichiers ; conserver les mêmes valeurs ou migrer les droits lors d’un arrêt.
 

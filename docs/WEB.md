@@ -7,7 +7,7 @@ L’interface est servie par `web_server.py`, sans compilation ni dépendance ti
 - **Recherche** : mots ou description d’un souvenir, classement lexical, filtres outils/sources.
 - **Mes outils** : description, utilité, fonctionnement, limites, liens et preuves. Les synthèses automatiques sont marquées « À relire ».
 - **Revue des fiches** : corriger le nom, le résumé, les rubriques et les liens, marquer la fiche comme relue ou regrouper deux fiches du même outil. Les citations existantes et les versions précédentes restent conservées. Une page externe consultée peut recevoir une note attribuée après revue par l’utilisateur.
-- **Sources** : favoris conservés localement, texte disponible, état réel des extractions.
+- **Sources** : favoris conservés localement, texte disponible, état réel des extractions. Les listes Sources et Traitements chargent 24 entrées à la fois, avec filtrage avant pagination.
 - **Preuves** : recherche et surlignage dans la transcription, captures horodatées et ouverture du passage depuis les résultats globaux. Les preuves de document affichent le numéro de page du PDF ou l’aperçu de l’image.
 - **Traitements** : présence des médias, transcription/OCR et état du dernier passage du worker. Actualiser le catalogue pour charger les nouveaux résultats. Un bouton permet de demander l’import de tout l’historique ; il ne lance pas d’analyse IA et ne modifie pas Karakeep. La demande est persistée et exécutée par le worker. Les analyses suivent la configuration et les quotas habituels. Elle affiche le budget comptabilisé, les appels, les sources en attente et les étapes en erreur/non applicables, et signale un état de collecte trop ancien.
 - **Approfondir** : export Markdown ou copie du contexte destiné à un autre assistant ; aucune requête IA n’est lancée par ce bouton. Un champ sélectionnable remplace le presse-papiers si nécessaire.
@@ -21,6 +21,8 @@ Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont 
 | `/api/health` | Santé du serveur HTTP |
 | `/api/control` | Jeton anti-CSRF de la session web et état de l’import global |
 | `/api/catalog` | Outils, sources, compteurs et état public du worker |
+| `/api/catalog?compact=1` | Vue utilisée au démarrage, avec les sources récentes et la première source de chaque fiche |
+| `/api/sources?limit=24&offset=0&stage=all&q=` | Résumés paginés, ordre antéchronologique, filtre d’état et de titre, auteur ou tag. Maximum 100 par page |
 | `/api/search?q=…&scope=all` | Recherche ; scope accepte aussi `tools` ou `sources` |
 | `/api/tools/ID` | Fiche d’outil |
 | `/api/research/ID` | Trace de recherche web de la fiche, si elle existe |

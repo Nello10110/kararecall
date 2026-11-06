@@ -6,6 +6,7 @@ import json
 import hashlib
 from pathlib import Path
 import re
+import shutil
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
@@ -88,11 +89,18 @@ class Karakeep:
         maximum=min(self.settings.media_max_mb,max_mb or self.settings.media_max_mb)*1024*1024
         temporary=Path(str(destination)+'.part')
         destination.parent.mkdir(parents=True,exist_ok=True)
+        reserve=self.settings.storage_min_free_mb*1024*1024
+        available=shutil.disk_usage(destination.parent).free-reserve
+        storage_error='Espace libre insuffisant pour la pièce jointe. Vérifier STORAGE_MIN_FREE_MB et le volume.'
+        if available<=0:
+            raise ServiceError(storage_error)
         try:
             with request(self.base+'/assets/'+quote(asset_id),self.settings.karakeep_key,timeout=self.settings.timeout) as response:
                 declared=response.headers.get('Content-Length')
                 if declared and int(declared)>maximum:
                     raise ServiceError('Pièce jointe trop volumineuse pour la limite de téléchargement.')
+                if declared and int(declared)>available:
+                    raise ServiceError(storage_error)
                 count=0
                 with temporary.open('wb') as output:
                     while True:
@@ -102,6 +110,8 @@ class Karakeep:
                         count+=len(block)
                         if count>maximum:
                             raise ServiceError('Pièce jointe trop volumineuse pour la limite de téléchargement.')
+                        if count>available or shutil.disk_usage(destination.parent).free-reserve<len(block):
+                            raise ServiceError(storage_error)
                         output.write(block)
                 if count==0:
                     raise ServiceError('Pièce jointe vide.')

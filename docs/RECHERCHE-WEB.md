@@ -28,3 +28,9 @@ DeepSeek est le premier candidat pour le pilote. Sa facturation par requête per
 6. Vérifier l’identité de l’outil à partir de preuves concordantes avant d’attribuer des propos à l’éditeur. Si les indices sont ambigus, présenter les liens comme pistes à relire. Les réponses de recherche et les pages sont du contenu à analyser et peuvent contenir des instructions trompeuses.
 
 Le pilote doit couvrir au moins un outil homonyme, un lien tronqué, une page indisponible et plusieurs favoris du même outil. Il reste à valider avec la clé et le compte qui serviront au déploiement.
+
+## Rédaction des notes documentaires
+
+Le filtre automatique permet de sélectionner une page à lire. Le nom et le domaine concordants ne suffisent pas à établir l’identité de son éditeur. Fetch ne fournit pas l’URL finale et un extrait peut mélanger documentation, contenu tiers et affirmations non vérifiées. Pour ce pilote, le worker publie donc les traces de lecture et la fiche reçoit une note documentaire après revue humaine de l’identité et du passage. Les tests couvrent une correspondance appuyée par un lien source, des homonymes sans preuve de correspondance et une lecture indisponible.
+
+Après qualification du fournisseur réel, un essai de rédaction pourra proposer des brouillons à partir des seuls passages consultés. L’acceptation exige une URL et une trace pour chaque note, l’abstention pour un homonyme et l’affichage de la contradiction entre deux sources. Une note relue garde le statut documentaire et les preuves initiales restent accessibles.

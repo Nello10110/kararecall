@@ -52,7 +52,19 @@ class WebTests(unittest.TestCase):
         self.assertEqual(status,200)
         results=json.loads(body)['results']
         self.assertEqual(results[0]['id'],'tv-detox')
+        self.assertEqual(results[0]['source_summary']['id'],results[0]['source_ids'][0])
         self.assertTrue(all(r['kind']=='outil' for r in results))
+
+    def test_sources_are_paginated_and_filtered_before_slicing(self):
+        first=json.loads(self.request('/api/sources?limit=1')[2])
+        second=json.loads(self.request('/api/sources?limit=1&offset=1')[2])
+        self.assertEqual(first['total'],2)
+        self.assertNotEqual(first['sources'][0]['id'],second['sources'][0]['id'])
+        self.assertEqual(json.loads(self.request('/api/sources?stage=partial')[2])['total'],0)
+        self.assertEqual(json.loads(self.request('/api/sources?q=__absent__')[2])['total'],0)
+        self.assertEqual(self.request('/api/sources?limit=101')[0],400)
+        self.assertEqual(self.request('/api/sources?offset=-1')[0],400)
+        self.assertEqual(json.loads(self.request('/api/catalog?compact=1')[2])['stats']['sources'],2)
 
     def test_source_returns_actual_timed_evidence(self):
         status,_,body=self.request('/api/sources/demo-tv')
@@ -103,7 +115,7 @@ class WebTests(unittest.TestCase):
         thread=threading.Thread(target=auth_server.serve_forever,daemon=True)
         thread.start()
         try:
-            for path in ['/','/api/catalog','/assets/data/media/demo-model.mp4']:
+            for path in ['/','/api/catalog','/api/sources','/assets/data/media/demo-model.mp4']:
                 self.assertEqual(self.request(path,server=auth_server)[0],401)
             token=base64.b64encode(b'paul:test-password').decode()
             self.assertEqual(self.request('/api/catalog',{'Authorization':'Basic '+token},server=auth_server)[0],200)

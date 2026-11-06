@@ -11,7 +11,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -v
-      - run: python -m compileall -q kararecall.py kararecall_mcp.py web_server.py settings.py integrations.py worker.py worker_media.py worker_documents.py web_research.py editorial.py publication.py usage.py controls.py scripts
+      - run: python -m compileall -q kararecall.py kararecall_mcp.py web_server.py settings.py integrations.py worker.py worker_media.py worker_documents.py web_research.py editorial.py publication.py usage.py controls.py reading.py scripts
       - run: python scripts/check_container.py
   media:
     runs-on: ubuntu-latest
