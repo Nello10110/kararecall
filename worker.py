@@ -155,7 +155,7 @@ def pipeline_key(source,settings):
         parts.append(extraction_config(source['asset_type'],settings))
         parts.append(settings.media_max_mb)
     if video_asset(source) and settings.reuse_subtitles:
-        parts.append(['subtitle-track-v1',settings.media_max_seconds])
+        parts.append(['subtitle-track-v2',settings.media_max_seconds])
     if video_asset(source) and settings.vision_model and settings.vision_sample_mode=='changes':
         parts.append('vision-changes-v1')
     if not video_asset(source) and settings.llm_enabled and settings.llm_document_sections:

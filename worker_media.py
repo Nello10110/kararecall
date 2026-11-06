@@ -13,6 +13,7 @@ from integrations import chat, json_result, request, ServiceError
 
 
 TEXT_SUBTITLES={'mov_text','subrip','srt','ass','ssa','webvtt','text'}
+PLAIN_TEXT_SUBTITLES={'subrip','srt','text'}
 
 
 def extract_subtitles(media,output,settings):
@@ -21,10 +22,10 @@ def extract_subtitles(media,output,settings):
     digest=file_hash(media)
     target=output/'subtitles.json'
     previous=kararecall.read_json(target,{})
-    if (previous.get('media_sha256')==digest and previous.get('engine')=='pyav-text-track-v1'
+    if (previous.get('media_sha256')==digest and previous.get('engine')=='pyav-text-track-v2'
             and previous.get('max_seconds')==settings.media_max_seconds):
         return previous['status']
-    result={'engine':'pyav-text-track-v1','media_sha256':digest,'max_seconds':settings.media_max_seconds,
+    result={'engine':'pyav-text-track-v2','media_sha256':digest,'max_seconds':settings.media_max_seconds,
             'status':'not_applicable','segments':[]}
     with av.open(str(media)) as container:
         tracks=[stream for stream in container.streams.subtitles
@@ -43,28 +44,36 @@ def extract_subtitles(media,output,settings):
                     if index>=3000 or len(result['segments'])>=1000:
                         result['status']='partial'
                         break
-                    if packet.pts is None or packet.time_base is None:
+                    if not packet.size:
                         continue
-                    subset=track.decode2(packet)
-                    if subset is None:
+                    if packet.pts is None or packet.time_base is None:
+                        result['status']='partial'
                         continue
                     base=float(packet.pts*packet.time_base)-origin
-                    start=max(0,base+subset.start_display_time/1000)
-                    end=base+subset.end_display_time/1000
-                    if (end<=start or subset.end_display_time>=2**31) and packet.duration:
-                        end=base+float(packet.duration*packet.time_base)
+                    packet_end=base+float(packet.duration*packet.time_base) if packet.duration else base
+                    if track.codec_context.name in PLAIN_TEXT_SUBTITLES and packet.duration:
+                        start,end=max(0,base),packet_end
+                        text=bytes(packet).decode('utf-8','replace').strip()
+                    else:
+                        subset=track.decode2(packet)
+                        if subset is None:
+                            continue
+                        start=max(0,base+subset.start_display_time/1000)
+                        end=packet_end if packet.duration else base+subset.end_display_time/1000
+                        text='\n'.join((getattr(row,'dialogue',b'') or getattr(row,'text',b'')).decode('utf-8','replace')
+                                       for row in subset).strip()
+                    if not text:
+                        continue
                     if end>settings.media_max_seconds:
                         result['status']='partial'
                         break
                     if not 0<=start<end:
+                        result['status']='partial'
                         continue
-                    text='\n'.join(row.dialogue.decode('utf-8','replace') for row in subset
-                                   if getattr(row,'dialogue',b'')).strip()
                     if len(text)>4000:
                         result['status']='partial'
                         break
-                    if text:
-                        result['segments'].append({'start':start,'end':end,'text':text})
+                    result['segments'].append({'start':start,'end':end,'text':text})
                 if result['status']!='partial' and result['segments']:
                     result['status']='complete'
     kararecall.write_json(target,result)

@@ -64,6 +64,7 @@ class MediaTests(unittest.TestCase):
         import shutil
         from publication import active_root
         from worker import run_cycle
+        from worker_media import extract_subtitles
 
         root=self.config.root
         srt=root/'embedded.srt'
@@ -79,9 +80,13 @@ class MediaTests(unittest.TestCase):
                 for packet in stream.encode(frame):output.mux(packet)
             for packet in stream.encode():output.mux(packet)
             for packet in source.demux(source.streams.subtitles[0]):
-                if packet.dts is not None:
+                if packet.pts is not None:
+                    packet.dts=packet.pts
                     packet.stream=subtitles
                     output.mux(packet)
+        inspection=root/'subtitle-inspection'
+        state=extract_subtitles(video_path,inspection,self.config)
+        self.assertEqual(state,'complete',kararecall.read_json(inspection/'subtitles.json'))
         self.config.sync_enabled=True
         self.config.karakeep_url=self.config.asr_url
         self.config.karakeep_key='fixture-only'
@@ -96,7 +101,7 @@ class MediaTests(unittest.TestCase):
             self.assertEqual(run_cycle(self.config)['processed'],1)
         self.assertEqual(self.calls,[])
         source=kararecall.read_json(active_root(root)/'data/catalog.json')['sources'][0]
-        self.assertEqual(source['stages']['asr'],'subtitles_reused')
+        self.assertEqual(source['stages']['asr'],'subtitles_reused',source['stages'])
         self.assertFalse(source['processing']['audio_transcribed'])
         proof=next(row for row in source['evidence'] if row['kind']=='subtitle')
         self.assertEqual((proof['start'],proof['end']),(1.0,3.5))
