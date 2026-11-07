@@ -181,3 +181,11 @@ Les critères et charges indicatives sont dans l’[étude](docs/ETUDE-EXPLOITAT
 - [x] Recherche complémentaire par outil ou en masse ; description française tirée uniquement de pages lues et citées.
 - [x] Compteurs séparés : résumés IA de sources et vidéos avec transcription + OCR réellement terminés.
 - [ ] Qualifier ces nouvelles commandes et la fidélité des traductions avec les modèles et les contenus réels du NAS.
+
+### Correctif : paroles disponibles pendant une pause de vision
+
+- [x] Afficher les paroles françaises indépendamment du résumé IA, avec lecture compatible des métadonnées de langue des anciennes générations.
+- [x] Expliquer sur la source les étapes terminées, en pause et en attente, sans présenter une collecte partielle comme une analyse vidéo complète.
+- [x] Distinguer les limites journalière, mensuelle et budgétaire sans les contourner ni remettre le journal d’usage à zéro.
+- [x] Ajouter une reprise ciblée de la lecture de l’écran, avec réutilisation des autres extractions valides.
+- [x] Reproduire le cas de huit segments français, sans résumé et avec vision en pause, sur données fictives.

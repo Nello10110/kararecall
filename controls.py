@@ -73,9 +73,10 @@ def action_status(root):
     return {**value,'library_paused':library_paused(root)}
 
 
-def request_action(root,kind,source_id=None,tool_id=None,confirmation=None):
+def request_action(root,kind,source_id=None,tool_id=None,confirmation=None,stage='all'):
     from publication import active_root
     if kind not in ('llm','refresh','research','clear'):raise ValueError('Commande inconnue.')
+    if stage not in ('all','asr','vision','document','llm') or (kind!='refresh' and stage!='all'):raise ValueError('Étape de reprise invalide.')
     if source_id is not None and (not isinstance(source_id,str) or len(source_id)>150):raise ValueError('Source invalide.')
     if tool_id is not None and (kind!='research' or not isinstance(tool_id,str)):raise ValueError('Outil invalide.')
     if kind=='clear' and (confirmation!='VIDER' or source_id or tool_id):raise ValueError('Confirmation VIDER requise.')
@@ -83,7 +84,7 @@ def request_action(root,kind,source_id=None,tool_id=None,confirmation=None):
         data=action_status(root);jobs=data['jobs']
         if kind!='clear' and any(row['kind']=='clear' and row['state'] in ('queued','running') for row in jobs):
             raise ValueError('Le vidage de la bibliothèque est en cours.')
-        current=next((row for row in jobs if row['kind']==kind and row.get('source_id')==source_id and row.get('tool_id')==tool_id and row['state'] in ('queued','running','paused')),None)
+        current=next((row for row in jobs if row['kind']==kind and row.get('source_id')==source_id and row.get('tool_id')==tool_id and row.get('stage','all')==stage and row['state'] in ('queued','running','paused')),None)
         if current:return current
         if kind!='clear' and sum(row['state'] in ('queued','running','paused') for row in jobs)>=10:raise ValueError('La file contient déjà dix commandes actives.')
         catalogue=kararecall.read_json(active_root(root)/'data/catalog.json',{'sources':[],'entities':[]})
@@ -102,7 +103,7 @@ def request_action(root,kind,source_id=None,tool_id=None,confirmation=None):
                 kararecall.write_json(root/'data/control/history.json',history)
             kararecall.write_json(root/'data/control/library.json',{'paused':True})
             ids=['library']
-        job={'id':uuid.uuid4().hex,'kind':kind,'source_id':source_id,'tool_id':tool_id,'ids':ids,
+        job={'id':uuid.uuid4().hex,'kind':kind,'source_id':source_id,'tool_id':tool_id,'stage':stage,'ids':ids,
              'state':'queued','cursor':0,'total':len(ids),'failed':0,'requested_at':now(),
              'message':'Commande enregistrée ; en attente du worker.'}
         active=[row for row in jobs if row['state'] in ('queued','running','paused')]
@@ -137,7 +138,7 @@ def process_actions(settings):
                 if job['kind']=='clear':clear_library(settings)
                 elif job['kind']=='llm':run_local_llm(settings,target,identifier)
                 elif job['kind']=='refresh':
-                    result=run_cycle(replace(settings,sync_enabled=True),force_id=target,force_stage='resume' if job.get('resuming') else 'all')
+                    result=run_cycle(replace(settings,sync_enabled=True),force_id=target,force_stage='resume' if job.get('resuming') else job.get('stage','all'))
                     if result['failed']:
                         from publication import active_root
                         sources=kararecall.read_json(active_root(settings.root)/'data/sources.json',[])

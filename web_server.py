@@ -18,15 +18,31 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 import kararecall
 from settings import initialize, integer, boolean
-from publication import active_root
+from publication import active_root, file_hash
 from controls import history_status, request_history, action_status, request_action
-from curation import short_text, clean_text
+from curation import short_text, clean_text, evidence_presentation, original_french_title
 from editorial import EditConflict, edit_tool, revision
 from worker_documents import attachment_extension, attachment_target
 import digests
 
 ROOT = kararecall.ROOT
 WEB = Path(__file__).resolve().parent / 'web'
+
+
+def source_payload(source,root):
+    """Read language metadata for old generations without rewriting any published file."""
+    processing=dict(source['processing'])
+    directory=root/'data/extracted'/source['id']
+    media=root/'data/media'/(source['id']+'.mp4')
+    for filename,field in [('transcript.json','audio_language'),('subtitles.json','subtitle_language')]:
+        if processing.get(field) not in (None,'','unknown'):continue
+        artifact=kararecall.read_json(directory/filename,{})
+        if artifact.get('status')=='complete' and media.is_file() and artifact.get('media_sha256')==file_hash(media):
+            processing[field]=artifact.get('language','unknown')
+    return {**source,'processing':processing,'evidence':[
+        {**row,'display_text':clean_text(row['text']),
+         'presentation':evidence_presentation(source,row,processing.get('audio_language'),processing.get('subtitle_language'))}
+        for row in source['evidence']]}
 
 
 def source_summary(source):
@@ -39,7 +55,7 @@ def source_summary(source):
     images = [e for e in current if e.get('image')]
     preferred = next((e for e in images if e.get('start',0) >= 14), images[0] if images else None)
     return {key: source[key] for key in ('id', 'url', 'created_at', 'tags', 'processing')} | {
-        'title': short_text(source.get('reading',{}).get('title') or source.get('reading',{}).get('text') or ('Vidéo enregistrée' if source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[])) else 'Source enregistrée'),80),
+        'title': short_text(source.get('reading',{}).get('title') or source.get('reading',{}).get('text') or original_french_title(source['title']) or ('Vidéo enregistrée' if source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[])) else 'Source enregistrée'),80),
         'summary':short_text(source.get('reading',{}).get('text') or 'Résumé français en attente de traitement.'),
         'original_title':short_text(caption,160), 'author': author.strip(' @'),
         'thumbnail': '/assets/' + preferred['image'] if preferred else None,
@@ -243,7 +259,7 @@ def make_handler(corpus, username='', password=''):
                 self.connection.settimeout(10)
                 payload=json.loads(self.rfile.read(length))
                 if action_command:
-                    if not isinstance(payload,dict) or set(payload)-{'kind','source_id','tool_id','confirmation'}:raise ValueError('Commande invalide.')
+                    if not isinstance(payload,dict) or set(payload)-{'kind','source_id','tool_id','confirmation','stage'}:raise ValueError('Commande invalide.')
                     return self.send_json(request_action(corpus.root,**payload),202)
                 if digest_command:
                     if not isinstance(payload,dict):raise ValueError('Objet JSON attendu.')
@@ -391,7 +407,7 @@ def make_handler(corpus, username='', password=''):
                     entity = entities[sid]
                     return self.send_json({'entity': entity, 'revision':revision(entity), 'sources': [source_summary(sources[s]) for s in entity['source_ids']]})
                 source = sources[sid]
-                return self.send_json({'source': {**source,'evidence':[{**row,'display_text':clean_text(row['text'])} for row in source['evidence']]}, 'summary': source_summary(source),
+                return self.send_json({'source': source_payload(source,view_root), 'summary': source_summary(source),
                     'entities': [e for e in entities.values() if sid in e['source_ids']],
                     'media_url': '/assets/data/media/' + sid + '.mp4' if source['processing']['media_downloaded'] else None})
             match = re.fullmatch(r'/download/document/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]{1,120})', path)

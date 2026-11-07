@@ -35,12 +35,19 @@ class UsageLedger:
                 and total+self.settings.call_reserve_usd<=self.settings.monthly_budget_usd+1e-9)
 
     def summary(self):
-        month=datetime.now(timezone.utc).strftime('%Y-%m')
+        instant=datetime.now(timezone.utc)
+        month=instant.strftime('%Y-%m')
         with self.connect() as db:
             count,accounted,measured=db.execute('SELECT count(*),coalesce(sum(accounted_usd),0),coalesce(sum(measured_usd),0) FROM calls WHERE month=?',(month,)).fetchone()
+            daily=db.execute('SELECT count(*) FROM calls WHERE day=?',(instant.strftime('%Y-%m-%d'),)).fetchone()[0]
             unknown=db.execute("SELECT count(*) FROM calls WHERE month=? AND measured_usd IS NULL",(month,)).fetchone()[0]
             web_count,web_total=db.execute("SELECT count(*),coalesce(sum(accounted_usd),0) FROM calls WHERE month=? AND stage IN ('web-search','web-fetch')",(month,)).fetchone()
-        return {'month':month,'calls':count,'accounted_usd':round(accounted,6),'measured_estimate_usd':round(measured,6),
+        reasons=[]
+        if daily>=self.settings.daily_call_limit:reasons.append('daily_calls')
+        if count>=self.settings.monthly_call_limit:reasons.append('monthly_calls')
+        if accounted+self.settings.call_reserve_usd>self.settings.monthly_budget_usd+1e-9:reasons.append('monthly_budget')
+        return {'month':month,'calls':count,'daily_calls':daily,'daily_call_limit':self.settings.daily_call_limit,
+                'monthly_call_limit':self.settings.monthly_call_limit,'blocked_by':reasons,'accounted_usd':round(accounted,6),'measured_estimate_usd':round(measured,6),
                 'unpriced_calls':unknown,'limit_usd':self.settings.monthly_budget_usd,
                 'web_calls':web_count,'web_accounted_usd':round(web_total,6)}
 
@@ -53,8 +60,12 @@ class UsageLedger:
             db.execute('BEGIN IMMEDIATE')
             count,total=db.execute('SELECT count(*),coalesce(sum(accounted_usd),0) FROM calls WHERE month=?',(month,)).fetchone()
             daily=db.execute('SELECT count(*) FROM calls WHERE day=?',(day,)).fetchone()[0]
-            if count>=config.monthly_call_limit or daily>=config.daily_call_limit or total+reservation>config.monthly_budget_usd+1e-9:
-                raise BudgetExceeded('Quota ou budget IA atteint ; aucun nouvel appel envoyé.')
+            if daily>=config.daily_call_limit:
+                raise BudgetExceeded('Quota journalier d’appels IA atteint ; reprise après minuit UTC, sans nouvel appel envoyé.')
+            if count>=config.monthly_call_limit:
+                raise BudgetExceeded('Quota mensuel d’appels IA atteint ; aucun nouvel appel envoyé.')
+            if total+reservation>config.monthly_budget_usd+1e-9:
+                raise BudgetExceeded('Budget mensuel IA insuffisant pour réserver le prochain appel ; aucun nouvel appel envoyé.')
             cursor=db.execute('INSERT INTO calls VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?)',(instant.isoformat(),month,day,stage,
                 hashlib.sha256(provider.encode()).hexdigest()[:16],model,'reserved',None,None,audio_seconds,reservation,None))
             identifier=cursor.lastrowid
