@@ -68,6 +68,10 @@ Chaque favori peut recevoir un résumé de lecture sourcé ; les articles sans o
 
 Les fiches générées automatiquement portent **À relire**. Leurs propos sont attribués aux sources. Les liens relevés restent non vérifiés ; une vérification documentaire exige une trace externe explicite. La recherche est lexicale, avec normalisation des accents et rapprochement orthographique, sans embeddings.
 
+## Veille hebdomadaire et mensuelle
+
+L’onglet **Veille** prépare des bulletins illustrés à partir des découvertes de la période. Relis les présentations, choisis les contenus et les images, puis valide l’édition. La préparation peut être programmée sur le NAS. Le mail SMTP et le webhook s’activent dans le `.env` du worker. Le RSS privé et les exports HTML/Markdown sont disponibles, avec impression PDF depuis le navigateur. Les bulletins sont conservés dans le volume Docker persistant par défaut. [Guide des bulletins](docs/VEILLE.md).
+
 ## Architecture et stockage
 
 ```text

@@ -8,6 +8,8 @@
 !worker_media.py
 !worker_documents.py
 !reading.py
+!digests.py
+!digest_delivery.py
 !web_research.py
 !editorial.py
 !kararecall_mcp.py

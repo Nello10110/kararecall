@@ -164,3 +164,7 @@ docker compose up -d --build
 Compare `.env.example` et `.env` pour repérer les nouveaux paramètres. Conserve tes valeurs. Pour une installation par ZIP, remplace le code en conservant ton `.env`, puis reconstruis avec la seconde commande.
 
 Les données restent dans le volume Docker `kararecall-storage`. Sauvegarde le volume et ton `.env` en suivant la [procédure de sauvegarde](HOMELAB.md#sauvegarde-et-restauration). Pour arrêter les services en conservant les données, utilise `docker compose stop`.
+
+## Activer la veille
+
+Après le premier import, ouvre **Veille** pour préparer un bulletin hebdomadaire ou mensuel. Les éditions sont conservées dans le même volume persistant que les favoris. La planification, le mail et les autres formats se configurent avec le [guide des bulletins](VEILLE.md).

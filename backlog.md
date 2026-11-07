@@ -107,17 +107,21 @@ Déjà disponible : la recherche globale inclut transcriptions et OCR ; la trans
 
 Produire un petit article illustré, structuré et agréable à lire, pour retrouver les découvertes de la période et préparer leur diffusion.
 
-- [ ] Définir le périmètre du bulletin parmi les favoris ajoutés, analysés ou effectivement consultés pendant la période. Si les consultations sont retenues, prévoir leur suivi explicite dans l’interface. Inclure les outils, sites, articles, notes et autres contenus pertinents.
-- [ ] Proposer un rendez-vous hebdomadaire et un récapitulatif mensuel, activables séparément, avec jour, heure et fuseau configurables, ainsi qu’une génération manuelle depuis l’interface.
-- [ ] Construire un article avec titre, courte introduction, rubriques thématiques et quelques lignes par découverte. Pour un outil, présenter ce qu’il fait, son utilité et un cas d’usage lorsque les sources le permettent. Ajouter un lien vers la fiche et la source originale.
-- [ ] Accompagner les présentations de petites images issues des preuves ou d’illustrations sourcées, avec légende et texte alternatif. Prévoir un rendu lisible sur mobile, y compris lorsque les images sont absentes ou bloquées.
-- [ ] Regrouper les favoris parlant du même outil et distinguer les nouveautés des compléments. Donner au bulletin mensuel une synthèse des thèmes et découvertes marquantes, avec une longueur réglable.
-- [ ] Générer les textes à partir des fiches et preuves conservées, avec attribution des affirmations et liens vers les références. Réutiliser les résumés existants et appliquer les budgets IA aux éventuels appels supplémentaires.
-- [ ] Comparer les canaux de diffusion selon le confort de lecture et le partage souhaité. Étudier le mail, une page de veille dans KaraRecall, un flux RSS privé, les exports HTML/Markdown/PDF et une messagerie via webhook. Choisir les premiers canaux après aperçu d’un bulletin.
-- [ ] Permettre de prévisualiser, corriger et sélectionner les contenus et images partageables avant diffusion. Configurer les destinataires et accès de diffusion via les paramètres privés de l’installation, avec activation explicite des envois automatiques.
-- [ ] Conserver les éditions et leur état de génération ou d’envoi. Dédupliquer les envois par période et destination, gérer les reprises et préciser le comportement en l’absence de nouveautés.
+- [x] Sélectionner les favoris ajoutés, traités ou consultés, avec suivi des ouvertures sur activation explicite. Inclure outils, sites, articles, notes et autres contenus.
+- [x] Proposer un rendez-vous hebdomadaire et un récapitulatif mensuel, activables séparément, avec jour, heure et fuseau configurables, ainsi qu’une génération manuelle depuis l’interface.
+- [x] Construire un article avec titre, courte introduction, rubriques thématiques et quelques lignes par découverte. Pour un outil, présenter ce qu’il fait, son utilité et un cas d’usage lorsque les sources le permettent. Ajouter un lien vers la fiche et la source originale.
+- [x] Accompagner les présentations de petites images issues des preuves ou d’illustrations sourcées, avec légende et texte alternatif. Prévoir un rendu lisible sur mobile, y compris lorsque les images sont absentes ou bloquées.
+- [x] Regrouper les favoris parlant du même outil et distinguer les nouveautés des compléments. Donner au bulletin mensuel une synthèse des thèmes et découvertes marquantes, avec une longueur réglable.
+- [x] Générer les textes à partir des fiches et preuves conservées, avec attribution des affirmations et liens vers les références. Réutiliser les résumés existants et appliquer les budgets IA aux éventuels appels supplémentaires.
+- [x] Fournir la page Veille, le mail SMTP, un RSS privé, les exports HTML/Markdown et l’impression PDF dans le navigateur. Proposer un webhook JSON pour les automatisations et messageries.
+- [x] Permettre de prévisualiser, corriger et sélectionner les contenus et images partageables avant diffusion. Configurer les destinataires et accès de diffusion via les paramètres privés de l’installation, avec activation explicite des envois automatiques.
+- [x] Conserver les éditions et leur état de génération ou d’envoi. Dédupliquer les envois par période et destination, gérer les reprises et préciser le comportement en l’absence de nouveautés.
 
 Le bulletin doit se lire en quelques minutes, présenter les découvertes avec leurs illustrations et références, puis pouvoir être relu et exporté pour diffusion. Une reprise doit préserver l’édition et son suivi d’envoi.
+
+La génération reprend les résumés existants. Le mail et le webhook exigent une configuration et une édition validée. Le [guide Veille](docs/VEILLE.md) détaille les réglages et limites.
+
+- [ ] Qualifier le relais SMTP ou webhook réel et la lecture RSS sur le NAS, puis ajuster la présentation après les premiers bulletins.
 
 ### Couverture et traitements économes
 

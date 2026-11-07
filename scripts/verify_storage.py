@@ -9,6 +9,7 @@ import sys
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import kararecall
+import digests
 from publication import active_root,file_hash
 from worker_documents import attachment_target
 
@@ -53,7 +54,12 @@ def verify(root):
             try:
                 if connection.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise ValueError('État SQLite incohérent')
             finally:connection.close()
-    return {'status':'ok','versioned':selected!=root,'sources':len(lookup),'tools':len(catalog['entities']),'proofs':proofs}
+    editions=digests.list_editions(root)
+    for edition in editions:
+        for item in edition['items']:
+            if item['image']:digests.image_bytes(root,item['image'])
+    return {'status':'ok','versioned':selected!=root,'sources':len(lookup),'tools':len(catalog['entities']),
+            'proofs':proofs,'digests':len(editions)}
 
 
 def main():

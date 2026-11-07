@@ -341,6 +341,7 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                                     budget_pause |= isinstance(exc,BudgetExceeded)
                                     ordinary_error |= not isinstance(exc,BudgetExceeded)
                         source['stages']=stages
+                        source['processed_at']=now()
                         source['pipeline_fingerprint']=digest
                         source['processing_result']='partial' if errors else 'complete'
                         source['processing_error']=' ; '.join(errors)[:400]
@@ -394,13 +395,25 @@ def check_connections(settings):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('command',choices=['once','loop','check','retry','usage','import-history','research'])
+    parser.add_argument('command',choices=['once','loop','check','retry','usage','import-history','research','digest-generate','digest-run'])
+    parser.add_argument('--kind',choices=['weekly','monthly'],default='weekly')
+    parser.add_argument('--anchor',help='Date ISO située dans la période qui suit le bulletin')
     parser.add_argument('--source',help='ID de la source à retraiter explicitement')
     parser.add_argument('--stage',choices=['all','asr','vision','document','llm'],default='all')
     parser.add_argument('--tool',help='Identifiant de fiche pour une recherche web ciblée')
     parser.add_argument('--refresh',action='store_true',help='Relancer explicitement la recherche de la fiche')
     args=parser.parse_args()
     settings=Settings.from_env()
+    if args.command=='digest-generate':
+        import digests
+        initialize(settings.root)
+        edition=digests.generate(settings.root,args.kind,args.anchor)
+        print(json.dumps({'id':edition['id'],'items':len(edition['items']),'approved':edition['approved']}))
+        return
+    if args.command=='digest-run':
+        from digest_delivery import process
+        print(json.dumps(process(settings.root),ensure_ascii=False))
+        return
     if args.command=='usage':
         print(json.dumps(UsageLedger(settings.root,settings).summary(),ensure_ascii=False))
         return
@@ -433,6 +446,8 @@ def main():
         running=False
     signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
     while running:
+        from digest_delivery import process as process_digests
+        process_digests(settings.root)
         try:
             process_history(settings,run_cycle)
             print(json.dumps(run_cycle(settings),ensure_ascii=False),flush=True)
@@ -453,6 +468,7 @@ def main():
             process_history(settings,run_cycle)
             if time.monotonic()>=heartbeat:
                 status(settings)
+                process_digests(settings.root)
                 heartbeat=time.monotonic()+30
             time.sleep(max(0,min(1,deadline-time.monotonic())))
 

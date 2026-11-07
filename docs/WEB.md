@@ -14,6 +14,8 @@ L’interface est servie par `web_server.py`, sans compilation ni dépendance ti
 
 Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont nécessaires pour consulter les preuves hors de l’application. Le contexte à copier fournit les URL originales et les extraits utiles même sans accès au volume.
 
+Le parcours **Veille** prépare et relit les bulletins avec leurs images et preuves. La planification, le RSS privé et les canaux de diffusion sont décrits dans le [guide des bulletins](VEILLE.md).
+
 ## Routes de lecture
 
 | Route | Résultat |
@@ -42,3 +44,23 @@ Les commandes administratives exigent la même authentification, une origine aut
 - `POST /api/tools/ID/edit` vérifie la révision de la fiche, et celle de l’autre fiche en cas de regroupement. La commande conserve les anciennes versions et publie la nouvelle après validation. Les anciens liens des fiches regroupées restent utilisables. Une fiche revue ou corrigée est préservée lors des traitements suivants.
 
 Les requêtes `HEAD` et `Range` permettent la navigation vidéo. Le reverse proxy doit conserver ces en-têtes, le statut 206 et l’en-tête `Authorization`. Le serveur est prévu pour un usage personnel derrière un reverse proxy, avec un compte partagé configuré dans `.env` ; il n’a pas de gestion multi-utilisateur ni d’éditeur intégré.
+
+## Routes des bulletins
+
+Les routes suivantes exigent l’authentification de l’application. Les commandes POST utilisent le même jeton anti-CSRF que la revue des fiches.
+
+| Route | Résultat |
+|---|---|
+| `GET /api/digests` | Éditions, paramètres publics et état du worker de diffusion |
+| `GET /api/digests/ID` | Contenu et révision de l’édition |
+| `GET /api/digests/ID/article.html` | Article autonome illustré, imprimable en PDF |
+| `GET /api/digests/ID/article.md` | Export texte Markdown |
+| `GET /api/digests/feed.xml` | RSS des éditions validées |
+| `GET /api/digests/assets/EMPREINTE.png` | Image copiée et contrôlée par empreinte, JPEG également pris en charge |
+| `POST /api/digests/generate` | Préparation avec `kind`, date `anchor` facultative et `refresh` explicite pour un brouillon |
+| `POST /api/digests/ID/edit` | Relecture avec `revision`, titre, introduction et sélection des entrées |
+| `POST /api/digests/ID/approve` | Validation de la révision pour diffusion |
+| `POST /api/digests/ID/send` | Demande persistée, exécutée par le worker configuré |
+| `POST /api/digests/view` | Ouverture d’une source, conservée si le suivi des consultations est activé |
+
+Les éditions et leur historique sont distincts des générations du catalogue. Une édition contient les extraits de preuves utilisés et ses images copiées. Les opérations sont sérialisées par un verrou dédié. Une édition possède une clé déterministe par rythme et intervalle. Une diffusion possède une clé par canal et destination. Un envoi dont le résultat est incertain demande une vérification auprès du service de diffusion.

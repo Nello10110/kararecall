@@ -22,6 +22,7 @@ from publication import active_root
 from controls import history_status, request_history
 from editorial import EditConflict, edit_tool, revision
 from worker_documents import attachment_extension, attachment_target
+import digests
 
 ROOT = kararecall.ROOT
 WEB = Path(__file__).resolve().parent / 'web'
@@ -226,21 +227,33 @@ def make_handler(corpus, username='', password=''):
                 not hmac.compare_digest(self.headers.get('X-KaraRecall-CSRF','').encode(),csrf_token.encode())):
                 return self.send_json({'error':'Origine ou jeton de session invalide. Actualiser la page.'},403)
             edit=re.fullmatch(r'/api/tools/([a-z0-9-]+)/edit',self.path)
-            if not edit and self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
+            bulletin=re.fullmatch(r'/api/digests/('+digests.EDITION_ID+r')/(edit|approve|send)',self.path)
+            digest_command=self.path in ('/api/digests/generate','/api/digests/view') or bulletin
+            if not edit and not digest_command and self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
             try:
                 length=int(self.headers.get('Content-Length','-1'))
-                if self.headers.get('Transfer-Encoding') or not 0<=length<=(128*1024 if edit else 1024):
+                if self.headers.get('Transfer-Encoding') or not 0<=length<=(256*1024 if digest_command else 128*1024 if edit else 1024):
                     return self.send_json({'error':'Corps de requête invalide'},400)
                 if self.headers.get('Content-Type','').split(';')[0]!='application/json':
                     return self.send_json({'error':'JSON attendu'},415)
                 self.connection.settimeout(10)
                 payload=json.loads(self.rfile.read(length))
+                if digest_command:
+                    if not isinstance(payload,dict):raise ValueError('Objet JSON attendu.')
+                    if bulletin:
+                        return self.send_json(digests.revise(corpus.root,bulletin[1],payload,bulletin[2]))
+                    if self.path=='/api/digests/view':
+                        return self.send_json(digests.record_view(corpus.root,payload.get('source_id')))
+                    if set(payload)-{'kind','anchor','refresh'}:raise ValueError('Paramètre de bulletin inconnu.')
+                    if type(payload.get('refresh',False)) is not bool:raise ValueError('Option de reprise invalide.')
+                    return self.send_json(digests.generate(corpus.root,payload.get('kind','weekly'),payload.get('anchor'),payload.get('refresh',False)),201)
                 if edit:return self.send_json(edit_tool(corpus.root,edit[1],payload))
                 if payload!={}:return self.send_json({'error':'Cette commande n’accepte aucun paramètre'},400)
                 return self.send_json(request_history(corpus.root),202)
-            except EditConflict as exc:return self.send_json({'error':str(exc)},409)
+            except (EditConflict,digests.DigestConflict) as exc:return self.send_json({'error':str(exc)},409)
+            except FileNotFoundError:return self.send_json({'error':'Bulletin absent.'},404)
             except (json.JSONDecodeError,UnicodeError):return self.send_json({'error':'JSON invalide'},400)
-            except ValueError as exc:return self.send_json({'error':str(exc) if edit else 'Requête invalide'},400)
+            except (ValueError,TypeError) as exc:return self.send_json({'error':str(exc) if edit or digest_command else 'Requête invalide'},400)
             except OSError:return self.send_json({'error':'Modification non enregistrée ; vérifier le volume.'},503)
 
         def do_GET(self):
@@ -261,11 +274,30 @@ def make_handler(corpus, username='', password=''):
             if not self.authorized():
                 return self.send_bytes(b'Authentification requise', 'text/plain; charset=utf-8', 401,
                                        {'WWW-Authenticate': 'Basic realm="KaraRecall", charset="UTF-8"'})
-            static = {'/': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/icon.svg': 'icon.svg'}
+            static = {'/': 'index.html', '/app.js': 'app.js', '/digests.js':'digests.js', '/styles.css': 'styles.css', '/icon.svg': 'icon.svg'}
             if path in static:
                 return self.serve_file(WEB / static[path])
             if path=='/api/control':
                 return self.send_json({'csrf_token':csrf_token,'history_import':history_status(corpus.root)})
+            if path=='/api/digests':
+                return self.send_json(digests.overview(corpus.root))
+            if path=='/api/digests/feed.xml':
+                return self.send_bytes(digests.rss(corpus.root),'application/rss+xml; charset=utf-8')
+            digest_asset=re.fullmatch(r'/api/digests/assets/([a-f0-9]{64}\.(?:jpg|png))',path)
+            if digest_asset:
+                raw,mime=digests.image_bytes(corpus.root,{'file':digest_asset[1]})
+                return self.send_bytes(raw,mime)
+            digest_route=re.fullmatch(r'/api/digests/('+digests.EDITION_ID+r')(?:/(article\.html|article\.md))?',path)
+            if digest_route:
+                edition=digests.load(corpus.root,digest_route[1])
+                if not digest_route[2]:return self.send_json(edition)
+                filename=digest_route[1]+('.html' if digest_route[2]=='article.html' else '.md')
+                extra={'Content-Disposition':'attachment; filename="'+filename+'"'}
+                if digest_route[2]=='article.md':
+                    return self.send_bytes(digests.markdown(edition).encode(),'text/markdown; charset=utf-8',extra=extra)
+                extra['Content-Disposition']='inline; filename="'+filename+'"'
+                extra['Content-Security-Policy']="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; frame-ancestors 'none'"
+                return self.send_bytes(digests.article_html(corpus.root,edition).encode(),'text/html; charset=utf-8',extra=extra)
             data,view_root,assets = corpus.view()
             sources = {s['id']: s for s in data['sources']}
             entities = {e['id']: e for e in data['entities']}
@@ -293,6 +325,7 @@ def make_handler(corpus, username='', password=''):
                     linked.update(s['id'] for s in recent)
                     summaries = [s for s in summaries if s['id'] in linked]
                 return self.send_json({'entities': data['entities'], 'sources': summaries,
+                    'digest_track_views':digests.config()['track_views'],
                     'recent_sources': recent, 'videos_pending': videos_pending,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if kararecall.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',
