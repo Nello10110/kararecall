@@ -292,6 +292,8 @@ def revise(root, identifier, payload, action='edit'):
                 value = payload.get(key)
                 if not isinstance(value, str) or len(value)>maximum or not value.strip():
                     raise ValueError('Titre ou introduction invalide.')
+                if key=='title' and ('\r' in value or '\n' in value):
+                    raise ValueError('Le titre doit tenir sur une seule ligne.')
                 edition[key] = value.strip()
             changes = payload.get('items')
             if not isinstance(changes, list) or len(changes)!=len(edition['items']):

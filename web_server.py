@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 import kararecall
-from settings import initialize, integer
+from settings import initialize, integer, boolean
 from publication import active_root
 from controls import history_status, request_history
 from editorial import EditConflict, edit_tool, revision
@@ -325,7 +325,7 @@ def make_handler(corpus, username='', password=''):
                     linked.update(s['id'] for s in recent)
                     summaries = [s for s in summaries if s['id'] in linked]
                 return self.send_json({'entities': data['entities'], 'sources': summaries,
-                    'digest_track_views':digests.config()['track_views'],
+                    'digest_track_views':boolean('DIGEST_TRACK_VIEWS'),
                     'recent_sources': recent, 'videos_pending': videos_pending,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if kararecall.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',

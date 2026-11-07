@@ -62,7 +62,7 @@ def mail_message(root, edition, address):
     message['Subject'] = edition['title']+' · '+edition['start']
     message['Date'] = format_datetime(datetime.now().astimezone())
     tag = hashlib.sha256((edition['id']+address).encode()).hexdigest()
-    message['Message-ID'] = '<'+tag+'@kararecall.local>'
+    message['Message-ID'] = '<'+tag+'@'+os.environ['DIGEST_EMAIL_FROM'].split('@')[1]+'>'
     message.set_content(digests.markdown(edition))
     message.add_alternative(digests.article_html(root, edition, email_images=True), subtype='html')
     attached = set()
@@ -149,8 +149,8 @@ def deliver(root, identifier):
 
 
 def process(root, now=None):
-    cfg = digests.config()
     try:
+        cfg = digests.config()
         with locked(root, 'digest-runner.lock', blocking=False):
             current = (now or datetime.now(ZoneInfo(cfg['timezone']))).astimezone(ZoneInfo(cfg['timezone']))
             if cfg['enabled']:

@@ -110,6 +110,10 @@ class DigestTests(unittest.TestCase):
         self.assertEqual(edition['approval_mode'],'automatic')
         self.assertIn('Rédaction automatique à relire',digests.article_html(self.root,edition))
 
+    def test_invalid_digest_settings_report_an_error_without_interrupting_imports(self):
+        os.environ['DIGEST_TIMEZONE']='Invalid/Fixture'
+        self.assertEqual(digest_delivery.process(self.root)['state'],'error')
+
     def test_manual_refresh_archives_draft_and_preserves_approved_edition(self):
         edition=self.edition()
         rebuilt=digests.generate(self.root,'weekly','2026-11-02',refresh=True)
