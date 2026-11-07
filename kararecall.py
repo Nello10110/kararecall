@@ -63,6 +63,12 @@ def validate_reading(source,lookup):
     if reading is None:return
     if not isinstance(reading,dict) or reading.get('status')!='source_claim' or not isinstance(reading.get('text'),str) or not reading['text'].strip() or not reading.get('evidence'):
         raise ValueError('Résumé de lecture sans attribution ou références')
+    for proof_id,translation in source.get('translations',{}).items():
+        if translation.get('evidence')!=[source['id']+'#'+proof_id]:raise ValueError('Traduction attribuée à une autre preuve')
+        if translation.get('language')!='fr' or not isinstance(translation.get('text'),str) or not translation.get('evidence'):raise ValueError('Traduction non sourcée')
+        for ref in translation['evidence']:
+            if not isinstance(ref,str) or not ref.startswith(source['id']+'#'):raise ValueError('Traduction liée à une autre source')
+            validate_reference(ref,lookup)
     for ref in reading['evidence']:
         if not isinstance(ref,str) or not ref.startswith(source['id']+'#'):raise ValueError('Résumé lié à une autre source')
         validate_reference(ref,lookup)
@@ -113,6 +119,9 @@ def render_research(entity, include_trace=False):
     research=entity.get('web_research')
     if not research:return []
     lines=['','## Pistes de recherche web','',f"Recherche via {research['provider']} le {research['searched_at'] or research['completed_at'] or 'jour de traitement'}. Les résultats demandent une revue de l’identité de l’outil.",'']
+    if research.get('summary'):
+        lines += [research['summary']['text'],'']
+        lines += ['Source du complément : '+url for url in research['summary']['urls']]
     pages={row['url']:row for row in research['pages']}
     for row in research['results']:
         page=pages.get(row['url'])
@@ -330,7 +339,7 @@ def build(root=ROOT, *, prepared=None, previous_root=None):
         lines = ["---", f"id: {sid}", "type: source", f"saved_at: {source['created_at']}",
                  f"audio_transcribed: {str(status['audio_transcribed']).lower()}",
                  f"ocr_sampled: {str(status['ocr_sampled']).lower()}", "---", "",
-                 "# " + source["title"].replace("\n", " ")[:180], "",
+                 "# " + source.get("reading",{}).get("title","Source enregistrée")[:80], "",
                  (f"[Source originale]({source['url']}) · " if source['url'] else '')+f"[Réponse Karakeep brute](../../{source['raw_file']})", "",
                  f"Enregistré : {source['created_at']} (UTC). Cette date n’est pas la date de publication.", "",
                  "## État de traitement", "",
@@ -349,6 +358,9 @@ def build(root=ROOT, *, prepared=None, previous_root=None):
         if source.get('reading'):
             lines += ['', '## Résumé de lecture · à relire', '']+render_claim(source['reading'],lookup)
             if coverage_notice(source['reading']):lines += [coverage_notice(source['reading']),'']
+        if source.get('translations'):
+            lines += ['', '## Traductions françaises', '']
+            for translation in source['translations'].values():lines += render_claim(translation,lookup)
         lines += ["", "Les transcriptions et l’OCR sont des extractions automatiques, à relire. Les propos de l’auteur ne sont pas des faits vérifiés.", "", "## Fiches liées", ""]
         lines += [f"- [{name}](../outils/{identifier}.md)" for identifier,name in related.get(sid,[])] or ["Aucune synthèse relue pour cette source."]
         lines += ["", "## Preuves", ""]
@@ -431,8 +443,10 @@ def search(query, catalog, limit=5):
                           'links': e.get('links', []), 'follow_up': e.get('follow_up', '')})
     for s in catalog["sources"]:
         reading=s.get('reading',{})
-        body = " ".join([s["title"], memory_context(s), ' '.join(s.get('tags',[])), reading.get('text',''), ' '.join(reading.get('keywords',[]))] + [e["text"] for e in s["evidence"] if not e.get('archived') and e['kind']!='passage'])
-        documents.append({"id": s["id"], "kind": "source", "title": s["title"][:160], "body": body,
+        from curation import clean_text
+        body = clean_text(" ".join([s["title"], memory_context(s), ' '.join(s.get('tags',[])), reading.get('text',''), ' '.join(reading.get('keywords',[]))] + [e["text"] for e in s["evidence"] if not e.get('archived') and e['kind']!='passage']))
+        body += ' '+ ' '.join(row['text'] for row in s.get('translations',{}).values())
+        documents.append({"id": s["id"], "kind": "source", "title": reading.get("title",s["title"])[:160], "body": body,
                           "path": f"vault/sources/{s['id']}.md", "source_ids": [s["id"]], "refs": []})
     q = set(tokens(query))
     if not q:

@@ -66,6 +66,21 @@ class WebResearchTests(unittest.TestCase):
         self.assertEqual(note['status'],'documented')
         self.assertEqual(note['verification_file'],research['trace_file'])
 
+    def test_french_description_uses_only_read_pages_and_resumes_after_quota(self):
+        from usage import BudgetExceeded
+        self.config.llm_enabled=True;self.config.llm_url='https://example.invalid';self.config.llm_model='fixture'
+        url='https://github.com/example/fixture-widget/docs'
+        with patch('web_research.provider_request',side_effect=[{'results':[{'url':url}]},{'content':'A local document organizer.'}]),patch('web_research.chat',side_effect=BudgetExceeded('quota')):
+            self.assertEqual(run_research(self.config)['state'],'paused')
+        with patch('web_research.provider_request') as provider,patch('web_research.chat',return_value=json.dumps({'text':'Un outil pour organiser ses documents en local.','urls':[url]})) as model:
+            self.assertEqual(run_research(self.config)['state'],'complete')
+            provider.assert_not_called();self.assertIn('en français',model.call_args.args[3][0]['content'])
+        root=active_root(self.root)
+        result=kararecall.read_json(root/'data/entities.json')[0]['web_research']
+        self.assertEqual(result['summary']['urls'],[url]);self.assertEqual(result['summary']['language'],'fr')
+        self.assertTrue((root/result['trace_file']).is_file())
+        self.assertIn('organiser ses documents',context_for(kararecall.read_json(root/'data/catalog.json')['entities'][0],{row['id']:row for row in kararecall.read_json(root/'data/catalog.json')['sources']}))
+
     def test_quota_pause_reuses_completed_search(self):
         self.config.daily_call_limit=1
         rows={'results':[{'url':'https://github.com/example/fixture-widget'}]}

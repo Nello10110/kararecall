@@ -58,7 +58,7 @@ Ce profil est aussi le défaut du script. Il crée un mot de passe web aléatoir
 | `ASR_MODEL`, `ASR_BASE_URL`, `ASR_API_KEY` | Vides ; transcription non configurée |
 | Tarifs entrée/sortie texte et vision | 0,30 / 1,20 USD par million de tokens, valeurs de pointe conservatrices |
 
-Les clés Karakeep et DeepSeek sont renseignées directement dans le `.env` du NAS. Elles ne passent ni dans le chat, ni dans Git, ni dans le service web. `SYNC_ENABLED` et `LLM_ENABLED` restent false après génération ; `COMPOSE_PROFILES` est vide. Un modèle vision renseigné active son étape lorsque la collecte et les traitements sont activés, indépendamment de `LLM_ENABLED`. Vider `VISION_MODEL` pour commencer par les seuls textes.
+Les clés Karakeep et DeepSeek sont renseignées directement dans le `.env` du NAS. Elles ne passent ni dans le chat, ni dans Git, ni dans le service web. `SYNC_ENABLED` et `LLM_ENABLED` restent false après génération ; `COMPOSE_PROFILES=automation` démarre le worker pour les commandes web et les bulletins. Un modèle vision renseigné active son étape lorsque la collecte et les traitements sont activés, indépendamment de `LLM_ENABLED`. Vider `VISION_MODEL` pour commencer par les seuls textes.
 
 La documentation officielle actuelle annonce texte et vision pour Flash, via Chat Completions et images `image_url` encodées en base64. Ce contrat correspond au client livré ; sa disponibilité pour votre compte, la fidélité des résultats et les réponses JSON restent à qualifier avec votre clé. Le projet n’a pas validé d’inférence DeepSeek réelle.
 
@@ -72,7 +72,7 @@ Hypothèse de calcul, **pas une mesure** : une synthèse texte avec 5 000 tokens
 
 La récupération du catalogue ne fait aucun appel IA payant. Les analyses ultérieures peuvent en faire. Le journal utilise les tokens rapportés et les tarifs configurés, avec une réservation avant réseau. Un tarif nul ou un usage inconnu conserve la réserve de 0,05 USD. Ces estimations ne garantissent pas la facture fournisseur.
 
-Avant le NAS : qualifier quelques articles, une note, un PDF avec/sans texte et une vidéo ; contrôler citations, absence de texte, paramètres DeepSeek, temps, mémoire et coût réellement rapporté. La recherche internet automatique reste au backlog, même si le fournisseur propose une API de recherche : aucun appel à celle-ci n’est ajouté par ce profil.
+Avant le NAS : qualifier quelques articles, une note, un PDF avec/sans texte et une vidéo ; contrôler citations, absence de texte, paramètres DeepSeek, temps, mémoire et coût réellement rapporté. La recherche complémentaire DeepSeek Search/Fetch est disponible par commande web explicite ; `WEB_RESEARCH_ENABLED=true` active aussi son passage périodique. Les pages lues peuvent fournir un complément français sourcé, avec les mêmes quotas IA.
 
 ## Sécurité et contrôles
 

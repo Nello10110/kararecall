@@ -1,6 +1,6 @@
 # Backlog de KaraRecall
 
-Mise à jour du 7 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le NAS est en attente d’installation.** Le propriétaire lancera le [pilote](docs/PILOTE.md) depuis son réseau.
+Mise à jour du 7 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le propriétaire a signalé le démarrage sur son NAS et un premier favori analysé.** La qualification détaillée reste à effectuer avec le [pilote](docs/PILOTE.md) depuis son réseau.
 
 Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimensionner la première version pour ce volume, sans service Mac obligatoire ni abonnement de recherche payant par défaut. Les optimisations de débit passent après la fiabilité et l’usage quotidien.
 
@@ -168,3 +168,16 @@ Les critères et charges indicatives sont dans l’[étude](docs/ETUDE-EXPLOITAT
 
 - Si le profil Mac est retenu, exposer la transcription locale derrière un service authentifié et comparer faster-whisper et whisper.cpp sur les mêmes extraits. L’OCR Apple Vision peut faire l’objet du même raccordement.
 - Si le test de souvenirs passe sous le seuil proposé, comparer la recherche lexicale et une recherche hybride sur les mêmes questions, preuves et faux positifs.
+
+
+## Retour d’usage du 7 novembre : français et pilotage
+
+- [x] Titres éditoriaux français courts, résumés de source limités à une phrase et 180 caractères.
+- [x] Traductions françaises des preuves conservées en langue étrangère, séparées des originaux, avec temps, références et cache reprenable.
+- [x] Nettoyage des hashtags, appels promotionnels et répétitions dans les vues éditoriales ; preuves originales conservées pour vérification.
+- [x] Boutons de synthèse/traduction par source ou en masse ; relance complète par source ; import historique depuis Sources et Traitements.
+- [x] File persistante avec progression, quota, reprise après redémarrage et protection contre les doubles commandes.
+- [x] Vidage local confirmé et suspension de la collecte ; aucune modification de Karakeep ni remise à zéro de la facturation.
+- [x] Recherche complémentaire par outil ou en masse ; description française tirée uniquement de pages lues et citées.
+- [x] Compteurs séparés : résumés IA de sources et vidéos avec transcription + OCR réellement terminés.
+- [ ] Qualifier ces nouvelles commandes et la fidélité des traductions avec les modèles et les contenus réels du NAS.

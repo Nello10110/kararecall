@@ -168,3 +168,11 @@ Les données restent dans le volume Docker `kararecall-storage`. Sauvegarde le v
 ## Activer la veille
 
 Après le premier import, ouvre **Veille** pour préparer un bulletin hebdomadaire ou mensuel. Les éditions sont conservées dans le même volume persistant que les favoris. La planification, le mail et les autres formats se configurent avec le [guide des bulletins](VEILLE.md).
+
+## Après la mise à jour : résumés courts et commandes web
+
+Reconstruis et recrée **les deux images web et worker avec la même version**. Pour une stack utilisant un contexte Git distant figé sur un commit, actualise la référence de commit dans les deux `build.context` ; reconstruire sans changer cette référence reconstruit l’ancienne version.
+
+Dans **Sources**, utilise **Résumer / traduire toutes les sources** pour reprendre les anciens textes avec le titre court et le résumé français. Le worker exécute la file séquentiellement avec ses quotas. Tu peux aussi traiter une seule source, relancer son analyse complète ou importer tout l’historique. Le [guide web](WEB.md#résumés-français-et-commandes-de-traitement) distingue ces actions et décrit le vidage local.
+
+Pour que les descriptions des outils s’enrichissent aussi périodiquement avec des lectures web, ajouter `WEB_RESEARCH_ENABLED=true` dans le `.env` et le transmettre au worker dans un Compose personnalisé, puis recréer le worker. Les boutons de recherche explicite fonctionnent sans activer cette périodicité. Les requêtes Search/Fetch et les compléments de rédaction partagent le budget IA ; leur disponibilité réelle dépend du compte fournisseur.

@@ -19,7 +19,8 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import kararecall
 from settings import initialize, integer, boolean
 from publication import active_root
-from controls import history_status, request_history
+from controls import history_status, request_history, action_status, request_action
+from curation import short_text, clean_text
 from editorial import EditConflict, edit_tool, revision
 from worker_documents import attachment_extension, attachment_target
 import digests
@@ -38,7 +39,9 @@ def source_summary(source):
     images = [e for e in current if e.get('image')]
     preferred = next((e for e in images if e.get('start',0) >= 14), images[0] if images else None)
     return {key: source[key] for key in ('id', 'url', 'created_at', 'tags', 'processing')} | {
-        'title': caption.strip(' “”:"'), 'author': author.strip(' @'),
+        'title': short_text(source.get('reading',{}).get('title') or source.get('reading',{}).get('text') or ('Vidéo enregistrée' if source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[])) else 'Source enregistrée'),80),
+        'summary':short_text(source.get('reading',{}).get('text') or 'Résumé français en attente de traitement.'),
+        'original_title':short_text(caption,160), 'author': author.strip(' @'),
         'thumbnail': '/assets/' + preferred['image'] if preferred else None,
         'transcript_count': sum(e['kind'] in ('asr','subtitle') for e in current),
         'frame_count': sum(e['kind']=='ocr' for e in images), 'stages':source.get('stages',{}),
@@ -229,7 +232,8 @@ def make_handler(corpus, username='', password=''):
             edit=re.fullmatch(r'/api/tools/([a-z0-9-]+)/edit',self.path)
             bulletin=re.fullmatch(r'/api/digests/('+digests.EDITION_ID+r')/(edit|approve|send)',self.path)
             digest_command=self.path in ('/api/digests/generate','/api/digests/view') or bulletin
-            if not edit and not digest_command and self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
+            action_command=self.path=='/api/actions'
+            if not edit and not digest_command and not action_command and self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
             try:
                 length=int(self.headers.get('Content-Length','-1'))
                 if self.headers.get('Transfer-Encoding') or not 0<=length<=(256*1024 if digest_command else 128*1024 if edit else 1024):
@@ -238,6 +242,9 @@ def make_handler(corpus, username='', password=''):
                     return self.send_json({'error':'JSON attendu'},415)
                 self.connection.settimeout(10)
                 payload=json.loads(self.rfile.read(length))
+                if action_command:
+                    if not isinstance(payload,dict) or set(payload)-{'kind','source_id','tool_id','confirmation'}:raise ValueError('Commande invalide.')
+                    return self.send_json(request_action(corpus.root,**payload),202)
                 if digest_command:
                     if not isinstance(payload,dict):raise ValueError('Objet JSON attendu.')
                     if bulletin:
@@ -253,7 +260,7 @@ def make_handler(corpus, username='', password=''):
             except (EditConflict,digests.DigestConflict) as exc:return self.send_json({'error':str(exc)},409)
             except FileNotFoundError:return self.send_json({'error':'Bulletin absent.'},404)
             except (json.JSONDecodeError,UnicodeError):return self.send_json({'error':'JSON invalide'},400)
-            except (ValueError,TypeError) as exc:return self.send_json({'error':str(exc) if edit or digest_command else 'Requête invalide'},400)
+            except (ValueError,TypeError) as exc:return self.send_json({'error':str(exc) if edit or digest_command or action_command else 'Requête invalide'},400)
             except OSError:return self.send_json({'error':'Modification non enregistrée ; vérifier le volume.'},503)
 
         def do_GET(self):
@@ -278,7 +285,7 @@ def make_handler(corpus, username='', password=''):
             if path in static:
                 return self.serve_file(WEB / static[path])
             if path=='/api/control':
-                return self.send_json({'csrf_token':csrf_token,'history_import':history_status(corpus.root)})
+                return self.send_json({'csrf_token':csrf_token,'history_import':history_status(corpus.root), 'actions':action_status(corpus.root)})
             if path=='/api/digests':
                 return self.send_json(digests.overview(corpus.root))
             if path=='/api/digests/feed.xml':
@@ -329,7 +336,7 @@ def make_handler(corpus, username='', password=''):
                     'recent_sources': recent, 'videos_pending': videos_pending,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
                     'search_mode': 'lexical', 'synchronization': 'automatic' if kararecall.read_json(corpus.root/'data/service-status.json',{}).get('sync_enabled') else 'manual',
-                    'worker': worker, 'history_import':history_status(corpus.root), 'storage':storage,
+                    'worker': worker, 'history_import':history_status(corpus.root), 'actions':action_status(corpus.root), 'storage':storage, 'reading_count':sum(bool(source.get('reading')) for source in data['sources']),
                     'research':kararecall.read_json(corpus.root/'data/research-status.json',{}),
                     'updated_at': (view_root / 'data/catalog.json').stat().st_mtime,
                     'last_process': kararecall.read_json(view_root / 'data/last-process.json', {})})
@@ -344,7 +351,7 @@ def make_handler(corpus, username='', password=''):
                 query = kararecall.normalize(query)
                 matches = [s for s in corpus.summaries(data) if
                            (stage=='all' or (stage=='complete')==fully_analyzed(s))
-                           and (not query or query in kararecall.normalize(' '.join([s['title'],s['author'],*s['tags']])))]
+                           and (not query or query in kararecall.normalize(' '.join([s['title'],s['author'],s.get('original_title',''),s.get('summary',''),*s['tags']])))]
                 last_offset = max(0,(len(matches)-1)//limit*limit)
                 offset = min(offset,last_offset)
                 return self.send_json({'sources':matches[offset:offset+limit], 'total':len(matches),
@@ -384,7 +391,7 @@ def make_handler(corpus, username='', password=''):
                     entity = entities[sid]
                     return self.send_json({'entity': entity, 'revision':revision(entity), 'sources': [source_summary(sources[s]) for s in entity['source_ids']]})
                 source = sources[sid]
-                return self.send_json({'source': source, 'summary': source_summary(source),
+                return self.send_json({'source': {**source,'evidence':[{**row,'display_text':clean_text(row['text'])} for row in source['evidence']]}, 'summary': source_summary(source),
                     'entities': [e for e in entities.values() if sid in e['source_ids']],
                     'media_url': '/assets/data/media/' + sid + '.mp4' if source['processing']['media_downloaded'] else None})
             match = re.fullmatch(r'/download/document/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]{1,120})', path)

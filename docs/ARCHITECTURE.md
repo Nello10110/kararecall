@@ -178,3 +178,11 @@ Documentation officielle consultée le 5 novembre 2026. Les capacités des outil
 ## Bulletins de veille
 
 Le web prépare et relit les éditions dans `data/digests/`, sur le volume partagé. Le worker prépare les intervalles échus et traite les demandes de diffusion validées. Le modèle texte rédige les articles à partir des preuves et des fiches existantes, avec des références par paragraphe et le même journal de budget. Une première édition exploite l’historique, puis les rythmes configurés prennent le relais. Les images et les extraits sont conservés avec l’édition. Le mail et le webhook utilisent leurs propres paramètres privés, transmis uniquement au worker. [Guide et configuration](VEILLE.md).
+
+## Évolution du 7 novembre : présentation française et commandes persistantes
+
+`curation.py` produit les vues nettoyées et les traductions françaises par preuve, dans un format dérivé distinct des originaux. Le worker versionne le contrat éditorial, borne les titres et résumés, et conserve les traductions en cache par contenu et configuration. Une reprise après quota réutilise les morceaux et la synthèse déjà réussis. Les traductions restent attribuées aux identifiants de preuves originales ; leurs temps ne sont pas recalculés.
+
+`controls.py` ajoute une file durable pour la synthèse locale, le retraitement complet, la recherche complémentaire et le vidage local. Les commandes sont exécutées par le worker avec son verrou de volume, même lorsque la synchronisation périodique est désactivée. Un identifiant de commande publié avec la source évite de refaire l’inférence après un arrêt entre publication et acquittement. Le vidage publie un catalogue vide et suspend la synchronisation ; il conserve l’historique immuable et les coûts déjà comptabilisés.
+
+Le complément de description web est une rédaction française issue de pages effectivement lues par Search/Fetch, avec URL et trace archivées. Les descriptions d’origine et la revue humaine restent distinctes. Les tests sont synthétiques ; les connexions et inférences de ce parcours restent à qualifier sur le NAS.
