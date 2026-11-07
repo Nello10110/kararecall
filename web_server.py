@@ -19,11 +19,13 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import kararecall
 from settings import initialize, integer, boolean
 from publication import active_root, file_hash
-from controls import history_status, request_history, action_status, request_action
+from controls import history_status, request_history, action_status, request_action, cancel_action, pause_automation
 from curation import short_text, clean_text, evidence_presentation, original_french_title
 from editorial import EditConflict, edit_tool, revision
 from worker_documents import attachment_extension, attachment_target
 import digests
+from overview import overview, diagnostic, source_type, stage_matches
+from version import __version__
 
 ROOT = kararecall.ROOT
 WEB = Path(__file__).resolve().parent / 'web'
@@ -63,7 +65,9 @@ def source_summary(source):
         'frame_count': sum(e['kind']=='ocr' for e in images), 'stages':source.get('stages',{}),
         'bookmark_type':source.get('bookmark_type','link'),'content_status':source.get('content_status'),
         'has_video':bool(source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[]))),
-        'has_reading':bool(source.get('reading'))}
+        'has_reading':bool(source.get('reading')), 'source_type':source_type(source),
+        'asset_type':source.get('asset_type'),'processed_at':source.get('processed_at'),
+        'processing_error':source.get('processing_error','')}
 
 
 def fully_analyzed(summary):
@@ -248,8 +252,10 @@ def make_handler(corpus, username='', password=''):
             edit=re.fullmatch(r'/api/tools/([a-z0-9-]+)/edit',self.path)
             bulletin=re.fullmatch(r'/api/digests/('+digests.EDITION_ID+r')/(edit|approve|send)',self.path)
             digest_command=self.path in ('/api/digests/generate','/api/digests/view') or bulletin
+            cancel=re.fullmatch(r'/api/actions/([a-f0-9]{32})/cancel',self.path)
+            management_command=cancel or self.path=='/api/automation'
             action_command=self.path=='/api/actions'
-            if not edit and not digest_command and not action_command and self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
+            if not edit and not digest_command and not action_command and not management_command and self.path!='/api/import-history':return self.send_json({'error':'Commande inconnue'},404)
             try:
                 length=int(self.headers.get('Content-Length','-1'))
                 if self.headers.get('Transfer-Encoding') or not 0<=length<=(256*1024 if digest_command else 128*1024 if edit else 1024):
@@ -258,6 +264,13 @@ def make_handler(corpus, username='', password=''):
                     return self.send_json({'error':'JSON attendu'},415)
                 self.connection.settimeout(10)
                 payload=json.loads(self.rfile.read(length))
+                if management_command:
+                    if not isinstance(payload,dict):raise ValueError('Objet JSON attendu.')
+                    if cancel:
+                        if payload!={}:raise ValueError('Cette commande n’accepte aucun paramètre.')
+                        return self.send_json(cancel_action(corpus.root,cancel[1]))
+                    if set(payload)!={'paused'}:raise ValueError('État de suspension requis.')
+                    return self.send_json(pause_automation(corpus.root,payload['paused']))
                 if action_command:
                     if not isinstance(payload,dict) or set(payload)-{'kind','source_id','tool_id','confirmation','stage'}:raise ValueError('Commande invalide.')
                     return self.send_json(request_action(corpus.root,**payload),202)
@@ -276,7 +289,7 @@ def make_handler(corpus, username='', password=''):
             except (EditConflict,digests.DigestConflict) as exc:return self.send_json({'error':str(exc)},409)
             except FileNotFoundError:return self.send_json({'error':'Bulletin absent.'},404)
             except (json.JSONDecodeError,UnicodeError):return self.send_json({'error':'JSON invalide'},400)
-            except (ValueError,TypeError) as exc:return self.send_json({'error':str(exc) if edit or digest_command or action_command else 'Requête invalide'},400)
+            except (ValueError,TypeError) as exc:return self.send_json({'error':str(exc) if edit or digest_command or action_command or management_command else 'Requête invalide'},400)
             except OSError:return self.send_json({'error':'Modification non enregistrée ; vérifier le volume.'},503)
 
         def do_GET(self):
@@ -297,7 +310,7 @@ def make_handler(corpus, username='', password=''):
             if not self.authorized():
                 return self.send_bytes(b'Authentification requise', 'text/plain; charset=utf-8', 401,
                                        {'WWW-Authenticate': 'Basic realm="KaraRecall", charset="UTF-8"'})
-            static = {'/': 'index.html', '/app.js': 'app.js', '/digests.js':'digests.js', '/styles.css': 'styles.css', '/icon.svg': 'icon.svg'}
+            static = {'/': 'index.html', '/app.js': 'app.js', '/digests.js':'digests.js', '/styles.css': 'styles.css', '/glass.css':'glass.css', '/workspace.js':'workspace.js', '/icon.svg': 'icon.svg'}
             if path in static:
                 return self.serve_file(WEB / static[path])
             if path=='/api/control':
@@ -327,6 +340,13 @@ def make_handler(corpus, username='', password=''):
             aliases = {alias: e['id'] for e in data['entities'] for alias in e.get('merged_ids',[])}
             if path == '/api/health':
                 return self.send_json({'status': 'ok'})
+            if path in ('/api/overview','/api/administration','/api/administration/diagnostic'):
+                report=overview(corpus.root,data,view_root)
+                if path.endswith('/diagnostic'):
+                    return self.send_bytes(json.dumps(diagnostic(report),ensure_ascii=False,indent=2).encode(),'application/json; charset=utf-8',extra={'Content-Disposition':'attachment; filename="kararecall-diagnostic.json"'})
+                return self.send_json(report)
+            if path=='/download/catalog.json':
+                return self.send_bytes(json.dumps(data,ensure_ascii=False,indent=2).encode(),'application/json; charset=utf-8',extra={'Content-Disposition':'attachment; filename="kararecall-catalogue.json"'})
             if path == '/api/catalog':
                 worker=kararecall.read_json(corpus.root/'data/service-status.json',{})
                 usage=kararecall.read_json(corpus.root/'data/usage-summary.json',worker.get('usage',{}))
@@ -347,7 +367,7 @@ def make_handler(corpus, username='', password=''):
                     linked = {e['source_ids'][0] for e in data['entities'] if e['source_ids']}
                     linked.update(s['id'] for s in recent)
                     summaries = [s for s in summaries if s['id'] in linked]
-                return self.send_json({'entities': data['entities'], 'sources': summaries,
+                return self.send_json({'version':__version__,'entities': data['entities'], 'sources': summaries,
                     'digest_track_views':boolean('DIGEST_TRACK_VIEWS'),
                     'recent_sources': recent, 'videos_pending': videos_pending,
                     'stats': {'tools': len(entities), 'sources': len(sources), 'processed': complete},
@@ -362,12 +382,16 @@ def make_handler(corpus, username='', password=''):
                 offset = int(params.get('offset',['0'])[0])
                 stage = params.get('stage',['all'])[0]
                 query = params.get('q',[''])[0].strip()
-                if not 1<=limit<=100 or offset<0 or len(query)>150 or stage not in ('all','complete','partial'):
+                kind=params.get('type',['all'])[0]
+                order=params.get('sort',['recent'])[0]
+                if kind not in ('all','article','video','note','file') or order not in ('recent','oldest'):raise ValueError('Filtre invalide.')
+                if not 1<=limit<=100 or offset<0 or len(query)>150 or stage not in ('all','complete','partial','failed','paused','pending','summarized'):
                     return self.send_json({'error':'Filtre ou pagination non valide.'},400)
                 query = kararecall.normalize(query)
                 matches = [s for s in corpus.summaries(data) if
-                           (stage=='all' or (stage=='complete')==fully_analyzed(s))
+                           stage_matches(s,stage) and (kind=='all' or s['source_type']==kind)
                            and (not query or query in kararecall.normalize(' '.join([s['title'],s['author'],s.get('original_title',''),s.get('summary',''),*s['tags']])))]
+                if order=='oldest':matches=list(reversed(matches))
                 last_offset = max(0,(len(matches)-1)//limit*limit)
                 offset = min(offset,last_offset)
                 return self.send_json({'sources':matches[offset:offset+limit], 'total':len(matches),
@@ -384,6 +408,16 @@ def make_handler(corpus, username='', password=''):
                 results = [r for r in results if scope == 'all' or (scope == 'tools') == (r['kind'] == 'outil')]
                 for result in results:
                     result['source_summary'] = source_summary(sources[result['source_ids'][0]])
+                    for snippet in result.get('snippets',[]):
+                        origin=sources[snippet['source_id']]
+                        proof=next((row for row in origin['evidence'] if row['id']==snippet['evidence_id']),None)
+                        if proof:
+                            view=evidence_presentation(origin,proof,origin['processing'].get('audio_language'),origin['processing'].get('subtitle_language'))
+                            snippet['display_state']=view['state']
+                            text=view['text']
+                            position=next((word.start() for word in re.finditer(r'\w+',text) if kararecall.normalize(word.group()) in result['matched']),0)
+                            start=max(0,position-80)
+                            snippet['display_text']=('…' if start else '')+short_text(text[start:start+230],230)
                 return self.send_json({'query': query, 'results': results, 'search_mode': 'lexical'})
             match = re.fullmatch(r'/api/(tools|sources|context|research|editorial)/([a-zA-Z0-9_-]+)', path)
             if match:

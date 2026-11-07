@@ -88,7 +88,7 @@ Connecte-toi avec les identifiants de `.env`. La bibliothèque démarre vide.
 
 ## 5. Importer tous tes favoris
 
-Dans **Traitements**, clique sur **Importer tout l’historique**.
+Dans **Activité**, clique sur **Importer tout l’historique**.
 
 Attends le message indiquant le nombre de favoris pris en compte, puis ouvre **Sources** ou **Recherche**. Les textes fournis par Karakeep sont consultables et recherchables immédiatement. Relancer l’import met à jour chaque entrée portant le même identifiant Karakeep.
 
@@ -122,7 +122,7 @@ docker compose run --rm --no-deps worker python worker.py check &&
   docker compose run --rm --no-deps worker python worker.py once
 ```
 
-`check` vérifie les accès en lecture. `once` exécute les étapes activées. Si une commande indique une erreur, consulte le dépannage ci-dessous avant de poursuivre. Dans le navigateur, clique sur **Actualiser** dans Traitements et contrôle le résumé, ses preuves et les éventuels états d’erreur.
+`check` vérifie les accès en lecture. `once` exécute les étapes activées. Si une commande indique une erreur, consulte le dépannage ci-dessous avant de poursuivre. Dans le navigateur, clique sur **Actualiser** dans Activité et contrôle le résumé, ses preuves et les éventuels états d’erreur.
 
 Quand ce premier résultat te convient, démarre la boucle.
 
@@ -130,7 +130,7 @@ Quand ce premier résultat te convient, démarre la boucle.
 docker compose up -d worker
 ```
 
-Le service passe immédiatement, puis toutes les quinze minutes. Il traite au plus un favori par passage avec ce réglage. Pour passer à trois, change `WORKER_BATCH_SIZE` dans `.env`, puis relance la même commande. Les traitements réussis inchangés sont réutilisés. Tu peux suivre la progression de l’historique et les quotas dans Traitements.
+Le service passe immédiatement, puis toutes les quinze minutes. Il traite au plus un favori par passage avec ce réglage. Pour passer à trois, change `WORKER_BATCH_SIZE` dans `.env`, puis relance la même commande. Les traitements réussis inchangés sont réutilisés. Tu peux suivre la progression de l’historique et les quotas dans Activité.
 
 ## Dépannage rapide
 
@@ -142,8 +142,8 @@ Le service passe immédiatement, puis toutes les quinze minutes. Il traite au pl
 | Port 8765 déjà utilisé | Mettre `KARARECALL_PORT=8766` dans `.env`, relancer `docker compose up -d`, puis ouvrir ce nouveau port. |
 | Import bloqué « En attente » | Vérifier `COMPOSE_PROFILES=automation` et la présence du service worker dans `docker compose ps`. |
 | Erreur Karakeep ou HTTP 401/403 | Vérifier l’adresse accessible depuis le conteneur et la clé dans `.env`. |
-| Erreur IA | Vérifier la clé DeepSeek, le modèle et le crédit du compte. Consulter l’état dans Traitements. |
-| Budget/quota atteint | Consulter Traitements. Les analyses reprennent quand le quota se renouvelle. |
+| Erreur IA | Vérifier la clé DeepSeek, le modèle et le crédit du compte. Consulter l’état dans Activité. |
+| Budget/quota atteint | Consulter Activité. Les analyses reprennent quand le quota se renouvelle. |
 | Modification de `.env` sans effet | Relancer `docker compose up -d` pour appliquer les paramètres aux services. |
 
 Affiche les derniers messages des services avec cette commande.

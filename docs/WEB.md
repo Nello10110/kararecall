@@ -7,9 +7,9 @@ L’interface est servie par `web_server.py`, sans compilation ni dépendance ti
 - **Recherche** : mots ou description d’un souvenir, classement lexical, filtres outils/sources.
 - **Mes outils** : description, utilité, fonctionnement, limites, liens et preuves. Les synthèses automatiques sont marquées « À relire ».
 - **Revue des fiches** : corriger le nom, le résumé, les rubriques et les liens, marquer la fiche comme relue ou regrouper deux fiches du même outil. Les citations existantes et les versions précédentes restent conservées. Une page externe consultée peut recevoir une note attribuée après revue par l’utilisateur.
-- **Sources** : favoris conservés localement, texte disponible, état réel des extractions. Les listes Sources et Traitements chargent 24 entrées à la fois, avec filtrage avant pagination.
+- **Sources** : favoris conservés localement, texte disponible, état réel des extractions. Les listes Sources et Activité chargent 24 entrées à la fois, avec filtrage avant pagination.
 - **Preuves** : recherche et surlignage dans la transcription, captures horodatées et ouverture du passage depuis les résultats globaux. Les preuves de document affichent le numéro de page du PDF ou l’aperçu de l’image.
-- **Traitements** : présence des médias, transcription/OCR et état du dernier passage du worker. Actualiser le catalogue pour charger les nouveaux résultats. Un bouton permet de demander l’import de tout l’historique ; il ne lance pas d’analyse IA et ne modifie pas Karakeep. La demande est persistée et exécutée par le worker. Les analyses suivent la configuration et les quotas habituels. Elle affiche le budget comptabilisé, les appels, les sources en attente et les étapes en erreur/non applicables, et signale un état de collecte trop ancien.
+- **Activité** : présence des médias, transcription/OCR et état du dernier passage du worker. Actualiser le catalogue pour charger les nouveaux résultats. Un bouton permet de demander l’import de tout l’historique ; il ne lance pas d’analyse IA et ne modifie pas Karakeep. La demande est persistée et exécutée par le worker. Les analyses suivent la configuration et les quotas habituels. Elle affiche le budget comptabilisé, les appels, les sources en attente et les étapes en erreur/non applicables, et signale un état de collecte trop ancien.
 - **Approfondir** : export Markdown ou copie du contexte destiné à un autre assistant ; aucune requête IA n’est lancée par ce bouton. Un champ sélectionnable remplace le presse-papiers si nécessaire.
 
 Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont nécessaires pour consulter les preuves hors de l’application. Le contexte à copier fournit les URL originales et les extraits utiles même sans accès au volume.
@@ -69,7 +69,7 @@ Les éditions et leur historique sont distincts des générations du catalogue. 
 
 Les sources affichent un titre éditorial français (80 caractères maximum) et un résumé d’une phrase (180 caractères maximum). Une ancienne légende n’est plus utilisée comme grand titre. Tant qu’une source n’a pas été retraitée, un intitulé neutre et l’attente du résumé français sont affichés. Les noms propres des outils sont conservés.
 
-**Résumer / traduire**, disponible sur chaque source et en commande globale dans Sources et Traitements, travaille sur les preuves déjà conservées. Cette commande ne télécharge pas de média et ne contacte pas Karakeep. Le worker et `LLM_ENABLED=true` restent nécessaires. Les sources en langue étrangère ou mêlant plusieurs langues reçoivent des traductions françaises par extrait, avec les identifiants et les temps des preuves originales. La traduction de documents longs peut demander plusieurs appels ; les morceaux sont mis en cache et la commande reprend après quota. Les textes originaux restent accessibles avec **Afficher les preuves originales**.
+**Résumer / traduire**, disponible sur chaque source et en commande globale dans Sources et Activité, travaille sur les preuves déjà conservées. Cette commande ne télécharge pas de média et ne contacte pas Karakeep. Le worker et `LLM_ENABLED=true` restent nécessaires. Les sources en langue étrangère ou mêlant plusieurs langues reçoivent des traductions françaises par extrait, avec les identifiants et les temps des preuves originales. La traduction de documents longs peut demander plusieurs appels ; les morceaux sont mis en cache et la commande reprend après quota. Les textes originaux restent accessibles avec **Afficher les preuves originales**.
 
 Hashtags, appels promotionnels et répétitions publicitaires sont écartés du contexte éditorial, des textes de présentation et des traductions ; les réponses REST et les preuves brutes restent conservées pour permettre de vérifier les citations. La reformulation peut se tromper : elle ne devient pas une preuve brute. Les titres, résumés, rubriques, mots-clés et bulletins sont demandés en français.
 
@@ -88,3 +88,19 @@ Les paroles françaises sont affichées dès qu’elles existent, même si la vi
 La fiche affiche les états distincts des paroles, de la lecture d’écran et du résumé, le détail du dernier échec et les compteurs d’appels disponibles. Le diagnostic de quota distingue le plafond journalier (renouvellement à minuit UTC), le plafond mensuel d’appels et le budget mensuel insuffisant pour réserver un nouvel appel. Aucune limite n’est augmentée par ce correctif. Un titre français abrégé de la publication peut être utilisé en attendant le titre éditorial : cela ne constitue pas une synthèse de la vidéo.
 
 Le bouton **Réessayer l’analyse de l’écran** transmet `{ "kind": "refresh", "source_id": "ID", "stage": "vision" }` à `/api/actions`. Il cible l’invalidation du cache vision ; les autres extractions valides restent réutilisables. La reprise après quota conserve les images déjà reconnues. L’étape `stage` est validée parmi `all`, `asr`, `vision`, `document`, `llm`, et ne s’applique qu’à `refresh`.
+
+## Espace de travail 0.3
+
+L’accueil devient **Tableau de bord** (`#/dashboard`). La recherche garde `#/search`. **Activité** garde la route historique `#/processing` ; **Administration** est accessible à `#/administration`, avec `tab=connections|usage|storage|automation`. L’[audit d’usage et d’administration](UX-ET-ADMINISTRATION.md) décrit les choix d’écrans, les informations disponibles et leurs limites.
+
+`GET /api/overview` et `GET /api/administration` agrègent le catalogue et les états locaux, sans appeler Karakeep ni un modèle. `GET /api/administration/diagnostic` exporte une projection excluant les contenus et les secrets. `GET /download/catalog.json` exporte le catalogue privé et ses références, sans les médias : il ne s’agit pas d’une sauvegarde complète.
+
+`/api/sources` accepte aussi `type=all|article|video|note|file`, `sort=recent|oldest` et les états `failed|paused|pending|summarized`, filtrés avant pagination. Les états `complete` et `partial` gardent leur sens historique lié aux vidéos.
+
+Les commandes authentifiées et protégées par anti-CSRF ajoutent :
+
+- `POST /api/actions` avec `{ "kind": "check" }` : contrôle de lecture des connexions exécuté par le worker, sans inférence IA ; résultat horodaté dans `data/connection-check.json`.
+- `POST /api/actions/ID/cancel` avec `{}` : annule les éléments suivants de la commande. Une opération déjà engagée peut se terminer et publier ses résultats.
+- `POST /api/automation` avec `{ "paused": true|false }` : suspend ou reprend les prochains passages automatiques, sans changer les clés, les plafonds ou les options du `.env`. Un passage déjà engagé peut se terminer ; les commandes manuelles restent disponibles.
+
+Les styles sont répartis entre les composants de base (`styles.css`) et le système glass (`glass.css`). `workspace.js` contient les écrans de consultation et d’administration, `app.js` conserve la navigation et les fiches/preuves, et `digests.js` conserve la veille. Le web et le worker embarquent `version.py`. Les deux images doivent être mises à jour ensemble.

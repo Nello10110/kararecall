@@ -6,7 +6,7 @@ ARG PGID=10001
 RUN groupadd --gid ${PGID} kararecall && useradd --uid ${PUID} --gid ${PGID} --no-create-home kararecall && mkdir -p /workspace/data /workspace/vault && chown -R kararecall:kararecall /workspace
 ENV KARARECALL_ROOT=/workspace
 COPY kararecall.py web_server.py settings.py integrations.py worker.py worker_media.py worker_documents.py web_research.py editorial.py publication.py usage.py controls.py reading.py ./
-COPY digests.py digest_delivery.py digest_writer.py curation.py ./
+COPY digests.py digest_delivery.py digest_writer.py curation.py overview.py version.py ./
 COPY web/ ./web/
 COPY scripts/verify_storage.py ./verify_storage.py
 COPY scripts/pilot.py ./pilot.py

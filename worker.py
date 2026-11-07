@@ -143,10 +143,13 @@ def synthesize(source,evidence,settings,ledger=None,force=False):
 
 
 def status(settings,**fields):
+    from overview import public_configuration
+    from version import __version__
     existing=kararecall.read_json(settings.root/'data/service-status.json',{})
     existing.update({'sync_enabled':settings.sync_enabled,'llm_enabled':settings.llm_enabled,
         'asr_enabled':bool(settings.asr_model),'vision_enabled':bool(settings.vision_model),
-        'heartbeat_at':now(),'sync_interval_seconds':settings.sync_interval,**fields})
+        'heartbeat_at':now(),'sync_interval_seconds':settings.sync_interval,
+        'application_version':__version__,'configuration':public_configuration(settings),'storage_min_free_mb':settings.storage_min_free_mb,**fields})
     kararecall.write_json(settings.root/'data/service-status.json',existing)
 
 

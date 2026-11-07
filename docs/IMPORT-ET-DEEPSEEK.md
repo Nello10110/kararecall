@@ -21,7 +21,7 @@ Le modèle texte produit maintenant un **résumé de lecture sourcé pour chaque
 ## Première passe sur tout l’historique
 
 1. Créer le `.env`, renseigner les accès Karakeep et démarrer web et worker avec le profil Compose `automation`. `SYNC_ENABLED=false` permet de commencer sans analyses périodiques.
-2. Dans **Traitements**, cliquer sur **Importer tout l’historique**. La demande persiste sur le volume. Le worker la prend en charge pendant son attente habituelle, sans attendre quinze minutes. Si aucun worker n’est démarré, l’interface indique l’attente.
+2. Dans **Activité**, cliquer sur **Importer tout l’historique**. La demande persiste sur le volume. Le worker la prend en charge pendant son attente habituelle, sans attendre quinze minutes. Si aucun worker n’est démarré, l’interface indique l’attente.
 3. Le worker lit toutes les pages puis publie le catalogue complet. Ce passage ignore volontairement les filtres URL et tags et inclut les favoris archivés. Il ne télécharge pas les médias et ne lance aucune inférence. Une erreur de pagination laisse la publication précédente intacte.
 4. Contrôler le nombre de favoris, les textes disponibles et les cas sans texte. Choisir ensuite les étapes IA, faire un premier traitement avec `WORKER_BATCH_SIZE=1`, puis activer la collecte périodique.
 

@@ -4,7 +4,7 @@ Ce parcours sépare la validation de l’installation, l’accès à Karakeep et
 
 ## Installer et contrôler le stockage
 
-Suis l’installation Compose et ouvre l’interface depuis ton réseau. Lance le premier import depuis Traitements. [Manuel d’installation](INSTALLATION.md).
+Suis l’installation Compose et ouvre l’interface depuis ton réseau. Lance le premier import depuis Activité. [Manuel d’installation](INSTALLATION.md).
 
 ```sh
 docker compose ps

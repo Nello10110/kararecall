@@ -122,7 +122,7 @@ Le navigateur consulte le corpus en lecture seule ; une commande authentifiée e
 
 Une source expose sa transcription à côté de la vidéo. Les passages disponibles sont cliquables pour naviguer à l’instant cité. Le panneau permet de rechercher et surligner des mots. Les résultats globaux peuvent ouvrir directement la preuve horodatée. Les preuves PDF sont repérées par page.
 
-Les listes Sources et Traitements chargent 24 entrées par requête. L’adaptateur MCP est un processus local stdio séparé qui appelle l’API web authentifiée en lecture seule. Les outils renvoient les références et l’URL source. [Guide MCP](MCP.md).
+Les listes Sources et Activité chargent 24 entrées par requête. L’adaptateur MCP est un processus local stdio séparé qui appelle l’API web authentifiée en lecture seule. Les outils renvoient les références et l’URL source. [Guide MCP](MCP.md).
 
 Le bouton de contexte fournit un texte à copier dans un assistant ; il ne transmet rien automatiquement. L’adaptateur MCP local réutilise les routes de lecture. Les routes de lecture existantes sont détaillées dans [WEB.md](WEB.md).
 

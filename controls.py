@@ -75,7 +75,8 @@ def action_status(root):
 
 def request_action(root,kind,source_id=None,tool_id=None,confirmation=None,stage='all'):
     from publication import active_root
-    if kind not in ('llm','refresh','research','clear'):raise ValueError('Commande inconnue.')
+    if kind not in ('llm','refresh','research','clear','check'):raise ValueError('Commande inconnue.')
+    if kind=='check' and (source_id or tool_id):raise ValueError('Le contrôle porte sur les connexions configurées.')
     if stage not in ('all','asr','vision','document','llm') or (kind!='refresh' and stage!='all'):raise ValueError('Étape de reprise invalide.')
     if source_id is not None and (not isinstance(source_id,str) or len(source_id)>150):raise ValueError('Source invalide.')
     if tool_id is not None and (kind!='research' or not isinstance(tool_id,str)):raise ValueError('Outil invalide.')
@@ -90,7 +91,8 @@ def request_action(root,kind,source_id=None,tool_id=None,confirmation=None,stage
         catalogue=kararecall.read_json(active_root(root)/'data/catalog.json',{'sources':[],'entities':[]})
         if source_id and not any(row['id']==source_id for row in catalogue['sources']):raise ValueError('Source absente de la bibliothèque.')
         if kind=='refresh' and not source_id:raise ValueError('Une source est requise pour actualiser.')
-        if kind=='research':
+        if kind=='check':ids=['connections']
+        elif kind=='research':
             ids=[row['id'] for row in catalogue['entities'] if not tool_id or row['id']==tool_id]
         else:ids=[row['id'] for row in catalogue['sources'] if not source_id or row['id']==source_id]
         if kind!='clear' and not ids:raise ValueError('Aucun élément à traiter ; importer les sources d’abord.')
@@ -122,7 +124,7 @@ def _update_action(root,identifier,**changes):
 
 def process_actions(settings):
     """One resumable item per pass; explicit commands work without periodic sync."""
-    from worker import safe_error, run_cycle, run_local_llm, clear_library
+    from worker import safe_error, run_cycle, run_local_llm, clear_library, check_connections
     from web_research import run_research
     from usage import BudgetExceeded
     from dataclasses import replace
@@ -136,6 +138,13 @@ def process_actions(settings):
             _update_action(settings.root,identifier,state='running',message=f'Traitement {index+1} sur {job["total"]}.')
             try:
                 if job['kind']=='clear':clear_library(settings)
+                elif job['kind']=='check':
+                    try:
+                        checked=check_connections(settings)
+                        kararecall.write_json(settings.root/'data/connection-check.json',{'state':'completed','checked_at':now(),'results':checked})
+                    except Exception as exc:
+                        kararecall.write_json(settings.root/'data/connection-check.json',{'state':'error','checked_at':now(),'message':safe_error(exc,settings)})
+                        raise
                 elif job['kind']=='llm':run_local_llm(settings,target,identifier)
                 elif job['kind']=='refresh':
                     result=run_cycle(replace(settings,sync_enabled=True),force_id=target,force_stage='resume' if job.get('resuming') else job.get('stage','all'))
@@ -162,3 +171,24 @@ def process_actions(settings):
                            state=('error' if failed else 'completed') if index+1==job['total'] else 'queued',message=message)
             return True
     except BlockingIOError:return False
+
+
+def cancel_action(root,identifier):
+    with locked(root,'state.lock'):
+        data=action_status(root)
+        job=next((row for row in data['jobs'] if row['id']==identifier),None)
+        if not job:raise ValueError('Commande introuvable.')
+        if job['kind']=='clear':raise ValueError('Un vidage confirmé ne peut pas être annulé dans cette file.')
+        if job['state'] in ('queued','running','paused'):
+            job.update(state='cancelled',updated_at=now(),message='Suite de la commande annulée. Une opération déjà engagée peut se terminer.')
+            kararecall.write_json(root/'data/control/actions.json',{'jobs':data['jobs']})
+        return job
+
+
+def pause_automation(root,paused):
+    if type(paused) is not bool:raise ValueError('État de suspension invalide.')
+    with locked(root,'state.lock'):
+        if not paused and any(row['kind']=='clear' and row['state'] in ('queued','running') for row in action_status(root)['jobs']):
+            raise ValueError('Attendre la fin du vidage avant de reprendre.')
+        kararecall.write_json(root/'data/control/library.json',{'paused':paused,'updated_at':now()})
+    return {'paused':paused}

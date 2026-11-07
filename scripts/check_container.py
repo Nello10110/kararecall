@@ -48,6 +48,12 @@ def main():
             assert error.code==401
         with request('/api/catalog') as r:
             catalog=json.load(r)
+        with request('/api/overview') as r:
+            overview=json.load(r);assert overview['summary']['sources']==0
+        with request('/api/administration/diagnostic') as r:
+            diagnostic=json.load(r);assert diagnostic['application']=='KaraRecall' and 'sources' not in diagnostic
+        for asset in ('/glass.css','/workspace.js'):
+            with request(asset) as r:assert r.status==200
             assert catalog['stats']==dict(tools=0,sources=0,processed=0)
         while True:
             with request('/api/catalog') as response:disabled=json.load(response).get('worker',{}).get('state')=='disabled'

@@ -41,6 +41,7 @@ class UsageLedger:
             count,accounted,measured=db.execute('SELECT count(*),coalesce(sum(accounted_usd),0),coalesce(sum(measured_usd),0) FROM calls WHERE month=?',(month,)).fetchone()
             daily=db.execute('SELECT count(*) FROM calls WHERE day=?',(instant.strftime('%Y-%m-%d'),)).fetchone()[0]
             unknown=db.execute("SELECT count(*) FROM calls WHERE month=? AND measured_usd IS NULL",(month,)).fetchone()[0]
+            history=db.execute("SELECT day,count(*),coalesce(sum(accounted_usd),0) FROM calls WHERE month=? GROUP BY day ORDER BY day DESC LIMIT 7",(month,)).fetchall()
             web_count,web_total=db.execute("SELECT count(*),coalesce(sum(accounted_usd),0) FROM calls WHERE month=? AND stage IN ('web-search','web-fetch')",(month,)).fetchone()
         reasons=[]
         if daily>=self.settings.daily_call_limit:reasons.append('daily_calls')
@@ -48,6 +49,7 @@ class UsageLedger:
         if accounted+self.settings.call_reserve_usd>self.settings.monthly_budget_usd+1e-9:reasons.append('monthly_budget')
         return {'month':month,'calls':count,'daily_calls':daily,'daily_call_limit':self.settings.daily_call_limit,
                 'monthly_call_limit':self.settings.monthly_call_limit,'blocked_by':reasons,'accounted_usd':round(accounted,6),'measured_estimate_usd':round(measured,6),
+                'daily_history':[{'date':day,'calls':calls,'usd':round(cost,6)} for day,calls,cost in reversed(history)],
                 'unpriced_calls':unknown,'limit_usd':self.settings.monthly_budget_usd,
                 'web_calls':web_count,'web_accounted_usd':round(web_total,6)}
 

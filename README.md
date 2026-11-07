@@ -32,7 +32,7 @@ Ouvre `.env` et complète les lignes `KARAKEEP_BASE_URL` et `KARAKEEP_API_KEY`. 
 docker compose up -d --build
 ```
 
-Ouvre **`http://IP_DU_NAS:8765`** avec `KARARECALL_USERNAME` et `KARARECALL_PASSWORD` indiqués dans `.env`, puis clique sur **Traitements → Importer tout l’historique**. Sur le Mac, garder l’écoute `127.0.0.1` et ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765).
+Ouvre **`http://IP_DU_NAS:8765`** avec `KARARECALL_USERNAME` et `KARARECALL_PASSWORD` indiqués dans `.env`, puis clique sur **Activité → Importer tout l’historique**. Sur le Mac, garder l’écoute `127.0.0.1` et ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
 Les commandes pour un NAS sans Python et le premier essai DeepSeek figurent dans le manuel. Pour un accès distant, utilise un VPN ou le [reverse proxy HTTPS du homelab](docs/HOMELAB.md#réseau).
 
@@ -44,7 +44,7 @@ Le profil recommandé prépare DeepSeek `deepseek-flash` pour les captures et la
 
 Dans `.env`, renseigner `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY` et la clé DeepSeek dans `LLM_API_KEY`. La vision hérite de la clé LLM si `VISION_API_KEY` est vide. **Tous les favoris sont collectés par défaut**, y compris sites, articles, notes, fichiers et favoris archivés. Garder `KARAKEEP_URL_FILTER=` et `KARAKEEP_TAG_FILTER=` pour conserver ce périmètre ; corriger un ancien `.env` limité à Instagram.
 
-Dans **Traitements**, le bouton **Importer tout l’historique** demande au worker de récupérer le catalogue complet, sans appel IA ni téléchargement média. Le worker doit être démarré avec ses accès Karakeep ; la synchronisation périodique peut rester désactivée pour cet import. Les analyses suivront ensuite par lots avec les étapes et le budget configurés.
+Dans **Activité**, le bouton **Importer tout l’historique** demande au worker de récupérer le catalogue complet, sans appel IA ni téléchargement média. Le worker doit être démarré avec ses accès Karakeep ; la synchronisation périodique peut rester désactivée pour cet import. Les analyses suivront ensuite par lots avec les étapes et le budget configurés.
 
 Le [guide P0](docs/P0.md) donne le premier passage manuel puis l’activation de `SYNC_ENABLED=true`, `LLM_ENABLED=true` et du profil Compose `automation`. Commencer avec `WORKER_BATCH_SIZE=1`, contrôler les preuves, puis démarrer la boucle. `ASR_MODEL` et `VISION_MODEL` vides désactivent leurs étapes.
 
@@ -61,6 +61,8 @@ docker compose logs --tail=50 worker
 Le contrôle de connexion ne lance pas d’inférence. Les premières analyses permettront de vérifier la compatibilité réelle du modèle et de son JSON. Le worker démarre immédiatement, puis repasse toutes les 15 minutes, trois sources par passage par défaut. Les erreurs sont réessayées avec délai croissant, trois tentatives au maximum par configuration ; les résultats déjà traités sont réutilisés. Aucune tâche Codex n’est nécessaire.
 
 ## Consulter et poursuivre
+
+Le tableau de bord regroupe les nouveautés et les alertes ; Activité suit les traitements ; Administration expose les services, quotas, versions et données. L’interface glass propose un thème sombre et un thème clair, avec navigation mobile. [Organisation des écrans et limites d’administration](docs/UX-ET-ADMINISTRATION.md).
 
 Recherche par souvenir, bibliothèque d’outils, sources originales, transcription et captures horodatées, lecture vidéo à l’instant cité, suivi des traitements et exports Markdown. Le bouton de contexte prépare un texte à copier dans un assistant, avec les explications, liens et preuves. Il n’appelle pas lui-même de service IA.
 

@@ -189,3 +189,19 @@ Les critères et charges indicatives sont dans l’[étude](docs/ETUDE-EXPLOITAT
 - [x] Distinguer les limites journalière, mensuelle et budgétaire sans les contourner ni remettre le journal d’usage à zéro.
 - [x] Ajouter une reprise ciblée de la lecture de l’écran, avec réutilisation des autres extractions valides.
 - [x] Reproduire le cas de huit segments français, sans résumé et avec vision en pause, sur données fictives.
+
+## Espace de travail et administration — 8 novembre 2026
+
+Audit : [usage quotidien et administration](docs/UX-ET-ADMINISTRATION.md).
+
+- [x] Tableau de bord avec compteurs réels, nouveautés, formats, alertes et aperçu des quotas.
+- [x] Recherche recentrée et suppression des exemples figés du POC.
+- [x] Filtres de sources par format, état et tri, appliqués avant pagination et conservables dans l’URL.
+- [x] Filtre de relecture et recherche dans la bibliothèque d’outils.
+- [x] Écran Activité avec commandes, progression et annulation de la suite d’une commande.
+- [x] Administration : connexions, contrôle de lecture explicite, versions, santé, consommation, stockage et suspension de l’automatisation.
+- [x] Export de diagnostic sans contenus ni secrets ; export privé du catalogue JSON distinct d’une sauvegarde.
+- [x] Vidage local déplacé dans une zone dédiée avec confirmation explicite.
+- [x] Thèmes glass sombre/clair, navigation mobile et maintien des anciennes routes de preuves et fiches.
+- [ ] Qualifier les nouveaux états de configuration, le contrôle des fournisseurs et les parcours sur le NAS après mise à jour des deux images.
+- [ ] Étudier un parcours de restauration des anciennes générations et une preuve de sauvegarde externe, avant de présenter ces fonctions comme administrables dans l’interface.
