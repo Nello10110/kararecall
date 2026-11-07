@@ -1,6 +1,6 @@
 # Backlog de KaraRecall
 
-Mise à jour du 6 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le NAS est en attente d’installation.** Le propriétaire lancera le [pilote](docs/PILOTE.md) depuis son réseau.
+Mise à jour du 7 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le NAS est en attente d’installation.** Le propriétaire lancera le [pilote](docs/PILOTE.md) depuis son réseau.
 
 Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimensionner la première version pour ce volume, sans service Mac obligatoire ni abonnement de recherche payant par défaut. Les optimisations de débit passent après la fiabilité et l’usage quotidien.
 
@@ -102,6 +102,22 @@ Acceptation : chaque enrichissement est retraçable, un doublon ne relance pas t
 - [x] Centrer l’extrait sur un mot retrouvé et ouvrir directement le passage ou la page depuis les résultats globaux.
 
 Déjà disponible : la recherche globale inclut transcriptions et OCR ; la transcription apparaît à côté de la vidéo avec passages cliquables.
+
+### Bulletin de veille hebdomadaire et mensuel
+
+Produire un petit article illustré, structuré et agréable à lire, pour retrouver les découvertes de la période et préparer leur diffusion.
+
+- [ ] Définir le périmètre du bulletin parmi les favoris ajoutés, analysés ou effectivement consultés pendant la période. Si les consultations sont retenues, prévoir leur suivi explicite dans l’interface. Inclure les outils, sites, articles, notes et autres contenus pertinents.
+- [ ] Proposer un rendez-vous hebdomadaire et un récapitulatif mensuel, activables séparément, avec jour, heure et fuseau configurables, ainsi qu’une génération manuelle depuis l’interface.
+- [ ] Construire un article avec titre, courte introduction, rubriques thématiques et quelques lignes par découverte. Pour un outil, présenter ce qu’il fait, son utilité et un cas d’usage lorsque les sources le permettent. Ajouter un lien vers la fiche et la source originale.
+- [ ] Accompagner les présentations de petites images issues des preuves ou d’illustrations sourcées, avec légende et texte alternatif. Prévoir un rendu lisible sur mobile, y compris lorsque les images sont absentes ou bloquées.
+- [ ] Regrouper les favoris parlant du même outil et distinguer les nouveautés des compléments. Donner au bulletin mensuel une synthèse des thèmes et découvertes marquantes, avec une longueur réglable.
+- [ ] Générer les textes à partir des fiches et preuves conservées, avec attribution des affirmations et liens vers les références. Réutiliser les résumés existants et appliquer les budgets IA aux éventuels appels supplémentaires.
+- [ ] Comparer les canaux de diffusion selon le confort de lecture et le partage souhaité. Étudier le mail, une page de veille dans KaraRecall, un flux RSS privé, les exports HTML/Markdown/PDF et une messagerie via webhook. Choisir les premiers canaux après aperçu d’un bulletin.
+- [ ] Permettre de prévisualiser, corriger et sélectionner les contenus et images partageables avant diffusion. Configurer les destinataires et accès de diffusion via les paramètres privés de l’installation, avec activation explicite des envois automatiques.
+- [ ] Conserver les éditions et leur état de génération ou d’envoi. Dédupliquer les envois par période et destination, gérer les reprises et préciser le comportement en l’absence de nouveautés.
+
+Le bulletin doit se lire en quelques minutes, présenter les découvertes avec leurs illustrations et références, puis pouvoir être relu et exporté pour diffusion. Une reprise doit préserver l’édition et son suivi d’envoi.
 
 ### Couverture et traitements économes
 
