@@ -20,7 +20,7 @@ from settings import boolean, integer
 
 MAX_ITEMS = 40
 MAX_IMAGE = 512 * 1024
-EDITION_ID = r'(?:weekly|monthly)-[0-9]{4}-[0-9]{2}-[0-9]{2}'
+EDITION_ID = r'(?:weekly|monthly|initial)-[0-9]{4}-[0-9]{2}-[0-9]{2}'
 
 
 class DigestConflict(ValueError):
@@ -45,14 +45,17 @@ def config():
     scope = os.getenv('DIGEST_SCOPE', 'added')
     if scope not in ('added', 'analyzed', 'viewed'):
         raise ValueError('DIGEST_SCOPE attend added, analyzed ou viewed.')
-    return {'enabled':boolean('DIGEST_ENABLED'), 'weekly':boolean('DIGEST_WEEKLY', True),
+    return {'enabled':boolean('DIGEST_ENABLED',True), 'weekly':boolean('DIGEST_WEEKLY', True),
             'monthly':boolean('DIGEST_MONTHLY', True), 'timezone':zone, 'time':send_time.isoformat(),
             'weekday':integer('DIGEST_WEEKDAY', 0, 0, 6), 'monthday':integer('DIGEST_MONTHDAY', 1, 1, 28),
             'scope':scope, 'track_views':boolean('DIGEST_TRACK_VIEWS'),
-            'auto_send':boolean('DIGEST_AUTO_SEND'),
-            'auto_approve':boolean('DIGEST_AUTO_APPROVE'),
+            'auto_send':boolean('DIGEST_AUTO_SEND',True),
+            'auto_approve':boolean('DIGEST_AUTO_APPROVE',True),
+            'write_articles':boolean('DIGEST_WRITE_ARTICLES',True),
+            'initial_history':boolean('DIGEST_INITIAL_HISTORY',True),
             'weekly_limit':integer('DIGEST_WEEKLY_MAX_ITEMS', 12, 1, MAX_ITEMS),
             'monthly_limit':integer('DIGEST_MONTHLY_MAX_ITEMS', 24, 1, MAX_ITEMS),
+            'initial_limit':integer('DIGEST_INITIAL_MAX_ITEMS',6,1,MAX_ITEMS),
             'base_url':web_url(os.getenv('KARARECALL_PUBLIC_URL', '').rstrip('/'))}
 
 
@@ -64,9 +67,11 @@ def web_url(value):
 
 
 def period(kind, anchor=None, zone='Europe/Paris'):
-    if kind not in ('weekly', 'monthly'):
+    if kind not in ('weekly', 'monthly','initial'):
         raise ValueError('Période inconnue.')
     day = date.fromisoformat(anchor) if anchor else datetime.now(ZoneInfo(zone)).date()
+    if kind=='initial':
+        return date(1970,1,1),day+timedelta(days=1)
     if kind == 'weekly':
         end = day - timedelta(days=day.weekday())
         start = end - timedelta(days=7)
@@ -97,6 +102,7 @@ def list_editions(root):
 def overview(root):
     fields = ('id', 'title', 'kind', 'start', 'end', 'revision', 'approved', 'created_at', 'empty', 'scope')
     editions = [{**{key:row[key] for key in fields},
+                 'writing':row.get('writing',{}),
                  'items':sum(item['included'] for item in row['items']),
                  'delivery':row.get('delivery', {})} for row in list_editions(root)]
     return {'editions':editions, 'config':config(),
@@ -169,16 +175,23 @@ def make_item(root, selected, identifier, title, sources, entity=None):
         summary = ' '.join(row['text'] for row in details['description']) or entity['description'][:500]
     else:
         reading = sources[0].get('reading')
-        proof = next((p for p in sources[0]['evidence'] if p['kind'] in ('page', 'text', 'document', 'caption') and not p.get('archived')), None)
+        proof = next((p for kind in ('page','text','document','pdf-page','caption') for p in sources[0]['evidence']
+                      if p['kind']==kind and not p.get('archived')), None)
         entry = reading or ({'text':proof['text'], 'status':'source_claim', 'evidence':[sources[0]['id']+'#'+proof['id']]} if proof else None)
         details = {'description':claim_excerpt([entry]) if entry else [], 'usefulness':[], 'operation':[]}
         summary = ' '.join(row['text'] for row in details['description']) or 'Informations disponibles dans la source.'
     refs = list(dict.fromkeys(ref for entries in details.values() for entry in entries for ref in entry['evidence']))
+    for source in sources:
+        for kind in ('page','text','document','caption'):
+            extra=next((p for p in source['evidence'] if p['kind']==kind and not p.get('archived')),None)
+            if extra:
+                ref=source['id']+'#'+extra['id']
+                if ref not in refs:refs.append(ref)
     lookup = {source['id']+'#'+proof['id']:(source, proof) for source in sources for proof in source['evidence']}
     evidence = []
     for ref in refs:
         source, proof = lookup[ref]
-        evidence.append({'ref':ref, 'text':proof['text'][:600], 'url':web_url(source['url']),
+        evidence.append({'ref':ref, 'text':proof['text'][:6000], 'kind':proof['kind'], 'url':web_url(source['url']),
                          **{key:proof[key] for key in ('start', 'end', 'page') if key in proof}})
     documentation = []
     for entries in details.values():
@@ -193,7 +206,7 @@ def make_item(root, selected, identifier, title, sources, entity=None):
             'operation':' '.join(entry['text'] for entry in details['operation']), 'claims':details,
             'source_ids':[source['id'] for source in sources],
             'sources':[{'id':source['id'], 'url':web_url(source['url']), 'title':source['title'][:180]} for source in sources],
-            'evidence':evidence, 'documentation':documentation,
+            'evidence':evidence, 'documentation':list({doc['url']:doc for doc in documentation}.values()),
             'image':snapshot_image(root, selected, sources), 'include_image':True,
             'included':True, 'route':('/#/tools/' if entity else '/#/sources/')+identifier,
             'editorial_status':'draft'}
@@ -202,7 +215,8 @@ def make_item(root, selected, identifier, title, sources, entity=None):
 def generate(root, kind='weekly', anchor=None, refresh=False):
     cfg = config()
     start, end = period(kind, anchor, cfg['timezone'])
-    identifier = kind + '-' + start.isoformat()
+    suffix=(end-timedelta(days=1)).isoformat() if kind=='initial' else start.isoformat()
+    identifier=kind+'-'+suffix
     with locked(root, 'digests.lock'):
         previous = None
         try:
@@ -215,14 +229,18 @@ def generate(root, kind='weekly', anchor=None, refresh=False):
             pass
         selected = active_root(root)
         catalog = kararecall.read_json(selected/'data/catalog.json', {'sources':[], 'entities':[]})
+        if kind=='initial' and catalog['sources']:
+            days=[datetime.fromisoformat(source['created_at'].replace('Z','+00:00')).astimezone(ZoneInfo(cfg['timezone'])).date()
+                  for source in catalog['sources']]
+            start=min(days)
         lookup = {source['id']:source for source in catalog['sources']}
         stamps = {}
         for source in catalog['sources']:
             stamp = source['created_at']
-            if cfg['scope']=='analyzed':
+            if cfg['scope']=='analyzed' and kind!='initial':
                 stamp = source.get('processed_at') or source.get('reading', {}).get('generated_at')
             stamps[source['id']] = stamp
-        if cfg['scope']=='viewed':
+        if cfg['scope']=='viewed' and kind!='initial':
             stamps = {row['source_id']:row['viewed_at'] for row in kararecall.read_json(root/'data/digests/views.json', {}).values()
                       if in_period(row['viewed_at'], start, end, cfg['timezone'])}
         eligible = {sid for sid, stamp in stamps.items() if in_period(stamp, start, end, cfg['timezone']) and sid in lookup}
@@ -260,7 +278,7 @@ def generate(root, kind='weekly', anchor=None, refresh=False):
             item = make_item(root, selected, sid, title, sources, entity)
             item['novelty'] = 'Complément' if item['id'] in seen else 'Découverte'
             items.append(item)
-        label = 'La semaine en découvertes' if kind=='weekly' else 'Le mois en découvertes'
+        label = {'weekly':'La semaine en découvertes','monthly':'Le mois en découvertes','initial':'Les découvertes de votre bibliothèque'}[kind]
         themes = list(dict.fromkeys(item['theme'] for item in items))
         intro = f"{len(items)} découvertes du {start:%d/%m/%Y} au {end-timedelta(days=1):%d/%m/%Y}."
         if themes:
@@ -270,6 +288,7 @@ def generate(root, kind='weekly', anchor=None, refresh=False):
                    'created_at':utcnow(), 'generation':str(selected.relative_to(root)) or '.',
                    'revision':previous['revision']+1 if previous else 1,
                    'approved':False, 'empty':not items, 'total_candidates':total, 'items':items,
+                   'writing':{'state':'pending' if cfg['write_articles'] and items else 'not_requested'},
                    'base_url':cfg['base_url'], 'delivery':{}, 'send_requested':False}
         if previous:
             kararecall.write_json(root/'data/digests/revisions'/identifier/(str(previous['revision'])+'.json'),previous)
@@ -313,12 +332,13 @@ def revise(root, identifier, payload, action='edit'):
                         raise ValueError('Texte du bulletin invalide.')
                     item[key] = value.strip()
                 item['editorial_status'] = 'user-edited'
+                item.pop('paragraphs',None)
             edition['approved'] = False
             edition['send_requested'] = False
         elif action in ('approve','auto-approve'):
             if not any(row['included'] for row in edition['items']):
                 raise ValueError('Sélectionne au moins une découverte.')
-            if action=='auto-approve' and (not config()['auto_approve'] or edition['revision']!=1):
+            if action=='auto-approve' and (not config()['auto_approve'] or any(item['editorial_status']=='user-edited' for item in edition['items'])):
                 raise DigestConflict('Cette édition demande une relecture.')
             edition['approved'] = True
             edition['approval_mode'] = 'automatic' if action=='auto-approve' else 'human'
@@ -354,20 +374,25 @@ def markdown(edition):
     for item in edition['items']:
         if not item['included']:
             continue
-        lines += ['## '+text(item['theme'])+' · '+text(item['title']), '', attribution(item,'description'), '', text(item['summary']), '']
-        for key, label in (('usefulness','Utilité'),('operation','Fonctionnement')):
-            if item[key]:
-                lines += [label+' — '+attribution(item,key), text(item[key]), '']
+        lines += ['## '+text(item['theme'])+' · '+text(item['title']), '']
+        if item.get('paragraphs'):
+            for paragraph in item['paragraphs']:
+                lines += [text(paragraph['text']), '']
+        else:
+            lines += [attribution(item,'description'),text(item['summary']),'']
+            for key, label in (('usefulness','Utilité'),('operation','Fonctionnement')):
+                if item[key]:
+                    lines += [label+' — '+attribution(item,key), text(item[key]), '']
         reviewed = edition['approved'] and edition.get('approval_mode')=='human'
-        lines += ['Édition relue' if reviewed else 'Rédaction automatique à relire', '']
+        lines += ['Édition relue' if reviewed else 'Généré automatiquement à partir des favoris', '']
         for source in item['sources']:
             if source['url']:
                 lines += ['Source originale — '+source['url']]
         if edition['base_url']:
             lines += ['Fiche — '+edition['base_url']+item['route']]
         for proof in item['evidence']:
-            lines += ['Preuve '+text(proof['ref'])+' — '+text(proof['text'])]
-        lines += ['Documentation consultée — '+doc['url'] for doc in item['documentation']]
+            lines += ['Preuve '+text(proof['ref'])+' — '+text(proof['text'][:600])]
+        lines += ['Documentation consultée — '+doc['url'] for doc in {doc['url']:doc for doc in item['documentation']}.values()]
         lines.append('')
     return '\n'.join(lines)
 
@@ -386,7 +411,7 @@ def article_html(root, edition, email_images=False):
     escape = html.escape
     pieces = ['<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
               '<title>'+escape(edition['title'])+'</title><style>'+ARTICLE_CSS+'</style></head><body><main><header>',
-              '<small>KARARECALL · VEILLE '+('MENSUELLE' if edition['kind']=='monthly' else 'HEBDOMADAIRE')+'</small>',
+              '<small>KARARECALL · VEILLE '+({'monthly':'MENSUELLE','weekly':'HEBDOMADAIRE','initial':'DÉCOUVERTES'}[edition['kind']])+'</small>',
               '<h1>'+escape(edition['title'])+'</h1><p>'+escape(edition['intro'])+'</p></header>']
     theme = None
     for item in sorted((item for item in edition['items'] if item['included']), key=lambda item:item['theme'].casefold()):
@@ -399,21 +424,25 @@ def article_html(root, edition, email_images=False):
             raw, mime = image_bytes(root, image)
             url = 'cid:'+image['file'] if email_images else 'data:'+mime+';base64,'+base64.b64encode(raw).decode('ascii')
             pieces += ['<figure><img src="'+url+'" alt="'+escape(image['alt'],quote=True)+'"><figcaption>'+escape(image['caption'])+'</figcaption></figure>']
-        pieces += ['<small>'+escape(attribution(item,'description'))+'</small><p>'+escape(item['summary'])+'</p>']
-        for key, label in (('usefulness','À quoi ça sert'),('operation','Comment ça fonctionne')):
-            if item[key]:
-                pieces += ['<p><strong>'+label+'</strong><br><small>'+escape(attribution(item,key))+'</small><br>'+escape(item[key])+'</p>']
+        if item.get('paragraphs'):
+            pieces += ['<small>D’après les contenus enregistrés</small>']
+            pieces += ['<p>'+escape(paragraph['text'])+'</p>' for paragraph in item['paragraphs']]
+        else:
+            pieces += ['<small>'+escape(attribution(item,'description'))+'</small><p>'+escape(item['summary'])+'</p>']
+            for key, label in (('usefulness','À quoi ça sert'),('operation','Comment ça fonctionne')):
+                if item[key]:
+                    pieces += ['<p><strong>'+label+'</strong><br><small>'+escape(attribution(item,key))+'</small><br>'+escape(item[key])+'</p>']
         links = []
         if edition['base_url']:
             links += ['<a href="'+escape(edition['base_url']+item['route'],quote=True)+'">Ouvrir la fiche</a>']
         links += ['<a href="'+escape(source['url'],quote=True)+'">Source originale</a>' for source in item['sources'] if source['url']]
-        links += ['<a href="'+escape(doc['url'],quote=True)+'">Documentation consultée</a>' for doc in item['documentation']]
+        links += ['<a href="'+escape(doc['url'],quote=True)+'">Documentation consultée</a>' for doc in {doc['url']:doc for doc in item['documentation']}.values()]
         pieces += ['<p>'+' · '.join(links)+'</p><details><summary>Sources et preuves</summary>']
         for proof in item['evidence']:
-            pieces += ['<p><strong>'+escape(proof['ref'])+'</strong><br>'+escape(proof['text'])+'</p>']
+            pieces += ['<p><strong>'+escape(proof['ref'])+'</strong><br>'+escape(proof['text'][:600])+'</p>']
         pieces += ['</details></article>']
     reviewed = edition['approved'] and edition.get('approval_mode')=='human'
-    pieces += ['<footer><p>'+('Édition relue. Les descriptions restent attribuées aux sources.' if reviewed else 'Rédaction automatique à relire. Les descriptions restent attribuées aux sources.')+'</p></footer></main></body></html>']
+    pieces += ['<footer><p>'+('Édition relue. Les descriptions restent attribuées aux sources.' if reviewed else 'Généré automatiquement à partir des favoris. Les descriptions restent attribuées aux sources.')+'</p></footer></main></body></html>']
     return ''.join(pieces)
 
 

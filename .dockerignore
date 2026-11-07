@@ -10,6 +10,7 @@
 !reading.py
 !digests.py
 !digest_delivery.py
+!digest_writer.py
 !web_research.py
 !editorial.py
 !kararecall_mcp.py

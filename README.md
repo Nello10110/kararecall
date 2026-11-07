@@ -70,7 +70,7 @@ Les fiches générées automatiquement portent **À relire**. Leurs propos sont 
 
 ## Veille hebdomadaire et mensuelle
 
-L’onglet **Veille** prépare des bulletins illustrés à partir des découvertes de la période. Relis les présentations, choisis les contenus et les images, puis valide l’édition. La préparation peut être programmée sur le NAS. Le mail SMTP et le webhook s’activent dans le `.env` du worker. Le RSS privé et les exports HTML/Markdown sont disponibles, avec impression PDF depuis le navigateur. Les bulletins sont conservés dans le volume Docker persistant par défaut. [Guide des bulletins](docs/VEILLE.md).
+L’onglet **Veille** présente de véritables articles rédigés à partir des favoris et de leurs preuves, avec les captures disponibles. Le worker produit une première sélection de l’historique, puis les éditions hebdomadaires et mensuelles. La rédaction et la diffusion fonctionnent automatiquement après raccordement du modèle et du canal d’envoi dans `.env`. Les exports HTML/Markdown, le PDF via impression et le RSS privé restent disponibles. [Guide des bulletins](docs/VEILLE.md).
 
 ## Architecture et stockage
 

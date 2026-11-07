@@ -154,7 +154,7 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 | `worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
 | `publication.py`, `usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
 | `worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |
-| `digests.py`, `digest_delivery.py` | Éditions persistantes, relecture, exports, planification et diffusion configurée. |
+| `digests.py`, `digest_writer.py`, `digest_delivery.py` | Éditions persistantes, relecture, exports, planification et diffusion configurée. |
 | `worker_documents.py`, `reading.py` | Extraction PDF/image et synthèses par passages. |
 | `web_research.py`, `editorial.py` | Recherche web séparée, revue humaine et conservation des révisions. |
 | `kararecall_mcp.py` | Adaptateur stdio vers l’API web en lecture seule. |
@@ -177,4 +177,4 @@ Documentation officielle consultée le 5 novembre 2026. Les capacités des outil
 
 ## Bulletins de veille
 
-Le web prépare et relit les éditions dans `data/digests/`, sur le volume partagé. Le worker prépare les intervalles échus et traite les demandes de diffusion validées. Il utilise les résumés existants pour produire les présentations. Les images et les extraits sont conservés avec l’édition. Le mail et le webhook utilisent leurs propres paramètres privés, transmis uniquement au worker. [Guide et configuration](VEILLE.md).
+Le web prépare et relit les éditions dans `data/digests/`, sur le volume partagé. Le worker prépare les intervalles échus et traite les demandes de diffusion validées. Le modèle texte rédige les articles à partir des preuves et des fiches existantes, avec des références par paragraphe et le même journal de budget. Une première édition exploite l’historique, puis les rythmes configurés prennent le relais. Les images et les extraits sont conservés avec l’édition. Le mail et le webhook utilisent leurs propres paramètres privés, transmis uniquement au worker. [Guide et configuration](VEILLE.md).

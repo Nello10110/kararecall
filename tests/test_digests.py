@@ -23,7 +23,7 @@ class DigestTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
-        self.env = patch.dict(os.environ, {}, clear=True)
+        self.env = patch.dict(os.environ, {'DIGEST_ENABLED':'false','DIGEST_WRITE_ARTICLES':'false','DIGEST_INITIAL_HISTORY':'false','DIGEST_AUTO_APPROVE':'false','DIGEST_AUTO_SEND':'false'}, clear=True)
         self.env.start()
         corpus(self.root)
         self.png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jk1sAAAAASUVORK5CYII=')
@@ -108,7 +108,7 @@ class DigestTests(unittest.TestCase):
             send.assert_called_once()
         edition=digests.list_editions(self.root)[0]
         self.assertEqual(edition['approval_mode'],'automatic')
-        self.assertIn('Rédaction automatique à relire',digests.article_html(self.root,edition))
+        self.assertIn('Généré automatiquement à partir des favoris',digests.article_html(self.root,edition))
 
     def test_invalid_digest_settings_report_an_error_without_interrupting_imports(self):
         os.environ['DIGEST_TIMEZONE']='Invalid/Fixture'

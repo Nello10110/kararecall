@@ -19,7 +19,7 @@ def main():
     defaults=dict(line.split('=',1) for line in (ROOT/'.env.example').read_text().splitlines() if line and not line.startswith('#'))
     # Never inherit the real installation's connections or enabled automation.
     env=dict(os.environ,**defaults)
-    env.update(KARARECALL_USERNAME='smoke-test',KARARECALL_PASSWORD=secrets.token_urlsafe(30),KARARECALL_PORT='18765',KARARECALL_VOLUME_NAME='kararecall-smoke-'+secrets.token_hex(6),COMPOSE_PROFILES='automation',SYNC_ENABLED='false',LLM_ENABLED='false',ASR_MODEL='',VISION_MODEL='')
+    env.update(KARARECALL_USERNAME='smoke-test',KARARECALL_PASSWORD=secrets.token_urlsafe(30),KARARECALL_PORT='18765',KARARECALL_VOLUME_NAME='kararecall-smoke-'+secrets.token_hex(6),COMPOSE_PROFILES='automation',DIGEST_ENABLED='false',DIGEST_WRITE_ARTICLES='false',DIGEST_SEND_ENABLED='false',SYNC_ENABLED='false',LLM_ENABLED='false',ASR_MODEL='',VISION_MODEL='')
     command=['docker','compose','--project-name','kararecall-smoke','--file',str(ROOT/'compose.yaml')]
     def compose(*args):
         return subprocess.run(command+list(args),cwd=ROOT,env=env,check=True,capture_output=True,text=True)

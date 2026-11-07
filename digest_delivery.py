@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 from controls import locked
 import digests
 import kararecall
+from publication import active_root
 from settings import boolean, integer
 
 
@@ -154,15 +155,27 @@ def process(root, now=None):
         with locked(root, 'digest-runner.lock', blocking=False):
             current = (now or datetime.now(ZoneInfo(cfg['timezone']))).astimezone(ZoneInfo(cfg['timezone']))
             if cfg['enabled']:
+                selected=active_root(root)
+                sources=kararecall.read_json(selected/'data/catalog.json',{}).get('sources',[])
+                if cfg['initial_history'] and sources and not any(e['kind']=='initial' for e in digests.list_editions(root)):
+                    digests.generate(root,'initial',current.date().isoformat())
                 local_time = time.fromisoformat(cfg['time'])
                 week_start = current.date()-timedelta(days=current.weekday())
                 due_week = datetime.combine(week_start+timedelta(days=cfg['weekday']), local_time, ZoneInfo(cfg['timezone']))
                 due_month = datetime.combine(current.date().replace(day=cfg['monthday']), local_time, ZoneInfo(cfg['timezone']))
                 for kind, due in (('weekly',due_week), ('monthly',due_month)):
                     if cfg[kind] and current>=due:
-                        edition = digests.generate(root, kind, current.date().isoformat())
-                        if cfg['auto_approve'] and not edition['empty'] and not edition['approved'] and edition['revision']==1:
-                            digests.revise(root,edition['id'],{'revision':1},'auto-approve')
+                        digests.generate(root, kind, current.date().isoformat())
+                for edition in digests.list_editions(root):
+                    if edition['approved'] or edition['empty'] or any(i['editorial_status']=='user-edited' for i in edition['items']):
+                        continue
+                    ready=True
+                    if cfg['write_articles']:
+                        from digest_writer import write_edition
+                        ready=write_edition(root,edition['id'])=='ready'
+                    edition=digests.load(root,edition['id'])
+                    if ready and cfg['auto_approve']:
+                        digests.revise(root,edition['id'],{'revision':edition['revision']},'auto-approve')
             if boolean('DIGEST_SEND_ENABLED'):
                 for edition in digests.list_editions(root):
                     if edition['approved'] and edition['send_requested']:

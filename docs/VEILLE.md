@@ -1,23 +1,23 @@
-# Bulletins de veille
+# Bulletins de veille automatiques
 
-L’onglet **Veille** prépare une édition hebdomadaire ou mensuelle avec les découvertes de la période. Chaque présentation reprend les fiches existantes avec description, utilité, fonctionnement, liens et preuves. Les images disponibles sont copiées avec l’édition. La préparation utilise les résumés déjà conservés et ne déclenche aucun appel supplémentaire à un modèle.
+KaraRecall rédige des articles à partir des vrais favoris et de leurs preuves. Chaque découverte donne un titre et deux ou trois paragraphes qui expliquent le sujet, son intérêt et son fonctionnement, avec les limites présentes dans les sources. Les références sont conservées avec chaque paragraphe. Les captures vidéo disponibles et les captures de page de Karakeep illustrent les articles.
 
-## Préparer et relire
+La première édition reprend une sélection de l’historique pour fournir un bulletin dès le démarrage, même si les favoris ont été enregistrés plusieurs mois auparavant. Les éditions suivantes couvrent la semaine ou le mois échu. La rédaction, la sélection pour diffusion et la demande d’envoi sont automatiques par défaut. La modification depuis le web reste une option.
 
-1. Ouvre **Veille**, choisis semaine ou mois, puis une date de référence. Le bulletin couvre l’intervalle complet qui précède cette date. Une date dans la semaine du 2 novembre produit le bulletin du 26 octobre au 1er novembre. Une date en novembre produit le bulletin d’octobre.
-2. Clique sur **Préparer le bulletin**. Les sources ajoutées pendant cette période sont retenues par défaut. Les favoris parlant du même outil sont regroupés lorsque leur nom et leur périmètre de liens concordent. Les articles et notes sans outil restent des découvertes à part entière.
-3. Ouvre **Relire et composer le bulletin** pour modifier le titre, l’introduction, les rubriques et les présentations, ou retirer un contenu et son image. Enregistre, puis utilise **Valider pour diffusion** après relecture. Les références et les versions précédentes sont conservées.
-4. Le lien **HTML / imprimer en PDF** ouvre un article autonome avec ses images. Utilise l’impression du navigateur pour l’enregistrer en PDF. L’export Markdown privilégie les textes, liens et références. Le **RSS privé** contient les éditions validées et nécessite l’authentification de l’application dans le lecteur RSS.
+## Raccordement initial sur le NAS
 
-Un brouillon peut être repréparé depuis les sources. Son état précédent reste archivé. Une édition déjà validée ou diffusée garde son contenu lors des passages programmés. Une période vide est enregistrée comme telle et ne peut pas être validée pour envoi.
-
-## Programmer la préparation sur le NAS
-
-Active le worker et les périodes souhaitées dans `.env`.
+Le worker doit être démarré et disposer de ses accès Karakeep et du modèle texte. Le profil DeepSeek du manuel prépare ces paramètres. La rédaction utilise le même modèle que les fiches et partage son budget et ses quotas. Compter un appel supplémentaire par article réellement rédigé. Les articles terminés sont mis en cache et réutilisés après une interruption.
 
 ```dotenv
 COMPOSE_PROFILES=automation
+SYNC_ENABLED=true
+LLM_ENABLED=true
 DIGEST_ENABLED=true
+DIGEST_WRITE_ARTICLES=true
+DIGEST_INITIAL_HISTORY=true
+DIGEST_INITIAL_MAX_ITEMS=6
+DIGEST_AUTO_APPROVE=true
+DIGEST_AUTO_SEND=true
 DIGEST_WEEKLY=true
 DIGEST_MONTHLY=true
 DIGEST_TIMEZONE=Europe/Paris
@@ -30,15 +30,15 @@ DIGEST_MONTHLY_MAX_ITEMS=24
 KARARECALL_PUBLIC_URL=http://IP_DU_NAS:8765
 ```
 
-Le lundi vaut 0. Le jour du mois accepte 1 à 28. La préparation a lieu au premier passage du worker après l’heure prévue, avec contrôle environ toutes les trente secondes entre les imports. Après une interruption, le worker prépare le dernier intervalle échu pour chaque rythme activé. Il réutilise une édition existante pour cette période.
+Les clés Karakeep et LLM restent dans les champs privés de `.env` décrits dans le [manuel](INSTALLATION.md). Une installation sans modèle configuré affiche une attente de configuration. Un article avec des références inventées est refusé. Une panne ou un budget atteint conserve les articles terminés et diffère la suite. Une erreur de rédaction laisse la collecte et les anciennes éditions disponibles.
 
-`DIGEST_SCOPE=analyzed` sélectionne les sources traitées pendant la période. Ce suivi est disponible sur les nouveaux traitements, ou via la date des résumés existants. Pour une veille fondée sur la consultation, choisis `DIGEST_SCOPE=viewed` et `DIGEST_TRACK_VIEWS=true`. Le web conserve alors une trace quotidienne des sources effectivement ouvertes dans l’interface. Le suivi commence à son activation.
+Le lundi vaut 0. Le jour du mois accepte 1 à 28. Le worker vérifie les échéances environ toutes les trente secondes entre ses imports. Il prépare le dernier intervalle échu de chaque rythme et déduplique les éditions par période. La première édition historique se prépare une seule fois dès que le catalogue contient des sources.
 
-La limite retient les découvertes les plus récemment ajoutées, traitées ou consultées. Le bulletin mensuel regroupe les rubriques et indique les compléments déjà présentés dans une précédente édition mensuelle. Les rythmes hebdomadaire et mensuel gardent des historiques distincts.
+`DIGEST_SCOPE=analyzed` sélectionne les sources traitées pendant la période. `DIGEST_SCOPE=viewed` avec `DIGEST_TRACK_VIEWS=true` utilise les sources ouvertes dans l’interface après activation du suivi. L’édition historique utilise les dates d’ajout des favoris. Les limites retiennent les découvertes les plus récentes. Chaque rythme conserve son historique et les compléments déjà présentés sont signalés.
 
-## Diffuser par mail
+## Diffusion automatique par mail
 
-Configure un relais SMTP autorisé à envoyer depuis ton adresse. Les secrets sont transmis au worker uniquement.
+Le relais et les destinataires doivent être définis une fois dans `.env`. Les secrets sont transmis au worker uniquement.
 
 ```dotenv
 DIGEST_SEND_ENABLED=true
@@ -50,14 +50,13 @@ DIGEST_SMTP_USERNAME=ton-identifiant
 DIGEST_SMTP_PASSWORD=ton-secret
 DIGEST_EMAIL_FROM=veille@exemple.fr
 DIGEST_EMAIL_TO=destinataire@exemple.fr
-DIGEST_AUTO_SEND=false
 ```
 
-Plusieurs destinataires peuvent être séparés par des virgules, avec un maximum de vingt. Chaque destinataire reçoit son propre message. Le mail contient une version texte et une version HTML avec images intégrées. Pour un relais en TLS implicite, choisis `DIGEST_SMTP_TLS=ssl` et son port, généralement 465.
+Le worker envoie l’édition lorsque les articles ont été rédigés et que les références renvoyées existent. Le message contient une version texte et une version HTML avec les images intégrées. L’édition conserve son statut de rédaction automatique. Les références présentes ne garantissent pas à elles seules l’exactitude de chaque reformulation du modèle.
 
-Après validation du bulletin, **Demander l’envoi** enregistre la demande pour le worker. Avec `DIGEST_AUTO_SEND=true`, la validation demande aussi l’envoi. Une génération programmée produit un brouillon à relire. Les envois restent soumis à `DIGEST_SEND_ENABLED=true` et au choix des canaux.
+Plusieurs destinataires peuvent être séparés par des virgules, avec un maximum de vingt. Chaque destinataire reçoit son message. Pour un relais TLS implicite, choisir `DIGEST_SMTP_TLS=ssl` et son port, généralement 465. Le bouton **Valider pour diffusion** sert au parcours facultatif avec `DIGEST_AUTO_APPROVE=false`.
 
-Pour une diffusion entièrement automatique, active aussi `DIGEST_AUTO_APPROVE=true`, avec `DIGEST_ENABLED=true`, `DIGEST_AUTO_SEND=true` et `DIGEST_SEND_ENABLED=true`. Les nouvelles éditions programmées sont alors sélectionnées pour diffusion selon ce choix. Elles portent la mention de rédaction automatique à relire. Un brouillon déjà modifié manuellement conserve sa relecture avant diffusion.
+L’onglet Veille permet de consulter les articles, les sources et le suivi. Le lien HTML ouvre un article autonome avec ses images et le navigateur permet de l’enregistrer en PDF. Le Markdown conserve les textes et références. Le RSS privé contient les éditions sélectionnées pour diffusion et nécessite l’authentification de l’application.
 
 ## Autres canaux
 
@@ -92,4 +91,4 @@ docker compose --profile automation run --rm worker python worker.py digest-gene
 docker compose --profile automation run --rm worker python worker.py digest-run
 ```
 
-Le premier prépare le brouillon ciblé. Le second vérifie les échéances et traite les demandes de diffusion déjà validées. Les tests automatisés utilisent un corpus synthétique et des transports simulés. Le relais SMTP, le webhook et le lecteur RSS de l’installation restent à qualifier avec leurs paramètres réels.
+Le premier prépare une édition ciblée. Le type `--kind initial` couvre l’historique disponible. Le second vérifie les échéances et traite les rédactions en attente et les diffusions automatiques. Les tests automatisés utilisent un corpus synthétique et des transports simulés. Le relais SMTP, le webhook et le lecteur RSS de l’installation restent à qualifier avec leurs paramètres réels.

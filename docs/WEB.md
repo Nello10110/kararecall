@@ -14,7 +14,7 @@ L’interface est servie par `web_server.py`, sans compilation ni dépendance ti
 
 Le Markdown conserve les liens relatifs du coffre : les fichiers associés sont nécessaires pour consulter les preuves hors de l’application. Le contexte à copier fournit les URL originales et les extraits utiles même sans accès au volume.
 
-Le parcours **Veille** prépare et relit les bulletins avec leurs images et preuves. La planification, le RSS privé et les canaux de diffusion sont décrits dans le [guide des bulletins](VEILLE.md).
+Le parcours **Veille** prépare et relit les bulletins avec leurs images et preuves. La première édition historique, la rédaction automatique, la planification, le RSS privé et les canaux de diffusion sont décrits dans le [guide des bulletins](VEILLE.md).
 
 ## Routes de lecture
 

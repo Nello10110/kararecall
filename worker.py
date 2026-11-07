@@ -396,7 +396,7 @@ def check_connections(settings):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('command',choices=['once','loop','check','retry','usage','import-history','research','digest-generate','digest-run'])
-    parser.add_argument('--kind',choices=['weekly','monthly'],default='weekly')
+    parser.add_argument('--kind',choices=['weekly','monthly','initial'],default='weekly')
     parser.add_argument('--anchor',help='Date ISO située dans la période qui suit le bulletin')
     parser.add_argument('--source',help='ID de la source à retraiter explicitement')
     parser.add_argument('--stage',choices=['all','asr','vision','document','llm'],default='all')

@@ -119,7 +119,7 @@ Produire un petit article illustré, structuré et agréable à lire, pour retro
 
 Le bulletin doit se lire en quelques minutes, présenter les découvertes avec leurs illustrations et références, puis pouvoir être relu et exporté pour diffusion. Une reprise doit préserver l’édition et son suivi d’envoi.
 
-La génération reprend les résumés existants. Le mail et le webhook exigent une configuration et une édition validée. Le [guide Veille](docs/VEILLE.md) détaille les réglages et limites.
+La rédaction automatique produit des articles à partir des preuves réelles avec cache, quotas et citations par paragraphe. Une première édition reprend l’historique. Les échéances suivantes ne demandent aucune action éditoriale. Le mail et le webhook exigent une configuration et une édition validée. Le [guide Veille](docs/VEILLE.md) détaille les réglages et limites.
 
 - [ ] Qualifier le relais SMTP ou webhook réel et la lecture RSS sur le NAS, puis ajuster la présentation après les premiers bulletins.
 
