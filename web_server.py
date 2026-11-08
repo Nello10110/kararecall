@@ -55,12 +55,11 @@ def source_summary(source):
         author = urlsplit(source['url']).hostname or {'text':'Note personnelle','asset':'Fichier enregistré'}.get(source.get('bookmark_type'),'Source enregistrée')
     current=[e for e in source['evidence'] if not e.get('archived')]
     images = [e for e in current if e.get('image')]
-    preferred = next((e for e in images if e.get('start',0) >= 14), images[0] if images else None)
     return {key: source[key] for key in ('id', 'url', 'created_at', 'tags', 'processing')} | {
         'title': short_text(source.get('reading',{}).get('title') or source.get('reading',{}).get('text') or original_french_title(source['title']) or ('Vidéo enregistrée' if source['processing']['media_downloaded'] or any(a.get('type')=='video' for a in source.get('assets',[])) else 'Source enregistrée'),80),
         'summary':short_text(source.get('reading',{}).get('text') or 'Résumé français en attente de traitement.'),
         'original_title':short_text(caption,160), 'author': author.strip(' @'),
-        'thumbnail': '/assets/' + preferred['image'] if preferred else None,
+        'thumbnail': '/api/sources/' + source['id'] + '/thumbnail',
         'transcript_count': sum(e['kind'] in ('asr','subtitle') for e in current),
         'frame_count': sum(e['kind']=='ocr' for e in images), 'stages':source.get('stages',{}),
         'bookmark_type':source.get('bookmark_type','link'),'content_status':source.get('content_status'),
@@ -313,6 +312,14 @@ def make_handler(corpus, username='', password=''):
             static = {'/': 'index.html', '/app.js': 'app.js', '/digests.js':'digests.js', '/styles.css': 'styles.css', '/glass.css':'glass.css', '/workspace.js':'workspace.js', '/details.js':'details.js', '/details.css':'details.css', '/icon.svg': 'icon.svg'}
             if path in static:
                 return self.serve_file(WEB / static[path])
+            preview_match=re.fullmatch(r'/api/sources/([a-zA-Z0-9_-]+)/thumbnail',path)
+            if preview_match:
+                from source_enrichment import thumbnail_bytes
+                data,view_root,_=corpus.view()
+                source=next((row for row in data['sources'] if row['id']==preview_match[1]),None)
+                if not source:return self.send_json({'error':'Source introuvable'},404)
+                raw,mime=thumbnail_bytes(source,view_root)
+                return self.send_bytes(raw,mime)
             if path=='/api/control':
                 return self.send_json({'csrf_token':csrf_token,'history_import':history_status(corpus.root), 'actions':action_status(corpus.root)})
             if path=='/api/digests':

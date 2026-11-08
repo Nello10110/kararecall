@@ -1,6 +1,6 @@
 # Backlog de KaraRecall
 
-Mise à jour du 7 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le propriétaire a signalé le démarrage sur son NAS et un premier favori analysé.** La qualification détaillée reste à effectuer avec le [pilote](docs/PILOTE.md) depuis son réseau.
+Mise à jour du 8 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le propriétaire a signalé le démarrage sur son NAS et un premier favori analysé.** La qualification détaillée reste à effectuer avec le [pilote](docs/PILOTE.md) depuis son réseau.
 
 Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimensionner la première version pour ce volume, sans service Mac obligatoire ni abonnement de recherche payant par défaut. Les optimisations de débit passent après la fiabilité et l’usage quotidien.
 
@@ -77,6 +77,18 @@ Acceptation : on peut expliquer le coût d’une fiche, limiter les sorties et a
 Acceptation : restauration et mise à jour vérifiées ; le web reste consultable pendant une panne des moteurs ; absence de données ou clés dans le dépôt et les images.
 
 ## P1 — Usage quotidien et enrichissement demandé
+
+### Couvrir tous les types de favoris et pièces jointes Karakeep
+
+- [x] Découpler les miniatures de l’OCR : importer les images/bannières/captures Karakeep, extraire une image des vidéos locales sans IA et fournir un aperçu générique explicite si aucune image n’est accessible. Maintenir l’authentification et l’absence de téléchargement à l’ouverture d’une page.
+- [x] Récupérer le texte des sites fourni comme fichier HTML séparé ou via l’API de contenu Karakeep ; conserver la provenance, les erreurs et les preuves versionnées. Un simple titre ne doit pas être présenté comme une analyse de l’article complet.
+- [ ] Inventorier les formats réellement enregistrables dans la version Karakeep déployée, en distinguant type de favori, format de fichier, pièces jointes et fournisseur. Base officielle : favoris **lien, note texte, fichier image/PDF, inconnu** ; pièces jointes HTML extrait, bannière, capture, capture de fichier, PDF, archive complète/préextraite, vidéo, fichier de favori, dépôt utilisateur, avatar et inconnu. Vérifier les différences entre versions au lieu de supposer qu’un MP3 ou un fichier bureautique est pris en charge.
+- [ ] Construire une matrice de qualification : sites/articles, notes, images (JPEG/PNG/WebP/GIF et formats effectivement acceptés), PDF texte/numérisés/protégés, Instagram, YouTube, autres hébergeurs, vidéos jointes avec/sans audio et sous-titres. Ajouter audio seul et documents bureautiques **si Karakeep permet réellement de les enregistrer** ; afficher sinon une limite explicite.
+- [ ] Pour chaque cas, tester import initial et incrémental, dédoublonnage, miniature réelle/secours, accès au contenu/original, extraction et langue, synthèse française sourcée, recherche, export, nouvelle version et reprise après échec. Tester aussi collecte en attente/échouée, contenu absent, accès privé, redirections, pièces jointes manquantes, limites mémoire/durée/taille et quota IA.
+- [ ] Compléter les extracteurs manquants et la présentation de chaque format d’après cette matrice ; séparer « favori importé », « métadonnées seules », « contenu partiellement analysé » et « analyse terminée ». Aucun téléchargement direct depuis un hébergeur ni nouvel appel IA implicite.
+- [ ] Qualifier cette matrice sur le NAS avec un échantillon varié, notamment les sites et vidéos Instagram/YouTube signalés, puis documenter les formats et limites dans le guide.
+
+Acceptation : aucun favori ignoré silencieusement ; chaque carte a un aperçu, chaque extraction indique sa couverture réelle, les preuves restent consultables et les formats non pris en charge sont explicitement signalés. Le correctif 0.4.1 est testé sur données synthétiques ; la qualification NAS de cette matrice reste ouverte. Contrat de référence : [contenu d’un favori Karakeep 0.30](https://docs.karakeep.com/v0.30.0/api/get-a-single-bookmark) et [schéma OpenAPI officiel](https://github.com/karakeep-app/karakeep/blob/main/packages/open-api/karakeep-openapi-spec.json).
 
 ### Recherche internet systématique par outil
 

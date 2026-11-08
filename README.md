@@ -74,6 +74,8 @@ La recherche actuelle est **lexicale** : elle normalise les accents et tolère c
 
 Les éventuels traitements IA réalisés par Karakeep lui-même sont indépendants de ceux décrits ici.
 
+Les cartes disposent d’un aperçu même sans OCR : image fournie par Karakeep, image de vidéo locale ou couverture générique clairement indiquée. Le texte des sites peut aussi être récupéré depuis les fichiers HTML séparés conservés par Karakeep. Les pages sans contenu restent signalées comme métadonnées seules. [Fonctionnement et reprise](docs/WEB.md#aperçus-et-texte-des-sites-041).
+
 ## Démarrer sur votre NAS
 
 Prérequis : **Docker Compose v2**, un serveur Karakeep accessible et une clé API Karakeep. Les images publiques sont disponibles pour **Linux AMD64 et ARM64** ; aucun compte GitHub ni build sur le NAS n’est nécessaire pour les télécharger.

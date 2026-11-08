@@ -28,6 +28,13 @@ def verify(root):
         raw=(selected/source['raw_file']).resolve()
         raw.relative_to((selected/'data/raw').resolve())
         if not raw.is_file():raise ValueError('Réponse source manquante')
+        if source.get('preview'):
+            from source_enrichment import preview_target
+            if not preview_target(selected,source):raise ValueError('Aperçu manquant ou incohérent')
+        if source.get('page_origin'):
+            page=source['page_origin'];target=(selected/page['file']).resolve()
+            target.relative_to((selected/'data/raw/api').resolve())
+            if not target.is_file() or file_hash(target)!=page['sha256']:raise ValueError('HTML source manquant ou incohérent')
         media=selected/'data/media'/(sid+'.mp4')
         expected=source['processing'].get('media_sha256')
         if expected and (not media.is_file() or file_hash(media)!=expected):raise ValueError('Empreinte média incohérente')

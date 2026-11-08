@@ -24,6 +24,7 @@ from integrations import Karakeep, ServiceError, normalize_bookmark, chat, json_
 from settings import Settings, initialize
 from reading import LONG_KINDS, summarize_passages
 from curation import clean_text, short_text, translate_evidence
+from source_enrichment import acquire_page, preview_key, make_preview, preview_target
 
 
 def now():
@@ -162,6 +163,13 @@ def redacted(message,settings):
 
 def pipeline_key(source,settings):
     fields={k:source.get(k) for k in ('id','url','created_at','modified_at','title','description','note','tags','page_text','karakeep_summary_unverified','assets','raw_file','bookmark_type','asset_type')}
+    if source.get('page_asset_id'):
+        fields['page_asset_id']=source['page_asset_id']
+        # Hydration is an output of this job, not a new upstream change.
+        if source.get('page_origin'):fields['page_text']=''
+    if source.get('bookmark_type')=='link' and (not source.get('page_text') or source.get('page_origin')):
+        fields['page_contract']='karakeep-content-v1'
+        if source.get('page_origin'):fields['page_text']=''
     parts=['pipeline-v4-fr',fields,settings.download_media,settings.llm_enabled,
         settings.llm_url,settings.llm_model,settings.llm_max_chars,settings.llm_max_tokens,settings.llm_reasoning,
         settings.asr_url,settings.asr_model,settings.asr_timestamps,settings.vision_url,settings.vision_model,
@@ -251,6 +259,8 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
         accepted=[];blocked=0;todo=[]
         for source,raw in incoming.values():
             old=previous.get(source['id'])
+            if old and old.get('page_origin') and not source.get('page_text') and old.get('raw_file')==source['raw_file'] and old.get('page_asset_id')==source.get('page_asset_id'):
+                for key in ('page_text','page_origin','content_status'):source[key]=old[key]
             if old and (origin/'data/media'/(source['id']+'.mp4')).exists() and video_asset(old)!=video_asset(source):
                 blocked+=1;continue
             accepted.append((source,raw))
@@ -260,15 +270,25 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
             if force_id and not forced:continue
             if not forced and job and job[0]==digest:
                 if job[1]=='paused' and not ledger.can_call():continue
-                if job[1]=='done' or (job[1]!='paused' and job[2]>=settings.max_attempts) or (job[1]=='failed' and job[3]>time.time()):continue
+                if job[1]=='done' or (job[1] not in ('paused','waiting_content') and job[2]>=settings.max_attempts) or (job[1] in ('failed','waiting_content') and job[3]>time.time()):continue
             todo.append((source,digest,job,forced))
         if force_id and not any(s['id']==force_id for s,_ in accepted):
             db.close();raise ServiceError('Source absente du périmètre de collecte ; aucun retraitement lancé.')
         selected=[] if catalog_only else todo[:settings.batch_size]
+        preview_ids=[]
+        if not catalog_only and settings.download_media:
+            for source,_ in accepted:
+                old=previous.get(source['id'],{})
+                attempt=old.get('preview_attempt',{})
+                available=preview_target(origin,dict(old,id=source['id']))
+                if (source.get('preview_asset_ids') or (origin/'data/media'/(source['id']+'.mp4')).is_file()) and (
+                    attempt.get('key')!=preview_key(source) or (not available and attempt.get('retry_after',0)<=time.time())):
+                    preview_ids.append(source['id'])
+            preview_ids=preview_ids[:settings.batch_size]
         changed=any(s['id'] not in previous or any(previous[s['id']].get(key)!=value for key,value in s.items()) for s,_ in accepted)
         processed=failed=0;ready=[];publication_timing=None
         try:
-            if selected or changed:
+            if selected or changed or preview_ids:
                 with generation(settings.root) as (draft,publish):
                     sources,entities=migrate(list(copy.deepcopy(previous).values()),kararecall.read_json(draft/'data/entities.json',[]),draft)
                     sources={s['id']:s for s in sources}
@@ -284,6 +304,10 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         with db:db.execute('INSERT OR REPLACE INTO jobs VALUES (?,?,?,?,?,?,?)',(source['id'],digest,'running',attempts,0,'',now()))
                         errors=[];stages={};budget_pause=False;ordinary_error=False
                         archive(source,draft)
+                        if source.get('bookmark_type')=='link':
+                            try:stages['page']=acquire_page(source,client,draft)
+                            except Exception as exc:
+                                stages['page']='failed';errors.append(safe_error(exc,settings));ordinary_error=True
                         media=draft/'data/media'/(source['id']+'.mp4')
                         asset=video_asset(source)
                         stages['download']='disabled' if not settings.download_media else 'not_applicable'
@@ -337,7 +361,9 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         # A partial synthesis is not silently marked as a complete one.
                         if settings.llm_enabled:
                             stages['llm']='waiting' if errors else 'pending'
-                            if not errors:
+                            title_only=(source.get('bookmark_type')=='link' and not asset and not any(source.get(k) for k in ('page_text','description','note')))
+                            if title_only and not errors:stages['llm']='waiting_content'
+                            if not errors and not title_only:
                                 try:
                                     status(settings,state='running',active_stage='llm')
                                     if settings.llm_document_sections and not asset:
@@ -361,14 +387,25 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         source['stages']=stages
                         source['processed_at']=now()
                         source['pipeline_fingerprint']=digest
-                        source['processing_result']='partial' if errors else 'complete'
+                        source['processing_result']='partial' if errors else 'waiting_content' if stages.get('llm')=='waiting_content' else 'complete'
                         source['processing_error']=' ; '.join(errors)[:400]
                         if errors:
                             failed+=1
                             paused=budget_pause and not ordinary_error
                             with db:db.execute('UPDATE jobs SET state=?,attempts=?,next_retry=?,error=?,updated_at=? WHERE id=?',('paused' if paused else 'failed',attempts-1 if paused else attempts,time.time()+min(86400,60*(2**min(attempts,10))),' ; '.join(errors)[:400],now(),source['id']))
+                        elif stages.get('llm')=='waiting_content':
+                            with db:db.execute('UPDATE jobs SET state=?,attempts=0,next_retry=?,updated_at=? WHERE id=?',('waiting_content',time.time()+max(900,settings.sync_interval),now(),source['id']))
                         else:
                             processed+=1;ready.append(source['id'])
+                        if settings.download_media and media.exists() and source['id'] not in preview_ids and not preview_target(draft,source):
+                            preview_ids.append(source['id'])
+                    for sid in preview_ids:
+                        source=sources[sid]
+                        try:preview=make_preview(source,client,draft)
+                        except Exception:preview=None  # Optional preview cannot block a publication.
+                        if preview:source['preview']=preview
+                        source['preview_attempt']={'key':preview_key(source),'retry_after':time.time()+21600,
+                                                   'status':'complete' if preview else 'generic'}
                     kararecall.write_json(draft/'data/sources.json',sorted(sources.values(),key=lambda s:s['id']))
                     kararecall.write_json(draft/'data/entities.json',entities)
                     publication_timing=publish()
@@ -403,6 +440,9 @@ def run_local_llm(settings,source_id,request_id=None):
             if source is None:raise ValueError('Source absente de la bibliothèque.')
             if request_id and source.get('last_manual_action')==request_id:return
             evidence,_=kararecall.load_evidence(source,draft)
+            if (source.get('bookmark_type')=='link' and not any(source.get(key) for key in ('page_text','description','note'))
+                    and not any(row['kind'] in ('asr','subtitle','ocr','passage') and not row.get('archived') for row in evidence)):
+                raise ValueError('Le texte de cette page n’est pas disponible. Relancer l’analyse complète pour récupérer son contenu depuis Karakeep.')
             ledger=UsageLedger(settings.root,settings)
             # A cached synthesis makes a long translation resumable without paying for it again.
             key=fingerprint(['manual-fr-v1',source_id,request_id,settings.llm_model,settings.llm_url,settings.llm_max_chars,

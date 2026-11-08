@@ -82,6 +82,26 @@ class Karakeep:
             raise ServiceError('KARAKEEP_BASE_URL est manquant.')
         self.base=base if base.endswith('/api/v1') else base+'/api/v1'
 
+    def page_content(self,bookmark_id):
+        """Read stored text only, including newer paginated content responses."""
+        check_id(bookmark_id)
+        parts=[];cursor=None;seen=set();size=0
+        for _ in range(32):
+            params={'format':'markdown','maxChars':50000}
+            if cursor:params['cursor']=cursor
+            part=request_json(self.base+'/bookmarks/'+quote(bookmark_id)+'/content?'+urlencode(params),
+                              self.settings.karakeep_key,timeout=self.settings.timeout)
+            if not isinstance(part,dict) or not isinstance(part.get('content'),str):
+                raise ServiceError('Le contenu de page Karakeep a un format inattendu.')
+            size+=len(part['content'].encode())
+            if size>8*1024*1024:raise ServiceError('Texte de page Karakeep supérieur à 8 Mio.')
+            parts.append(part)
+            cursor=part.get('nextCursor')
+            if not cursor:return parts
+            if cursor in seen:raise ServiceError('Karakeep répète un curseur de contenu.')
+            seen.add(cursor)
+        raise ServiceError('Texte Karakeep trop long ; lecture incomplète non publiée.')
+
     def bookmarks(self):
         cursor=None
         seen=set()
@@ -179,8 +199,19 @@ def normalize_bookmark(bookmark):
         check_id(video_id)
         if not any(a['id']==video_id for a in assets):
             assets.append({'id':video_id,'type':'video'})
+    # Keep asset identifiers, never expiring/signed image URLs. Large HTML pages
+    # may be returned by older Karakeep versions as a separate content asset.
+    content_id=content.get('contentAssetId') or next((a['id'] for a in assets if a['type']=='linkHtmlContent'),None)
+    previews=[]
+    for value in (content.get('imageAssetId'),content.get('screenshotAssetId'),
+                  *(a['id'] for a in assets if a['type'] in ('bannerImage','screenshot','assetScreenshot')),
+                  content.get('assetId') if kind=='asset' and content.get('assetType')=='image' else None):
+        if value and value not in previews:previews.append(check_id(value))
     return {'id':sid,'url':content.get('url') or content.get('sourceUrl') or '',
         'bookmark_type':kind,'asset_type':content.get('assetType'),
+        'page_asset_id':check_id(content_id) if kind=='link' and content_id else None,
+        'page_origin':None,
+        'preview_asset_ids':previews,'crawl_status':content.get('crawlStatus'),
         'document_asset_id':check_id(content['assetId']) if kind=='asset' and content.get('assetType') in ('pdf','image') and content.get('assetId') else None,
         'content_status':'text_available' if text else 'metadata_only',
         'archived':bool(bookmark.get('archived')),'favourited':bool(bookmark.get('favourited')),

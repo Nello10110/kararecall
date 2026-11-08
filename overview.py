@@ -11,6 +11,9 @@ from settings import integer
 
 def source_type(source):
     if source.get('has_video') or source.get('processing',{}).get('media_downloaded') or any(row.get('type')=='video' for row in source.get('assets',[])):return 'video'
+    from urllib.parse import urlsplit
+    url=urlsplit(source.get('url',''))
+    if url.hostname in ('youtube.com','www.youtube.com','m.youtube.com','youtu.be') and (url.path.startswith(('/watch','/shorts/','/live/','/embed/')) or url.hostname=='youtu.be'):return 'video'
     kind=source.get('bookmark_type','link')
     return 'note' if kind=='text' else 'file' if kind=='asset' else 'article'
 

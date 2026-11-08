@@ -218,6 +218,7 @@ def load_evidence(source, root=ROOT):
     if source["page_text"]:
         kind={'text':'text','asset':'document'}.get(source.get('bookmark_type'),'page')
         evidence.append({"id":kind,"kind":kind,"text":source['page_text']})
+        if source.get('page_origin'):evidence[-1]['page_origin']=source['page_origin']
     if source.get('note'):
         evidence.append({'id':'note','kind':'note','text':source['note']})
     directory = root / "data/extracted" / sid
