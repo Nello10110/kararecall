@@ -200,7 +200,7 @@ function bindActions(){
 }
 function sourceStatusPanel(source){
  const stages=source.stages||{}, usage=state.catalog.worker?.usage;
- const labels={complete:'Terminé',failed:'En échec',paused:'En pause · quota ou budget',disabled:'Désactivé',waiting:'En attente',pending:'En attente',not_applicable:'Non applicable',subtitles_reused:'Sous-titres réutilisés'};
+ const labels={complete:'Terminé',failed:'En échec',paused:'En pause · quota ou budget',disabled:'Désactivé',waiting:'En attente',pending:'En attente',not_applicable:'Non applicable',subtitles_reused:'Sous-titres réutilisés',source_text:'Texte fourni par Karakeep',original_only:'Original conservé',no_text:'Aucun texte extrait',partial:'Extraction partielle'};
  const video=Boolean(source.processing.media_downloaded||source.assets?.some(row=>row.type==='video'));
  const steps=[...(video?[['asr','Paroles',source.processing.audio_transcribed||source.processing.subtitles_available],['vision','Texte à l’écran',source.processing.ocr_sampled]]:source.document_asset_id?[['document','Texte du fichier',source.processing.attachment?.status==='complete']]:[]),['llm','Résumé IA',Boolean(source.reading)]];
  const status=steps.map(([key,label,done])=>`<span><strong>${label}</strong> : ${labels[stages[key]]||(done?'Terminé':'Non démarré')}${done&&['paused','failed','disabled'].includes(stages[key])?' · résultat antérieur conservé':''}</span>`).join('');

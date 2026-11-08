@@ -80,3 +80,12 @@ test('a bookmarked homepage remains eligible when explicitly saved as a read too
  assert.equal(selected.url,'https://example.org/');
  assert.equal(selected.label,'Ouvrir le site');
 });
+
+test('document status names existing Karakeep text without irrelevant audio steps',()=>{
+ const ctx=context(),app=fs.readFileSync(path.join(root,'web/app.js'),'utf8');
+ vm.runInContext(app.slice(app.indexOf('function sourceStatusPanel('),app.indexOf('function evidenceText(')),ctx);
+ vm.runInContext('state.catalog={worker:{}}',ctx);
+ const html=ctx.sourceStatusPanel({id:'document-fixture',document_asset_id:'pdf-one',assets:[],processing:{},stages:{document:'source_text',llm:'disabled'}});
+ assert.match(html,/Texte fourni par Karakeep/);
+ assert.doesNotMatch(html,/<strong>Paroles<|<strong>Texte à l’écran</);
+});
