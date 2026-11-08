@@ -25,6 +25,7 @@ from settings import Settings, initialize
 from reading import LONG_KINDS, summarize_passages
 from curation import clean_text, short_text, translate_evidence
 from source_enrichment import acquire_page, preview_key, make_preview, preview_target
+from content_support import content_kind
 
 
 def now():
@@ -37,6 +38,11 @@ def fingerprint(value):
 
 def video_asset(source):
     return next((a['id'] for a in source.get('assets',[]) if a['type']=='video'),None)
+
+
+def has_content_evidence(evidence):
+    return any(row['kind'] in ('page','text','document','asr','subtitle','ocr','pdf-page','image-text')
+               and not row.get('archived') and row.get('text','').strip() for row in evidence)
 
 
 def pack_evidence(evidence,budget):
@@ -174,7 +180,7 @@ def pipeline_key(source,settings):
         settings.llm_url,settings.llm_model,settings.llm_max_chars,settings.llm_max_tokens,settings.llm_reasoning,
         settings.asr_url,settings.asr_model,settings.asr_timestamps,settings.vision_url,settings.vision_model,
         settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.llm_thinking,settings.vision_thinking]
-    if source.get('document_asset_id') and not source.get('page_text'):
+    if source.get('document_asset_id') and (not source.get('page_text') or source.get('bookmark_type')=='link'):
         parts.append(extraction_config(source['asset_type'],settings))
         parts.append(settings.media_max_mb)
     if video_asset(source) and settings.reuse_subtitles:
@@ -304,7 +310,7 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         with db:db.execute('INSERT OR REPLACE INTO jobs VALUES (?,?,?,?,?,?,?)',(source['id'],digest,'running',attempts,0,'',now()))
                         errors=[];stages={};budget_pause=False;ordinary_error=False
                         archive(source,draft)
-                        if source.get('bookmark_type')=='link' and not video_asset(source):
+                        if source.get('bookmark_type')=='link' and not video_asset(source) and not source.get('document_asset_id'):
                             try:stages['page']=acquire_page(source,client,draft)
                             except Exception as exc:
                                 stages['page']='failed';errors.append(safe_error(exc,settings));ordinary_error=True
@@ -343,7 +349,7 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         document_id=source.get('document_asset_id')
                         if document_id:
                             stages['document']='source_text' if source.get('page_text') else 'disabled'
-                            if settings.download_media and not source.get('page_text'):
+                            if settings.download_media and (not source.get('page_text') or source.get('bookmark_type')=='link'):
                                 try:
                                     status(settings,state='running',active_stage='document')
                                     original=document_path(draft,source['id'],document_id)
@@ -361,9 +367,12 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         # A partial synthesis is not silently marked as a complete one.
                         if settings.llm_enabled:
                             stages['llm']='waiting' if errors else 'pending'
-                            title_only=(source.get('bookmark_type')=='link' and not asset and not any(source.get(k) for k in ('page_text','description','note')))
-                            if title_only and not errors:stages['llm']='waiting_content'
-                            if not errors and not title_only:
+                            available,_=kararecall.load_evidence(source,draft)
+                            title_only=(source.get('bookmark_type')=='link' and not asset and not any(source.get(k) for k in ('page_text','description','note')) and not has_content_evidence(available))
+                            unsupported=content_kind(source)=='unknown'
+                            if unsupported:stages['llm']='unsupported'
+                            elif title_only and not errors:stages['llm']='waiting_content'
+                            if not errors and not title_only and not unsupported:
                                 try:
                                     status(settings,state='running',active_stage='llm')
                                     if settings.llm_document_sections and not asset:
@@ -438,10 +447,11 @@ def run_local_llm(settings,source_id,request_id=None):
             sources,entities=migrate(kararecall.read_json(draft/'data/sources.json',[]),kararecall.read_json(draft/'data/entities.json',[]),draft)
             source=next((row for row in sources if row['id']==source_id),None)
             if source is None:raise ValueError('Source absente de la bibliothèque.')
+            if content_kind(source)=='unknown':raise ValueError('Ce format est inventorié mais ne possède pas d’extracteur pris en charge.')
             if request_id and source.get('last_manual_action')==request_id:return
             evidence,_=kararecall.load_evidence(source,draft)
             if (source.get('bookmark_type')=='link' and not any(source.get(key) for key in ('page_text','description','note'))
-                    and not any(row['kind'] in ('asr','subtitle','ocr','passage') and not row.get('archived') for row in evidence)):
+                    and not has_content_evidence(evidence)):
                 raise ValueError('Le texte de cette page n’est pas disponible. Relancer l’analyse complète pour récupérer son contenu depuis Karakeep.')
             ledger=UsageLedger(settings.root,settings)
             # A cached synthesis makes a long translation resumable without paying for it again.

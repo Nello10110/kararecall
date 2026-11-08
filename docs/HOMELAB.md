@@ -63,7 +63,7 @@ Le worker télécharge l’original des PDF et images sans texte fourni par Kara
 
 - Le worker Docker extrait le texte incorporé aux PDF avec Poppler, avec des limites de temps, mémoire, pages et sortie. Chaque page conserve son numéro. Une limite atteinte est signalée. [Documentation de pdftotext](https://manpages.debian.org/trixie/poppler-utils/pdftotext.1.en.html).
 - Avec `PDF_OCR_ENABLED=true`, les premières pages sans texte dans cette fenêtre sont converties localement en JPEG de 1280 pixels de côté au maximum. Seuls ces aperçus sont envoyés au service vision configuré. Les preuves OCR portent le numéro de page et le modèle utilisé. Les pages terminées sont réutilisées après un arrêt. Compter jusqu’à `PDF_OCR_MAX_PAGES` appels vision par PDF, dans les quotas IA partagés. Les pages avec une couche texte incomplète ne sont pas éligibles à ce traitement. [Documentation de pdftoppm](https://manpages.debian.org/trixie/poppler-utils/pdftoppm.1.en.html).
-- Une image est conservée comme original par défaut. Pour lire son texte, définir `IMAGE_OCR_ENABLED=true` avec un modèle vision déjà configuré. Le service reçoit un aperçu JPEG sans métadonnées, limité à 1280 pixels de côté. JPEG, PNG et WebP fixes sont acceptés jusqu’à 20 mégapixels. L’appel est comptabilisé comme un appel vision.
+- Une image est conservée comme original par défaut. Pour lire son texte, définir `IMAGE_OCR_ENABLED=true` avec un modèle vision déjà configuré. Le service reçoit un aperçu JPEG sans métadonnées, limité à 1280 pixels de côté. JPEG, PNG, WebP et GIF sont acceptés jusqu’à 20 mégapixels. Pour une animation GIF ou WebP, seule la première image est lue ; le nombre d’images et la couverture partielle sont affichés. L’appel est comptabilisé comme un appel vision.
 
 L’import manuel du catalogue reste indépendant du téléchargement et de l’extraction. Utiliser `worker.py retry --source ID --stage document` pour retraiter volontairement un fichier déjà conservé. Le suivi se trouve dans Activité et dans la fiche source.
 
@@ -165,3 +165,5 @@ Cette procédure s’applique aux installations dont le `.env` contient des vari
    ```
 
    Vérifie que tes sources, fiches et preuves sont visibles dans l’interface. Garde la sauvegarde et l’ancien volume jusqu’à cette vérification.
+
+Le [guide des formats](FORMATS-ET-COUVERTURE.md) détaille les PDF joints aux liens et les formats sans extracteur. Le [parcours des générations et de restauration](RESTAURATION-ET-GENERATIONS.md) permet d’inventorier et vérifier un ancien état sans le restaurer. Les mesures de coût de lot et de latence HTTP sont dans le [pilote](PILOTE.md#mesures-de-couverture-de-lot-et-http-050).

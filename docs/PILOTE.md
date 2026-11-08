@@ -68,3 +68,33 @@ Sur le Mac, un catalogue de 2 002 sources synthétiques et deux fiches a donné 
 | Recherche lexicale de test | 149 ko | 181 ms |
 
 Les deux publications du catalogue ont duré 0,29 et 0,48 s, après 3 et 4 ms de copie initiale. Le pic du processus de mesure, qui a aussi généré le corpus et exécuté la recherche, était de 162 Mio. Ces valeurs décrivent un corpus surtout textuel et de petits médias synthétiques. La charge sur le NAS et ses temps de publication sont à relever séparément.
+
+## Mesures de couverture, de lot et HTTP (0.5.0)
+
+Le rapport standard inclut les compteurs de couverture par type, sans titres ni URL. Pour relever les tailles et délais des routes locales depuis le conteneur web :
+
+```sh
+docker compose exec -T web python pilot.py --http-url http://127.0.0.1:8765
+```
+
+Les identifiants HTTP viennent de l’environnement du service. Trois lectures sont effectuées pour chacune des routes catalogue compact, sources paginées et vue d’ensemble. Aucune réponse privée n’est conservée dans le rapport. Les redirections sont refusées.
+
+Avant un lot, noter sa date de début en UTC, puis utiliser cette date exacte après traitement :
+
+```sh
+docker compose exec -T web python pilot.py --usage-since 2026-11-08T12:00:00Z
+```
+
+Remplacer l’exemple par le début réel du lot. Le rapport compte les appels et les montants enregistrés depuis cet instant. Les réserves incertaines restent visibles ; une absence d’usage mesuré ne signifie pas que le fournisseur n’a rien facturé. Les montants utilisent les tarifs configurés. La commande n’envoie aucun appel IA et ouvre le journal SQLite en lecture seule. Comparer ensuite un lot initial et un mois courant au lieu d’extrapoler seulement le premier import.
+
+Pour les générations et la sauvegarde, suivre le [parcours de restauration](RESTAURATION-ET-GENERATIONS.md).
+
+## Référence de recherche 0.5.0
+
+```sh
+PYTHONPYCACHEPREFIX=.build/pycache python3 scripts/benchmark_search.py
+```
+
+Le jeu `benchmarks/search_memories.json` comporte vingt documents et questions fictifs. Il ne contient aucune fiche produite par un LLM ; les questions ne sont pas générées à partir des fiches. Le moteur actuel retrouve la bonne source en première position pour **15 questions sur 20**, donc également 15/20 dans les trois premières. Sur le Mac, la médiane observée était de 2,4 ms pour ce petit corpus ; la taille et la machine du NAS demandent une mesure séparée.
+
+Les cinq absences montrent notamment les limites des reformulations sans mots communs suffisants. Les seuils et le corpus n’ont pas été modifiés pour masquer ces échecs. Le résultat est inférieur au seuil proposé de 16/20 ; il justifie de préparer une comparaison hybride, mais ne suffit pas à choisir un modèle d’embedding ni à conclure sur les souvenirs réels. Le test privé de vingt questions reste ouvert, puis les mêmes questions pourront servir à comparer lexical/hybride et faux positifs. Aucun moteur sémantique n’est activé par cette livraison.

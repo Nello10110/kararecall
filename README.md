@@ -172,3 +172,11 @@ docker compose -f compose.yaml -f compose.build.yaml up -d --build
 ```
 
 Les scripts historiques macOS (`scripts/process.py`, transcription locale et OCR Apple Vision) sont distincts du worker Docker. Les JSON, Markdown et preuves restent portables ; SQLite est un stockage dérivé ou opérationnel selon son rôle. AFFiNE et Wiki.js peuvent recevoir des exports manuels, sans connecteur de synchronisation intégré.
+
+## Comprendre la couverture et administrer les données
+
+L’onglet **Administration → Couverture des contenus** distingue ce qui a été importé, extrait, partiellement analysé ou résumé. Les cartes de source expliquent leurs limites et les filtres permettent de retrouver les contenus incomplets.
+
+- [Formats, traitements et limites](docs/FORMATS-ET-COUVERTURE.md)
+- [Générations, intégrité et restauration](docs/RESTAURATION-ET-GENERATIONS.md)
+- [Mesures du pilote : couverture, coût d’un lot, HTTP et recherche](docs/PILOTE.md)

@@ -6,6 +6,8 @@
 !integrations.py
 !worker.py
 !source_enrichment.py
+!content_support.py
+!recovery.py
 !worker_media.py
 !worker_documents.py
 !reading.py

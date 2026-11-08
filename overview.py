@@ -4,6 +4,7 @@ import shutil
 from zoneinfo import ZoneInfo
 
 import kararecall
+from content_support import inventory
 from controls import action_status, history_status, library_paused
 from version import __version__
 from settings import integer
@@ -15,7 +16,7 @@ def source_type(source):
     url=urlsplit(source.get('url',''))
     if url.hostname in ('youtube.com','www.youtube.com','m.youtube.com','youtu.be') and (url.path.startswith(('/watch','/shorts/','/live/','/embed/')) or url.hostname=='youtu.be'):return 'video'
     kind=source.get('bookmark_type','link')
-    return 'note' if kind=='text' else 'file' if kind=='asset' else 'article'
+    return 'note' if kind=='text' else 'article' if kind=='link' else 'file'
 
 
 def stage_matches(source,stage):
@@ -101,6 +102,7 @@ def overview(root,data,view_root):
     if connection.get('state')=='error':alert('connections','Le dernier contrôle des connexions a échoué','Consultez le diagnostic et les paramètres du worker.','#/administration')
     pointer=kararecall.read_json(root/'data/current.json',{})
     return {'version':__version__,'generated_at':now.isoformat(),'summary':summary,'source_types':kinds,
+            'content_coverage':inventory(sources),
             'additions':[{'date':day,'count':count} for day,count in days.items()],
             'alerts':alerts,'worker':worker,'usage':usage,'configuration':worker.get('configuration'),
             'actions':actions,'history_import':history_status(root),'connection_check':connection,
@@ -116,6 +118,7 @@ def diagnostic(report):
     worker=report['worker'];usage=report['usage']
     return {'application':'KaraRecall','version':report['version'],'generated_at':report['generated_at'],
             'summary':report['summary'],'storage':report['storage'],
+            'content_coverage':report['content_coverage'],
             'worker':{key:worker.get(key) for key in ('application_version','state','heartbeat_at','stale','sync_enabled','llm_enabled','asr_enabled','vision_enabled')},
             'usage':{key:usage.get(key) for key in ('month','calls','daily_calls','daily_call_limit','monthly_call_limit','accounted_usd','limit_usd','blocked_by')},
             'automation_suspended':report['actions']['library_paused'],

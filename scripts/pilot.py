@@ -2,20 +2,71 @@
 """Shareable local pilot diagnostics. Optional Karakeep probes use GET only."""
 import argparse
 from collections import Counter
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import resource
 import shutil
+import sqlite3
 from statistics import median
 import sys
 import tempfile
 import time
+from urllib.parse import urlsplit
+from urllib.request import Request, build_opener, HTTPRedirectHandler
+import base64
+import os
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import kararecall
 from integrations import Karakeep, ServiceError, normalize_bookmark
 from publication import active_root
 from settings import Settings
+from content_support import inventory
+
+
+def usage_since(root, instant):
+    moment=datetime.fromisoformat(instant.replace('Z','+00:00'))
+    if moment.tzinfo is None:raise ValueError('Le début du lot exige un fuseau horaire.')
+    path=root/'data/usage.sqlite'
+    result={'since':moment.astimezone(timezone.utc).isoformat(),'observed':path.is_file(),'calls':0,'accounted_usd':0,'measured_usd':None,'stages':{}}
+    if not path.is_file():return result
+    with sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True) as db:
+        rows=db.execute('SELECT stage,state,accounted_usd,measured_usd FROM calls WHERE julianday(started)>=julianday(?)',(result['since'],)).fetchall()
+    measured=[]
+    for stage,state,accounted,cost in rows:
+        safe=stage if stage in ('asr','vision','llm','translation','digest','research','research.search','research.fetch') else 'other'
+        row=result['stages'].setdefault(safe,{'calls':0,'accounted_usd':0,'uncertain':0})
+        row['calls']+=1;row['accounted_usd']+=accounted or 0;row['uncertain']+=state in ('uncertain','reserved')
+        result['calls']+=1;result['accounted_usd']+=accounted or 0
+        if cost is not None:measured.append(cost)
+    if measured:result['measured_usd']=sum(measured)
+    result['accounted_usd']=round(result['accounted_usd'],6)
+    for row in result['stages'].values():row['accounted_usd']=round(row['accounted_usd'],6)
+    return result
+
+
+def http_benchmark(base):
+    parsed=urlsplit(base)
+    if parsed.scheme not in ('http','https') or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError('Adresse HTTP du pilote invalide.')
+    class NoRedirect(HTTPRedirectHandler):
+        def redirect_request(self,*args,**kwargs):return None
+    headers={}
+    username,password=os.getenv('KARARECALL_USERNAME',''),os.getenv('KARARECALL_PASSWORD','')
+    if username and password:headers['Authorization']='Basic '+base64.b64encode((username+':'+password).encode()).decode()
+    report=[]
+    for route in ('/api/catalog?compact=1','/api/sources?limit=24','/api/overview'):
+        times=[];sizes=[]
+        for _ in range(3):
+            started=time.monotonic()
+            with build_opener(NoRedirect()).open(Request(base.rstrip('/')+route,headers=headers),timeout=15) as response:
+                raw=response.read(20*1024*1024+1)
+                if len(raw)>20*1024*1024:raise ValueError('Réponse HTTP du pilote trop volumineuse.')
+                json.loads(raw)
+            times.append((time.monotonic()-started)*1000);sizes.append(len(raw))
+        report.append({'route':route,'bytes_max':max(sizes),'median_ms':round(median(times),1),'max_ms':round(max(times),1)})
+    return report
 
 
 def counts(sources):
@@ -83,15 +134,20 @@ def main():
     parser.add_argument('--probe-karakeep',action='store_true',help='Lire le catalogue réel en GET')
     parser.add_argument('--probe-media',action='store_true',help='Télécharger temporairement un original de 20 Mio maximum')
     parser.add_argument('--questions',type=Path,help='Fichier local de questions pour mesurer la recherche')
+    parser.add_argument('--usage-since',help='Coût du lot depuis une date ISO avec fuseau, sans appel IA')
+    parser.add_argument('--http-url',help='Mesurer trois routes HTTP, sans en conserver les contenus')
     args=parser.parse_args()
     settings=Settings.from_env()
     root=active_root(settings.root)
     catalog=kararecall.read_json(root/'data/catalog.json',{'sources':[],'entities':[]})
     disk=shutil.disk_usage(settings.root)
     report={'catalogue':counts(catalog['sources']),'fiches':len(catalog['entities']),
+            'couverture':inventory(catalog['sources']),
             'volume_mio_libres':disk.free//(1024*1024),
             'usage':kararecall.read_json(settings.root/'data/usage-summary.json',{})}
     if args.probe_karakeep or args.probe_media:report['karakeep']=probe(settings,args.probe_media)
+    if args.usage_since:report['lot_ia']=usage_since(settings.root,args.usage_since)
+    if args.http_url:report['http']=http_benchmark(args.http_url)
     if args.questions:
         report['recherche']=benchmark(catalog,kararecall.read_json(args.questions))
         peak=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -104,7 +160,7 @@ def main():
 if __name__=='__main__':
     try:
         main()
-    except (OSError,ServiceError,ValueError) as exc:
+    except (OSError,ServiceError,ValueError,sqlite3.Error) as exc:
         message=str(exc) if isinstance(exc,ServiceError) else 'Impossible de lire les données ou la configuration du pilote.'
         print(json.dumps({'state':'error','message':message},ensure_ascii=False))
         raise SystemExit(1)

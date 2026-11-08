@@ -79,6 +79,8 @@ def load_document_evidence(source, root, extracted):
     attachment = {'file':original.relative_to(root).as_posix(), 'kind':kind, 'sha256':digest}
     processing = {**attachment, 'status':artifact.get('status', 'saved'), 'truncated':artifact.get('truncated',False),
                   'pages_scanned':artifact.get('pages_scanned',0)}
+    for key in ('frames_scanned','frames_total'):
+        if key in artifact:processing[key]=artifact[key]
     provenance = {'attachment':attachment, 'recognition':{k:artifact.get(k) for k in ('engine','model','cache_key')}}
     rows = []
     if kind == 'pdf':
@@ -111,7 +113,7 @@ def extraction_config(kind, settings):
         if settings.pdf_ocr_enabled:
             config.extend(['ocr-v1', settings.pdf_ocr_max_pages, *vision])
         return config
-    return ['image-v1', settings.image_ocr_enabled, *vision]
+    return ['image-v2-first-frame', settings.image_ocr_enabled, *vision]
 
 
 def run_poppler(tool, args):
@@ -148,9 +150,11 @@ def image_text(original, preview, settings, ledger):
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('error', Image.DecompressionBombWarning)
-            with Image.open(original, formats=['JPEG', 'PNG', 'WEBP']) as image:
-                if image.width * image.height > MAX_IMAGE_PIXELS or getattr(image, 'is_animated', False):
-                    raise ServiceError('OCR image limité aux images fixes de 20 mégapixels.')
+            with Image.open(original, formats=['JPEG', 'PNG', 'WEBP', 'GIF']) as image:
+                if image.width * image.height > MAX_IMAGE_PIXELS:
+                    raise ServiceError('OCR image limité à 20 mégapixels.')
+                frames=getattr(image,'n_frames',1)
+                image.seek(0)
                 image = ImageOps.exif_transpose(image)
                 image.thumbnail((1280, 1280))
                 # Composite transparency on white and discard original metadata.
@@ -159,8 +163,8 @@ def image_text(original, preview, settings, ledger):
                 clean.paste(rgba, mask=rgba.getchannel('A'))
                 clean.save(preview, 'JPEG', quality=85)
     except (Image.DecompressionBombError, Image.DecompressionBombWarning, OSError, ValueError):
-        raise ServiceError('Image illisible ou format non pris en charge. JPEG, PNG et WebP fixes sont acceptés.') from None
-    return recognize_jpeg(preview, settings, ledger)
+        raise ServiceError('Image illisible ou format non pris en charge. JPEG, PNG, WebP et GIF sont acceptés ; seule la première image d’une animation est lue.') from None
+    return dict(recognize_jpeg(preview, settings, ledger),truncated=frames>1,frames_scanned=1,frames_total=frames)
 
 
 def recognize_jpeg(preview, settings, ledger):

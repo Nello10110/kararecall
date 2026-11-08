@@ -199,6 +199,9 @@ def normalize_bookmark(bookmark):
         check_id(video_id)
         if not any(a['id']==video_id for a in assets):
             assets.append({'id':video_id,'type':'video'})
+    pdf_id=content.get('pdfAssetId') or next((a['id'] for a in assets if a['type']=='pdf'),None)
+    document_id=content.get('assetId') if kind=='asset' and content.get('assetType') in ('pdf','image') else pdf_id if kind=='link' else None
+    asset_type=content.get('assetType') if kind=='asset' else 'pdf' if document_id else None
     # Keep asset identifiers, never expiring/signed image URLs. Large HTML pages
     # may be returned by older Karakeep versions as a separate content asset.
     content_id=content.get('contentAssetId') or next((a['id'] for a in assets if a['type']=='linkHtmlContent'),None)
@@ -208,11 +211,11 @@ def normalize_bookmark(bookmark):
                   content.get('assetId') if kind=='asset' and content.get('assetType')=='image' else None):
         if value and value not in previews:previews.append(check_id(value))
     return {'id':sid,'url':content.get('url') or content.get('sourceUrl') or '',
-        'bookmark_type':kind,'asset_type':content.get('assetType'),
+        'bookmark_type':kind,'asset_type':asset_type,
         'page_asset_id':check_id(content_id) if kind=='link' and content_id else None,
         'page_origin':None,
         'preview_asset_ids':previews,'crawl_status':content.get('crawlStatus'),
-        'document_asset_id':check_id(content['assetId']) if kind=='asset' and content.get('assetType') in ('pdf','image') and content.get('assetId') else None,
+        'document_asset_id':check_id(document_id) if document_id else None,
         'content_status':'text_available' if text else 'metadata_only',
         'archived':bool(bookmark.get('archived')),'favourited':bool(bookmark.get('favourited')),
         'created_at':created,'modified_at':bookmark.get('modifiedAt') or created,'title':str(title),

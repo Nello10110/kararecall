@@ -1,0 +1,122 @@
+[
+  {
+    "id": "chaleur",
+    "title": "Stocker la chaleur solaire",
+    "text": "Une batterie thermique accumule la chaleur du soleil pour chauffer une serre pendant la nuit.",
+    "question": "Tu retrouves le truc qui garde la chaleur pour la serre ?"
+  },
+  {
+    "id": "photos",
+    "title": "Classer ses photos",
+    "text": "Un classement automatique des photographies par date et visage aide à retrouver les albums de famille.",
+    "question": "Je cherche le classement des photos de famille"
+  },
+  {
+    "id": "sauvegarde",
+    "title": "Sauvegarde hors site",
+    "text": "Une copie chiffrée hors du domicile protège les sauvegardes en cas de vol ou de sinistre.",
+    "question": "On avait vu quoi pour les sauvegardes en dehors de la maison ?"
+  },
+  {
+    "id": "jardin",
+    "title": "Arroser le potager",
+    "text": "Des capteurs mesurent l’humidité du sol pour limiter l’arrosage du potager.",
+    "question": "Le système pour ne pas trop arroser le potager"
+  },
+  {
+    "id": "notes",
+    "title": "Relier ses notes",
+    "text": "Un carnet numérique permet de relier les notes avec des liens internes et de retrouver ses idées.",
+    "question": "Retrouve mes notes avec des liens entre elles"
+  },
+  {
+    "id": "television",
+    "title": "Alléger sa télévision",
+    "text": "La suppression des applications publicitaires améliore l’interface de la télévision connectée.",
+    "question": "Comment enlever les pubs sur la télé ?"
+  },
+  {
+    "id": "factures",
+    "title": "Lire des factures",
+    "text": "La reconnaissance de caractères extrait les montants et les dates de factures PDF numérisées.",
+    "question": "L’outil qui lit les montants des factures scannées"
+  },
+  {
+    "id": "recettes",
+    "title": "Planifier ses repas",
+    "text": "Une liste de recettes partagée prépare les repas de la semaine et regroupe les ingrédients à acheter.",
+    "question": "Tu as le site des recettes et de la liste de courses ?"
+  },
+  {
+    "id": "reseau",
+    "title": "Surveiller le réseau",
+    "text": "Un tableau de bord mesure le débit réseau et signale les connexions interrompues.",
+    "question": "Je cherche la surveillance du débit réseau"
+  },
+  {
+    "id": "audio",
+    "title": "Transcrire une réunion",
+    "text": "Un moteur de reconnaissance vocale transforme l’audio des réunions en texte horodaté.",
+    "question": "Le truc pour transformer mes réunions audio en texte"
+  },
+  {
+    "id": "lectures",
+    "title": "Conserver ses articles",
+    "text": "Une bibliothèque de lecture conserve des articles et permet de les consulter hors connexion.",
+    "question": "Lire les articles quand je n’ai pas internet"
+  },
+  {
+    "id": "depenses",
+    "title": "Suivre ses dépenses",
+    "text": "Un budget personnel classe les dépenses par catégorie et compare les paiements mensuels.",
+    "question": "Le suivi des dépenses du mois"
+  },
+  {
+    "id": "mobilite",
+    "title": "Organiser ses trajets",
+    "text": "Un calculateur de trajets compare les correspondances en train et les déplacements à vélo.",
+    "question": "Retrouver le calcul des trajets train et vélo"
+  },
+  {
+    "id": "air",
+    "title": "Mesurer la qualité de l’air",
+    "text": "Des capteurs de dioxyde de carbone indiquent quand aérer une pièce pour améliorer la qualité de l’air.",
+    "question": "Quand faut-il aérer selon les capteurs de la pièce ?"
+  },
+  {
+    "id": "git",
+    "title": "Comprendre les changements de code",
+    "text": "Un historique Git conserve les modifications de code et permet de comparer deux révisions.",
+    "question": "L’article pour comparer les révisions du code"
+  },
+  {
+    "id": "dessin",
+    "title": "Dessiner un schéma",
+    "text": "Un éditeur de diagrammes représente les composants et les échanges d’une architecture.",
+    "question": "Faire un schéma de mes composants et échanges"
+  },
+  {
+    "id": "horaires",
+    "title": "Partager un calendrier",
+    "text": "Un calendrier partagé synchronise les rendez-vous de la famille et évite les horaires en conflit.",
+    "question": "Le calendrier partagé des rendez-vous familiaux"
+  },
+  {
+    "id": "motsdepasse",
+    "title": "Conserver des identifiants",
+    "text": "Un coffre de mots de passe chiffré conserve les identifiants et génère des secrets uniques.",
+    "question": "Où ranger mes mots de passe en sécurité ?"
+  },
+  {
+    "id": "livres",
+    "title": "Cataloguer ses livres",
+    "text": "Une bibliothèque personnelle catalogue les livres et mémorise les ouvrages prêtés à des amis.",
+    "question": "Je cherche le catalogue des livres prêtés"
+  },
+  {
+    "id": "energie",
+    "title": "Suivre sa consommation électrique",
+    "text": "Un compteur relève la consommation électrique des appareils et révèle les usages nocturnes.",
+    "question": "Les appareils qui consomment de l’électricité la nuit"
+  }
+]

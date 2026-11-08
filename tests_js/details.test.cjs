@@ -89,3 +89,18 @@ test('document status names existing Karakeep text without irrelevant audio step
  assert.match(html,/Texte fourni par Karakeep/);
  assert.doesNotMatch(html,/<strong>Paroles<|<strong>Texte à l’écran</);
 });
+
+test('coverage is visible without claiming that metadata is a full analysis',()=>{
+ const ctx=context();
+ const html=ctx.coveragePanel({coverage_state:{label:'Métadonnées seules',limitations:['Le texte principal est absent.']}});
+ assert.match(html,/Métadonnées seules/);assert.match(html,/texte principal est absent/);
+ assert.equal(ctx.coveragePanel({}),'');
+});
+
+test('administration coverage links to source filters and escapes unknown attachment names',()=>{
+ const ctx=context();vm.runInContext(fs.readFileSync(path.join(root,'web/workspace.js'),'utf8'),ctx);
+ const html=ctx.coverageAdministration({labels:{metadata:'Métadonnées seules',unsupported:'Format non pris en charge'},
+  states:{metadata:2,unsupported:1},kinds:[{label:'Fichiers',total:3,states:{metadata:2,unsupported:1}}],attachments:{'<script>evil</script>':1}});
+ assert.match(html,/#\/sources\?support=metadata/);assert.match(html,/Format non pris en charge/);
+ assert.doesNotMatch(html,/<script>/);assert.match(html,/Type inconnu/);
+});

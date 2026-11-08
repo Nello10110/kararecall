@@ -48,6 +48,7 @@ def source_payload(source,root):
 
 
 def source_summary(source):
+    from content_support import coverage
     title = source['title'].replace('\n', ' ')
     author, _, caption = title.partition(' on Instagram:')
     if not caption:
@@ -60,6 +61,7 @@ def source_summary(source):
         'summary':short_text(source.get('reading',{}).get('text') or 'Résumé français en attente de traitement.'),
         'original_title':short_text(caption,160), 'author': author.strip(' @'),
         'thumbnail': '/api/sources/' + source['id'] + '/thumbnail',
+        'coverage_state':coverage(source),
         'transcript_count': sum(e['kind'] in ('asr','subtitle') for e in current),
         'frame_count': sum(e['kind']=='ocr' for e in images), 'stages':source.get('stages',{}),
         'bookmark_type':source.get('bookmark_type','link'),'content_status':source.get('content_status'),
@@ -390,13 +392,15 @@ def make_handler(corpus, username='', password=''):
                 stage = params.get('stage',['all'])[0]
                 query = params.get('q',[''])[0].strip()
                 kind=params.get('type',['all'])[0]
+                support=params.get('support',['all'])[0]
+                if support not in ('all','metadata','content','partial','analyzed','unsupported'):raise ValueError('Couverture invalide.')
                 order=params.get('sort',['recent'])[0]
                 if kind not in ('all','article','video','note','file') or order not in ('recent','oldest'):raise ValueError('Filtre invalide.')
                 if not 1<=limit<=100 or offset<0 or len(query)>150 or stage not in ('all','complete','partial','failed','paused','pending','summarized'):
                     return self.send_json({'error':'Filtre ou pagination non valide.'},400)
                 query = kararecall.normalize(query)
                 matches = [s for s in corpus.summaries(data) if
-                           stage_matches(s,stage) and (kind=='all' or s['source_type']==kind)
+                           stage_matches(s,stage) and (kind=='all' or s['source_type']==kind) and (support=='all' or s['coverage_state']['state']==support)
                            and (not query or query in kararecall.normalize(' '.join([s['title'],s['author'],s.get('original_title',''),s.get('summary',''),*s['tags']])))]
                 if order=='oldest':matches=list(reversed(matches))
                 last_offset = max(0,(len(matches)-1)//limit*limit)

@@ -1,6 +1,6 @@
 # Backlog de KaraRecall
 
-Mise à jour du 8 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. **Le propriétaire a signalé le démarrage sur son NAS et un premier favori analysé.** La qualification détaillée reste à effectuer avec le [pilote](docs/PILOTE.md) depuis son réseau.
+Mise à jour du 8 novembre 2026 à partir de l’[étude d’exploitation](docs/ETUDE-EXPLOITATION.md). Les cases cochées distinguent les fonctions livrées et les décisions documentées. Les essais ouverts demandent le NAS, les services configurés ou un retour d’usage. La livraison 0.5.0 termine les travaux locaux de couverture et d’outillage ; elle ne coche pas les validations réelles à leur place. **Le propriétaire a signalé le démarrage sur son NAS et un premier favori analysé.** La qualification détaillée reste à effectuer avec le [pilote](docs/PILOTE.md) depuis son réseau.
 
 Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimensionner la première version pour ce volume, sans service Mac obligatoire ni abonnement de recherche payant par défaut. Les optimisations de débit passent après la fiabilité et l’usage quotidien.
 
@@ -82,13 +82,16 @@ Acceptation : restauration et mise à jour vérifiées ; le web reste consultabl
 
 - [x] Découpler les miniatures de l’OCR : importer les images/bannières/captures Karakeep, extraire une image des vidéos locales sans IA et fournir un aperçu générique explicite si aucune image n’est accessible. Maintenir l’authentification et l’absence de téléchargement à l’ouverture d’une page.
 - [x] Récupérer le texte des sites fourni comme fichier HTML séparé ou via l’API de contenu Karakeep ; conserver la provenance, les erreurs et les preuves versionnées. Un simple titre ne doit pas être présenté comme une analyse de l’article complet.
-- [ ] Inventorier les formats réellement enregistrables dans la version Karakeep déployée, en distinguant type de favori, format de fichier, pièces jointes et fournisseur. Base officielle : favoris **lien, note texte, fichier image/PDF, inconnu** ; pièces jointes HTML extrait, bannière, capture, capture de fichier, PDF, archive complète/préextraite, vidéo, fichier de favori, dépôt utilisateur, avatar et inconnu. Vérifier les différences entre versions au lieu de supposer qu’un MP3 ou un fichier bureautique est pris en charge.
-- [ ] Construire une matrice de qualification : sites/articles, notes, images (JPEG/PNG/WebP/GIF et formats effectivement acceptés), PDF texte/numérisés/protégés, Instagram, YouTube, autres hébergeurs, vidéos jointes avec/sans audio et sous-titres. Ajouter audio seul et documents bureautiques **si Karakeep permet réellement de les enregistrer** ; afficher sinon une limite explicite.
-- [ ] Pour chaque cas, tester import initial et incrémental, dédoublonnage, miniature réelle/secours, accès au contenu/original, extraction et langue, synthèse française sourcée, recherche, export, nouvelle version et reprise après échec. Tester aussi collecte en attente/échouée, contenu absent, accès privé, redirections, pièces jointes manquantes, limites mémoire/durée/taille et quota IA.
-- [ ] Compléter les extracteurs manquants et la présentation de chaque format d’après cette matrice ; séparer « favori importé », « métadonnées seules », « contenu partiellement analysé » et « analyse terminée ». Aucun téléchargement direct depuis un hébergeur ni nouvel appel IA implicite.
+- [x] Inventorier les types du contrat API officiel et distinguer type de favori, format, pièces jointes et fournisseur dans la [matrice](docs/FORMATS-ET-COUVERTURE.md).
+- [ ] Confirmer les formats réellement enregistrables dans la version Karakeep déployée sur le NAS. Base officielle : favoris **lien, note texte, fichier image/PDF, inconnu** ; pièces jointes HTML extrait, bannière, capture, capture de fichier, PDF, archive complète/préextraite, vidéo, fichier de favori, dépôt utilisateur, avatar et inconnu. Vérifier les différences entre versions au lieu de supposer qu’un MP3 ou un fichier bureautique est pris en charge.
+- [x] Construire une [matrice de qualification et de limites](docs/FORMATS-ET-COUVERTURE.md) : sites/articles, notes, images (JPEG/PNG/WebP/GIF et formats effectivement acceptés), PDF texte/numérisés/protégés, Instagram, YouTube, autres hébergeurs, vidéos jointes avec/sans audio et sous-titres. Ajouter audio seul et documents bureautiques **si Karakeep permet réellement de les enregistrer** ; afficher sinon une limite explicite.
+- [x] Étendre les tests synthétiques : import/dédoublonnage et exports de treize familles de favoris, HTML inline/séparé, quatre formats image, animation limitée à sa première image, PDF joint/natif/numérisé/corrompu, couverture et filtres avant pagination. Les tests existants couvrent authentification, redirections, cache, quotas, silence, sous-titres et anciennes preuves.
+- [ ] Compléter la matrice réelle avec les PDF protégés, hébergeurs et contenus privés du NAS ; vérifier langue/fidélité, durées, mémoire et reprises sur les services configurés.
+- [x] Traiter les PDF joints aux liens, lire JPEG/PNG/WebP/GIF avec couverture partielle des animations, et distinguer métadonnées, contenu disponible, analyse partielle/terminée et format inconnu. Ajouter Administration → Couverture et les filtres de source ; signaler les archives/pièces jointes sans extracteur. Aucun téléchargement direct chez un hébergeur ni nouvel appel IA implicite.
+- [ ] Ajouter d’autres extracteurs seulement si l’inventaire NAS montre des formats utiles actuellement signalés non pris en charge.
 - [ ] Qualifier cette matrice sur le NAS avec un échantillon varié, notamment les sites et vidéos Instagram/YouTube signalés, puis documenter les formats et limites dans le guide.
 
-Acceptation : aucun favori ignoré silencieusement ; chaque carte a un aperçu, chaque extraction indique sa couverture réelle, les preuves restent consultables et les formats non pris en charge sont explicitement signalés. Le correctif 0.4.1 est testé sur données synthétiques ; la qualification NAS de cette matrice reste ouverte. Contrat de référence : [contenu d’un favori Karakeep 0.30](https://docs.karakeep.com/v0.30.0/api/get-a-single-bookmark) et [schéma OpenAPI officiel](https://github.com/karakeep-app/karakeep/blob/main/packages/open-api/karakeep-openapi-spec.json).
+Acceptation : aucun favori ignoré silencieusement ; chaque carte a un aperçu, chaque extraction indique sa couverture réelle, les preuves restent consultables et les formats non pris en charge sont explicitement signalés. Les correctifs 0.4.1 et la matrice 0.5.0 sont testés sur données synthétiques ; la qualification NAS de cette matrice reste ouverte. Contrat de référence : [contenu d’un favori Karakeep 0.30](https://docs.karakeep.com/v0.30.0/api/get-a-single-bookmark) et [schéma OpenAPI officiel](https://github.com/karakeep-app/karakeep/blob/main/packages/open-api/karakeep-openapi-spec.json).
 
 ### Recherche internet systématique par outil
 
@@ -156,7 +159,8 @@ La rédaction automatique produit des articles à partir des preuves réelles av
 
 ### Mesurer avant de passer au sémantique
 
-- [ ] Constituer vingt questions de souvenirs indépendantes des fiches et mesurer le moteur lexical ; proposition initiale : bonne source dans les trois premiers résultats sur au moins seize questions.
+- [x] Constituer vingt questions de souvenir sur un corpus de référence fictif, sans fiches générées, et mesurer le moteur lexical : 15/20 dans les trois premiers résultats ; [script et limites](docs/PILOTE.md#référence-de-recherche-050).
+- [ ] Mesurer vingt questions indépendantes sur les souvenirs réels du propriétaire ; seuil proposé de 16/20 dans les trois premiers. Le corpus de référence ne valide pas le NAS ni la pertinence sur ses favoris.
 - [x] Définir les conditions d’un index sémantique dérivé et reconstruisible. [Critères](docs/EXPLOITATION-LONG-TERME.md#recherche-et-exports).
 
 ### Stockage, performances et maintenance
@@ -216,7 +220,8 @@ Audit : [usage quotidien et administration](docs/UX-ET-ADMINISTRATION.md).
 - [x] Vidage local déplacé dans une zone dédiée avec confirmation explicite.
 - [x] Thèmes glass sombre/clair, navigation mobile et maintien des anciennes routes de preuves et fiches.
 - [ ] Qualifier les nouveaux états de configuration, le contrôle des fournisseurs et les parcours sur le NAS après mise à jour des deux images.
-- [ ] Étudier un parcours de restauration des anciennes générations et une preuve de sauvegarde externe, avant de présenter ces fonctions comme administrables dans l’interface.
+- [x] Étudier le [parcours de restauration et la preuve de sauvegarde externe](docs/RESTAURATION-ET-GENERATIONS.md). Livrer un inventaire et un contrôle d’intégrité de génération en lecture seule ; conserver le retour par volume neuf et le statut « sauvegarde non observée ».
+- [ ] Qualifier une restauration externe réelle sur le NAS avant de proposer un retour à une ancienne génération depuis l’interface.
 
 ## Distribution Docker — 8 novembre 2026
 
@@ -241,3 +246,11 @@ Audit : [usage quotidien et administration](docs/UX-ET-ADMINISTRATION.md).
 - [x] Revoir les cartes, résultats, sources, preuves et bulletins avec la même priorité donnée à la lecture.
 - [x] Vérifier les parcours bureau/mobile et les thèmes sur une copie privée, ainsi que les cas de liens invalides ou absents sur fixtures.
 - [ ] Confirmer le confort de lecture et les liens principaux sur le corpus réel du NAS après mise à jour vers 0.4.
+
+## Outillage du pilote — version 0.5.0
+
+- [x] Rapport de couverture sans titres, identifiants de favoris ni URL, inclus dans Administration, le diagnostic partageable et `pilot.py`.
+- [x] Mesure HTTP authentifiée de trois routes, trois lectures chacune, avec tailles et latences uniquement.
+- [x] Mesure comptable d’un lot depuis une date avec fuseau : appels, réserves incertaines, coûts par étape, sans modifier le journal ni appeler un modèle.
+- [x] Inventaire des générations et vérification d’une ancienne publication sans restauration ni modification du pointeur.
+- [ ] Exécuter ces mesures sur le NAS avec ses services réels ; relever aussi mémoire, coût du lot et sauvegarde externe.

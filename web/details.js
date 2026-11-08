@@ -1,5 +1,10 @@
 'use strict';
 
+function coveragePanel(source){
+ const info=source.coverage_state;if(!info)return '';
+ return `<section class="detail-panel"><h2>Couverture du contenu</h2><p>${esc(info.label)}</p>${info.limitations.length?disclosure('Comprendre cette couverture','',info.limitations.map(text=>`<p class="text-muted">${esc(text)}</p>`).join('')):''}</section>`;
+}
+
 // Shared reading views. Link selection never invents a URL or an official identity.
 function navigableUrl(value){try{const url=new URL(value);return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password?url:null;}catch{return null;}}
 function recordRouteLabel(route){return /#\/tools\//.test(route)?'Ouvrir l’outil':'Ouvrir la source';}
