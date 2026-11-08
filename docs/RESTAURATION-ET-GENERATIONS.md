@@ -1,5 +1,7 @@
 # Retrouver une publication et restaurer le service
 
+[🇫🇷 Français](RESTAURATION-ET-GENERATIONS.md) · [🇬🇧 English](en/recovery-and-generations.md)
+
 ## Ce qui existe
 
 Les générations publiées sont immuables. `data/current.json` sélectionne une publication cohérente, avec ses sources, preuves, médias et fiches. Les journaux d’usage, les commandes en file, les caches, les bulletins et la configuration ont une vie séparée. Une ancienne génération constitue un historique local ; elle ne constitue pas une sauvegarde externe.
@@ -7,13 +9,13 @@ Les générations publiées sont immuables. `data/current.json` sélectionne une
 La commande suivante inventorie cet historique sans changer de publication :
 
 ```sh
-docker compose exec -T web python recovery.py
+docker compose exec -T web python -m kararecall.recovery
 ```
 
 Pour vérifier l’intégrité d’une génération dont l’identifiant figure dans le rapport :
 
 ```sh
-docker compose exec -T web python recovery.py --generation IDENTIFIANT_HEXADECIMAL
+docker compose exec -T web python -m kararecall.recovery --generation IDENTIFIANT_HEXADECIMAL
 ```
 
 Cette lecture vérifie catalogue, références, originaux, images, HTML complémentaire et empreintes d’aperçus. Elle ne déplace aucun pointeur et ne change pas les budgets. Une génération absente, un chemin invalide ou un fichier incohérent produit un échec. La présence d’une génération valide ne prouve pas qu’une sauvegarde a été copiée hors du NAS.

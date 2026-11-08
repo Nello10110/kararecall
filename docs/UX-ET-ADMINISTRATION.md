@@ -1,5 +1,7 @@
 # Usage quotidien et administration de KaraRecall
 
+[🇫🇷 Français](UX-ET-ADMINISTRATION.md) · [🇬🇧 English](en/ux-and-administration.md)
+
 Audit et évolution du 8 novembre 2026. La version 0.3.0 conserve le modèle local et portable, les preuves et la lecture seule de Karakeep. Cet audit se fonde sur le code, les parcours existants et les retours du pilote NAS ; ce n’est pas une étude d’usage auprès de plusieurs utilisateurs.
 
 ## Ce que l’utilisateur cherche à faire

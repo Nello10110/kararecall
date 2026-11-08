@@ -1,0 +1,89 @@
+{
+  "default": "fr",
+  "languages": [
+    "fr",
+    "en"
+  ],
+  "pages": [
+    {
+      "fr": "README.md",
+      "en": "docs/en/README.md"
+    },
+    {
+      "fr": "docs/ARCHITECTURE-FONCTIONNELLE.md",
+      "en": "docs/en/functional-architecture.md"
+    },
+    {
+      "fr": "docs/ARCHITECTURE.md",
+      "en": "docs/en/architecture.md"
+    },
+    {
+      "fr": "docs/ETUDE-EXPLOITATION.md",
+      "en": "docs/en/operations-study.md"
+    },
+    {
+      "fr": "docs/EXPLOITATION-LONG-TERME.md",
+      "en": "docs/en/long-term-operations.md"
+    },
+    {
+      "fr": "docs/FORMATS-ET-COUVERTURE.md",
+      "en": "docs/en/formats-and-coverage.md"
+    },
+    {
+      "fr": "docs/HOMELAB.md",
+      "en": "docs/en/homelab.md"
+    },
+    {
+      "fr": "docs/IMAGES-DOCKER.md",
+      "en": "docs/en/docker-images.md"
+    },
+    {
+      "fr": "docs/IMPORT-ET-DEEPSEEK.md",
+      "en": "docs/en/import-and-deepseek.md"
+    },
+    {
+      "fr": "docs/INSTALLATION.md",
+      "en": "docs/en/installation.md"
+    },
+    {
+      "fr": "docs/MCP.md",
+      "en": "docs/en/mcp.md"
+    },
+    {
+      "fr": "docs/P0.md",
+      "en": "docs/en/reliability.md"
+    },
+    {
+      "fr": "docs/PILOTE.md",
+      "en": "docs/en/pilot.md"
+    },
+    {
+      "fr": "docs/RECHERCHE-WEB.md",
+      "en": "docs/en/web-enrichment.md"
+    },
+    {
+      "fr": "docs/RESTAURATION-ET-GENERATIONS.md",
+      "en": "docs/en/recovery-and-generations.md"
+    },
+    {
+      "fr": "docs/UX-ET-ADMINISTRATION.md",
+      "en": "docs/en/ux-and-administration.md"
+    },
+    {
+      "fr": "docs/VEILLE.md",
+      "en": "docs/en/digests.md"
+    },
+    {
+      "fr": "docs/WEB.md",
+      "en": "docs/en/web-and-api.md"
+    },
+    {
+      "fr": "docs/BACKLOG.md",
+      "en": "docs/en/backlog.md"
+    },
+    {
+      "fr": "docs/STRUCTURE.md",
+      "en": "docs/en/repository.md"
+    }
+  ]
+}

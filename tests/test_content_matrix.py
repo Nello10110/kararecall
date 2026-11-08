@@ -11,14 +11,14 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import kararecall
-from content_support import coverage, inventory
-from integrations import normalize_bookmark, ServiceError
-from publication import active_root
-from settings import Settings
-from web_server import Corpus, make_handler
-from worker import run_cycle,has_content_evidence
-from worker_documents import extract_document
+from kararecall import core as kararecall
+from kararecall.content_support import coverage, inventory
+from kararecall.integrations import normalize_bookmark, ServiceError
+from kararecall.publication import active_root
+from kararecall.settings import Settings
+from kararecall.web_server import Corpus, make_handler
+from kararecall.worker import run_cycle,has_content_evidence
+from kararecall.worker_documents import extract_document
 
 
 def matrix():
@@ -47,7 +47,7 @@ class ContentMatrixTests(unittest.TestCase):
     def data(self):return kararecall.read_json(active_root(self.root)/'data/catalog.json')
 
     def test_all_types_are_imported_once_searchable_exportable_with_honest_coverage(self):
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter(matrix())),patch('worker.Karakeep.download') as dl,patch('worker.synthesize') as model:
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter(matrix())),patch('kararecall.worker.Karakeep.download') as dl,patch('kararecall.worker.synthesize') as model:
             run_cycle(self.settings,catalog_only=True)
             before=active_root(self.root);run_cycle(self.settings,catalog_only=True)
             self.assertEqual(active_root(self.root),before);dl.assert_not_called();model.assert_not_called()
@@ -83,12 +83,12 @@ class ContentMatrixTests(unittest.TestCase):
 
     def test_unsupported_file_never_spends_an_inference_call(self):
         self.settings.llm_enabled=True;self.settings.llm_model='test';self.settings.llm_url='https://example.invalid'
-        with patch('worker.Karakeep.bookmarks',return_value=iter([matrix()[8]])),patch('worker.synthesize') as model:
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([matrix()[8]])),patch('kararecall.worker.synthesize') as model:
             run_cycle(self.settings);model.assert_not_called()
         self.assertEqual(self.data()['sources'][0]['stages']['llm'],'unsupported')
 
     def test_coverage_filters_are_applied_before_pagination_and_routes_are_protected(self):
-        with patch('worker.Karakeep.bookmarks',return_value=iter(matrix())):run_cycle(self.settings,catalog_only=True)
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter(matrix())):run_cycle(self.settings,catalog_only=True)
         server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(Corpus(self.root),'test','fixture'))
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         def get(path,auth=True):
@@ -118,18 +118,18 @@ class ImageMatrixTests(unittest.TestCase):
             for fmt in ('JPEG','PNG','WEBP','GIF'):
                 original=root/(fmt+'.bin');Image.new('RGB',(24,24),'white').save(original,fmt)
                 output=root/fmt
-                with patch('worker_documents.recognize_image',return_value='Repère hydrique') as model:
+                with patch('kararecall.worker_documents.recognize_image',return_value='Repère hydrique') as model:
                     self.assertEqual(extract_document(source,original,output,settings),'complete')
                     self.assertEqual(extract_document(source,original,output,settings),'complete');self.assertEqual(model.call_count,1)
                 self.assertFalse(kararecall.read_json(output/'document.json')['truncated'])
             original=root/'animated.gif'
             Image.new('RGB',(24,24),'white').save(original,'GIF',save_all=True,append_images=[Image.new('RGB',(24,24),'black')],duration=100)
-            with patch('worker_documents.recognize_image',return_value='Première image') as model:
+            with patch('kararecall.worker_documents.recognize_image',return_value='Première image') as model:
                 extract_document(source,original,root/'animated',settings);self.assertEqual(model.call_count,1)
             artifact=kararecall.read_json(root/'animated/document.json')
             self.assertTrue(artifact['truncated']);self.assertEqual(artifact['frames_scanned'],1);self.assertEqual(artifact['frames_total'],2)
             original=root/'unsupported.bmp';Image.new('RGB',(24,24)).save(original,'BMP')
-            with patch('worker_documents.recognize_image') as model:
+            with patch('kararecall.worker_documents.recognize_image') as model:
                 with self.assertRaises(ServiceError):extract_document(source,original,root/'unsupported',settings)
                 model.assert_not_called()
 
@@ -147,7 +147,7 @@ class LinkedPDFTests(unittest.TestCase):
             def answer(*args,**kwargs):
                 rows=json.loads(args[3][-1]['content'])['evidence'];proof=next(row for row in rows if row['kind']=='pdf-page')
                 return json.dumps({'tools':[],'reading':{'summary':'Un capteur de pression.','source_language':'fr','evidence_ids':[proof['id']]}})
-            with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('worker.Karakeep.download',side_effect=download),patch('worker.chat',side_effect=answer):
+            with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('kararecall.worker.Karakeep.download',side_effect=download),patch('kararecall.worker.chat',side_effect=answer):
                 self.assertEqual(run_cycle(settings)['processed'],1)
                 source=kararecall.read_json(active_root(root)/'data/catalog.json')['sources'][0]
                 self.assertTrue(any(row['kind']=='pdf-page' for row in source['evidence']))
@@ -156,7 +156,7 @@ class LinkedPDFTests(unittest.TestCase):
                 self.assertEqual(source['stages']['llm'],'complete')
                 self.assertIn('#pdf-page-',source['reading']['evidence'][0])
                 raw['content']['pdfAssetId']='broken'
-                with patch('worker.Karakeep.download',side_effect=lambda _,p,**kw:(p.parent.mkdir(parents=True,exist_ok=True),p.write_bytes(b'not a PDF'))):
+                with patch('kararecall.worker.Karakeep.download',side_effect=lambda _,p,**kw:(p.parent.mkdir(parents=True,exist_ok=True),p.write_bytes(b'not a PDF'))):
                     self.assertEqual(run_cycle(settings)['failed'],1)
                 current=kararecall.read_json(active_root(root)/'data/catalog.json')['sources'][0]
                 self.assertEqual(current['stages']['document'],'failed')

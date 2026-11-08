@@ -1,5 +1,7 @@
 # Installer KaraRecall sur son NAS
 
+[🇫🇷 Français](INSTALLATION.md) · [🇬🇧 English](en/installation.md)
+
 Ce guide mène jusqu’à la consultation de tous les favoris Karakeep. La première installation importe les textes et métadonnées avec l’IA désactivée. Les résumés DeepSeek s’activent ensuite, à l’étape 6.
 
 ## Avant de commencer
@@ -118,8 +120,8 @@ Pour commencer par les seuls textes, vide `VISION_MODEL` et mets `DOWNLOAD_MEDIA
 Vérifie les accès, puis lance un passage sur au plus un favori.
 
 ```sh
-docker compose run --rm --no-deps worker python worker.py check &&
-  docker compose run --rm --no-deps worker python worker.py once
+docker compose run --rm --no-deps worker python -m kararecall.worker check &&
+  docker compose run --rm --no-deps worker python -m kararecall.worker once
 ```
 
 `check` vérifie les accès en lecture. `once` exécute les étapes activées. Si une commande indique une erreur, consulte le dépannage ci-dessous avant de poursuivre. Dans le navigateur, clique sur **Actualiser** dans Activité et contrôle le résumé, ses preuves et les éventuels états d’erreur.

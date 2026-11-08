@@ -5,14 +5,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import kararecall
-from editorial import edit_tool
+from kararecall import core as kararecall
+from kararecall.editorial import edit_tool
 from fixtures import corpus
-from publication import active_root
-from settings import Settings
-from usage import UsageLedger
-from web_research import ResearchHTTPError, identity, public_url, run_research
-from web_server import context_for
+from kararecall.publication import active_root
+from kararecall.settings import Settings
+from kararecall.usage import UsageLedger
+from kararecall.web_research import ResearchHTTPError, identity, public_url, run_research
+from kararecall.web_server import context_for
 from test_editorial import change
 
 
@@ -38,7 +38,7 @@ class WebResearchTests(unittest.TestCase):
         rows=[{'url':'http://127.0.0.1/private'},{'url':'https://github.com/unrelated/fixture-widget'},
               *({'url':'https://github.com/example/fixture-widget/'+part} for part in ('docs','usage','releases'))]
         answers=[{'results':rows},{'content':'Description de test.'},ResearchHTTPError(404)]
-        with patch('web_research.provider_request',side_effect=answers) as request:
+        with patch('kararecall.web_research.provider_request',side_effect=answers) as request:
             self.assertEqual(run_research(self.config)['state'],'complete')
             self.assertEqual(run_research(self.config)['state'],'idle')
         self.assertEqual([call.args[0] for call in request.call_args_list],['search','fetch','fetch'])
@@ -67,12 +67,12 @@ class WebResearchTests(unittest.TestCase):
         self.assertEqual(note['verification_file'],research['trace_file'])
 
     def test_french_description_uses_only_read_pages_and_resumes_after_quota(self):
-        from usage import BudgetExceeded
+        from kararecall.usage import BudgetExceeded
         self.config.llm_enabled=True;self.config.llm_url='https://example.invalid';self.config.llm_model='fixture'
         url='https://github.com/example/fixture-widget/docs'
-        with patch('web_research.provider_request',side_effect=[{'results':[{'url':url}]},{'content':'A local document organizer.'}]),patch('web_research.chat',side_effect=BudgetExceeded('quota')):
+        with patch('kararecall.web_research.provider_request',side_effect=[{'results':[{'url':url}]},{'content':'A local document organizer.'}]),patch('kararecall.web_research.chat',side_effect=BudgetExceeded('quota')):
             self.assertEqual(run_research(self.config)['state'],'paused')
-        with patch('web_research.provider_request') as provider,patch('web_research.chat',return_value=json.dumps({'text':'Un outil pour organiser ses documents en local.','urls':[url]})) as model:
+        with patch('kararecall.web_research.provider_request') as provider,patch('kararecall.web_research.chat',return_value=json.dumps({'text':'Un outil pour organiser ses documents en local.','urls':[url]})) as model:
             self.assertEqual(run_research(self.config)['state'],'complete')
             provider.assert_not_called();self.assertIn('en français',model.call_args.args[3][0]['content'])
         root=active_root(self.root)
@@ -84,7 +84,7 @@ class WebResearchTests(unittest.TestCase):
     def test_quota_pause_reuses_completed_search(self):
         self.config.daily_call_limit=1
         rows={'results':[{'url':'https://github.com/example/fixture-widget'}]}
-        with patch('web_research.provider_request',return_value=rows) as request:
+        with patch('kararecall.web_research.provider_request',return_value=rows) as request:
             self.assertEqual(run_research(self.config)['state'],'paused')
             self.assertEqual(request.call_count,1)
         key,*_=identity(self.entity)
@@ -93,7 +93,7 @@ class WebResearchTests(unittest.TestCase):
         job['retry_at']=0
         kararecall.write_json(path,job)
         self.config.daily_call_limit=2
-        with patch('web_research.provider_request',return_value={'content':'Page de test'}) as request:
+        with patch('kararecall.web_research.provider_request',return_value={'content':'Page de test'}) as request:
             self.assertEqual(run_research(self.config)['state'],'complete')
             self.assertEqual(request.call_args.args[0],'fetch')
 
@@ -102,7 +102,7 @@ class WebResearchTests(unittest.TestCase):
         self.entity['links']=[]
         kararecall.write_json(self.path,[self.entity])
         rows={'results':[{'url':'https://orbit.com/docs'},{'url':'https://github.com/other/orbit'}]}
-        with patch('web_research.provider_request',return_value=rows) as request:
+        with patch('kararecall.web_research.provider_request',return_value=rows) as request:
             self.assertEqual(run_research(self.config)['pages'],0)
             request.assert_called_once()
         selected=active_root(self.root)
@@ -114,6 +114,6 @@ class WebResearchTests(unittest.TestCase):
                     'https://example.com/%40hidden','https://example.com:443/x','https://example.com/truncated...'):
             self.assertIsNone(public_url(url),url)
         self.config.web_research_enabled=False
-        with patch('web_research.provider_request') as request:
+        with patch('kararecall.web_research.provider_request') as request:
             self.assertEqual(run_research(self.config),{'state':'disabled'})
             request.assert_not_called()

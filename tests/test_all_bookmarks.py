@@ -9,13 +9,13 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import kararecall
-from controls import request_history, history_status, process_history
-from integrations import normalize_bookmark, chat, ServiceError
-from publication import active_root
-from settings import Settings
-from web_server import Corpus, make_handler, source_summary
-from worker import run_cycle
+from kararecall import core as kararecall
+from kararecall.controls import request_history, history_status, process_history
+from kararecall.integrations import normalize_bookmark, chat, ServiceError
+from kararecall.publication import active_root
+from kararecall.settings import Settings
+from kararecall.web_server import Corpus, make_handler, source_summary
+from kararecall.worker import run_cycle
 
 
 def bookmarks():
@@ -34,7 +34,7 @@ class AllBookmarksTests(unittest.TestCase):
     def tearDown(self):self.temp.cleanup()
 
     def test_mixed_content_and_personal_notes_are_searchable_without_llm(self):
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter(bookmarks())):
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter(bookmarks())):
             self.assertEqual(run_cycle(self.config),{'synced':4,'processed':3,'failed':0})
             run_cycle(self.config)
             published=active_root(self.root)
@@ -59,7 +59,7 @@ class AllBookmarksTests(unittest.TestCase):
         self.config.llm_enabled=True  # Deliberately unconfigured: catalogue import needs only Karakeep.
         self.config.download_media=True
         first=request_history(self.root);self.assertEqual(request_history(self.root)['id'],first['id'])
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter(bookmarks())),patch('worker.synthesize') as llm,patch('worker.Karakeep.download') as download:
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter(bookmarks())),patch('kararecall.worker.synthesize') as llm,patch('kararecall.worker.Karakeep.download') as download:
             self.assertTrue(process_history(self.config,run_cycle))
             self.assertFalse(process_history(self.config,run_cycle))
             self.assertFalse(llm.called);self.assertFalse(download.called)
@@ -76,15 +76,15 @@ class AllBookmarksTests(unittest.TestCase):
         def failed():
             yield bookmarks()[0]
             raise ServiceError('Unavailable '+self.config.karakeep_key)
-        with patch('worker.Karakeep.bookmarks',side_effect=failed):process_history(self.config,run_cycle)
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=failed):process_history(self.config,run_cycle)
         state=history_status(self.root)
         self.assertEqual(state['state'],'error');self.assertNotIn(self.config.karakeep_key,state['message'])
         self.assertEqual(kararecall.read_json(active_root(self.root)/'data/sources.json'),[])
         # A crashed running request is safely replayed after restart.
         request_history(self.root)
-        from controls import update_history
+        from kararecall.controls import update_history
         update_history(self.root,state='running')
-        with patch('worker.Karakeep.bookmarks',return_value=iter(bookmarks())):process_history(self.config,run_cycle)
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter(bookmarks())):process_history(self.config,run_cycle)
         self.assertEqual(history_status(self.root)['state'],'completed')
 
     def test_article_summary_does_not_require_an_identified_tool_and_cites_real_proofs(self):
@@ -93,7 +93,7 @@ class AllBookmarksTests(unittest.TestCase):
             rows=json.loads(args[3][-1]['content'])['evidence']
             page=next(e for e in rows if e['kind']=='page')
             return json.dumps({'reading':{'summary':'Méthode de stockage de chaleur.','evidence_ids':[page['id']],'keywords':['calorifique']},'tools':[]})
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter(bookmarks()[:1])),patch('worker.chat',side_effect=response):
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter(bookmarks()[:1])),patch('kararecall.worker.chat',side_effect=response):
             self.assertEqual(run_cycle(self.config)['processed'],1)
             selected=active_root(self.root)
             self.assertEqual(run_cycle(self.config)['processed'],0)
@@ -108,7 +108,7 @@ class AllBookmarksTests(unittest.TestCase):
 
     def test_deepseek_payload_uses_max_tokens_and_explicit_thinking_control(self):
         response={'choices':[{'message':{'content':'{}'},'finish_reason':'stop'}]}
-        with patch('integrations.request_json',return_value=response) as request:
+        with patch('kararecall.integrations.request_json',return_value=response) as request:
             chat('https://api.deepseek.com','test-only','deepseek-flash',[],thinking='disabled',token_limit_param='max_tokens',max_tokens=600)
         payload=request.call_args.args[2]
         self.assertEqual(payload['thinking'],{'type':'disabled'})
@@ -129,13 +129,13 @@ class AllBookmarksTests(unittest.TestCase):
             self.assertEqual(sections[-1]['text'],'Résumé de la conclusion.')
             return json.dumps({'reading':{'summary':'Une conclusion relue.','evidence_ids':[sections[-1]['id']]},'tools':[]})
         source=lambda:iter([article])
-        with patch('worker.Karakeep.bookmarks',side_effect=source),patch('reading.chat',side_effect=[
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=source),patch('kararecall.reading.chat',side_effect=[
             '{"summary":"Résumé initial."}',ServiceError('Test de reprise')]) as model:
             self.assertEqual(run_cycle(self.config)['failed'],1)
             self.assertEqual(model.call_count,2)
         with sqlite3.connect(self.root/'data/worker.sqlite') as db:
             db.execute('UPDATE jobs SET next_retry=0')
-        with patch('worker.Karakeep.bookmarks',side_effect=source),patch('reading.chat',return_value='{"summary":"Résumé de la conclusion."}') as model,patch('worker.chat',side_effect=final_answer):
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=source),patch('kararecall.reading.chat',return_value='{"summary":"Résumé de la conclusion."}') as model,patch('kararecall.worker.chat',side_effect=final_answer):
             self.assertEqual(run_cycle(self.config)['processed'],1)
             self.assertEqual(model.call_count,1)
         selected=active_root(self.root)
@@ -150,7 +150,7 @@ class AllBookmarksTests(unittest.TestCase):
         def response(*args,**kwargs):
             page=next(e for e in json.loads(args[3][-1]['content'])['evidence'] if e['kind']=='page')
             return json.dumps({'reading':{'summary':'Stockage thermique.','evidence_ids':[page['id']]},'tools':[]})
-        with patch('worker.Karakeep.bookmarks',return_value=iter([bookmarks()[0],bookmarks()[0]])),patch('worker.chat',side_effect=response) as model:
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([bookmarks()[0],bookmarks()[0]])),patch('kararecall.worker.chat',side_effect=response) as model:
             self.assertEqual(run_cycle(self.config),{'synced':1,'processed':1,'failed':0})
             self.assertEqual(model.call_count,1)
 

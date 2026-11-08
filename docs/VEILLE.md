@@ -1,5 +1,7 @@
 # Bulletins de veille automatiques
 
+[🇫🇷 Français](VEILLE.md) · [🇬🇧 English](en/digests.md)
+
 KaraRecall rédige des articles à partir des vrais favoris et de leurs preuves. Chaque découverte donne un titre et deux ou trois paragraphes qui expliquent le sujet, son intérêt et son fonctionnement, avec les limites présentes dans les sources. Les références sont conservées avec chaque paragraphe. Les captures vidéo disponibles et les captures de page de Karakeep illustrent les articles.
 
 La première édition reprend une sélection de l’historique pour fournir un bulletin dès le démarrage, même si les favoris ont été enregistrés plusieurs mois auparavant. Les éditions suivantes couvrent la semaine ou le mois échu. La rédaction, la sélection pour diffusion et la demande d’envoi sont automatiques par défaut. La modification depuis le web reste une option.
@@ -87,8 +89,8 @@ Une installation existante conserve son volume si `KARARECALL_VOLUME_NAME` garde
 Pour préparer un bulletin depuis le terminal, le worker accepte ces commandes.
 
 ```sh
-docker compose --profile automation run --rm worker python worker.py digest-generate --kind weekly --anchor 2026-11-02
-docker compose --profile automation run --rm worker python worker.py digest-run
+docker compose --profile automation run --rm worker python -m kararecall.worker digest-generate --kind weekly --anchor 2026-11-02
+docker compose --profile automation run --rm worker python -m kararecall.worker digest-run
 ```
 
 Le premier prépare une édition ciblée. Le type `--kind initial` couvre l’historique disponible. Le second vérifie les échéances et traite les rédactions en attente et les diffusions automatiques. Les tests automatisés utilisent un corpus synthétique et des transports simulés. Le relais SMTP, le webhook et le lecteur RSS de l’installation restent à qualifier avec leurs paramètres réels.

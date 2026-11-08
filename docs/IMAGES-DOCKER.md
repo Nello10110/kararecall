@@ -1,5 +1,7 @@
 # Images Docker et mises à jour
 
+[🇫🇷 Français](IMAGES-DOCKER.md) · [🇬🇧 English](en/docker-images.md)
+
 Les images publiques sont publiées sur GitHub Container Registry pour Linux AMD64 et ARM64 :
 
 - `ghcr.io/nello10110/kararecall-web:latest`
@@ -58,7 +60,7 @@ Les images publiées utilisent l’utilisateur non privilégié `10001:10001`, c
 Pour développer ou construire avec ces variables :
 
 ```sh
-docker compose -f compose.yaml -f compose.build.yaml up -d --build
+docker compose -f compose.yaml -f deploy/compose.build.yaml up -d --build
 ```
 
 Conserver les deux options `-f` pour les commandes suivantes de cette installation locale. L’override utilise des images `kararecall-web:local` et `kararecall-worker:local`, sans télécharger `latest`. Le test `scripts/check_container.py` utilise automatiquement ce mode et un volume jetable.

@@ -6,8 +6,8 @@ import sys
 import tempfile
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import kararecall
-from integrations import normalize_bookmark
+from kararecall import core as kararecall
+from kararecall.integrations import normalize_bookmark
 from scripts.pilot import benchmark
 
 

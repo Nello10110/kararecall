@@ -7,12 +7,12 @@ import unittest
 from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 
-import kararecall
+from kararecall import core as kararecall
 from fixtures import corpus
-from publication import generation, active_root, migrate
-from recovery import inspect
+from kararecall.publication import generation, active_root, migrate
+from kararecall.recovery import inspect
 from scripts.pilot import http_benchmark, usage_since
-from web_server import Corpus, make_handler
+from kararecall.web_server import Corpus, make_handler
 
 
 class PilotToolsTests(unittest.TestCase):

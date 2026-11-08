@@ -10,7 +10,7 @@ import unittest
 from http.server import ThreadingHTTPServer
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import web_server
+from kararecall import web_server
 
 
 class WebTests(unittest.TestCase):

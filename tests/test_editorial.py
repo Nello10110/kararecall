@@ -7,11 +7,11 @@ import tempfile
 import threading
 import unittest
 
-import kararecall
-from editorial import EditConflict, edit_tool, revision
+from kararecall import core as kararecall
+from kararecall.editorial import EditConflict, edit_tool, revision
 from fixtures import corpus
-from publication import active_root
-from web_server import Corpus, make_handler
+from kararecall.publication import active_root
+from kararecall.web_server import Corpus, make_handler
 
 
 def change(entity, **extra):

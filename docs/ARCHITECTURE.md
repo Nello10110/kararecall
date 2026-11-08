@@ -1,5 +1,7 @@
 # Architecture de KaraRecall
 
+[🇫🇷 Français](ARCHITECTURE.md) · [🇬🇧 English](en/architecture.md)
+
 État décrit le 8 novembre 2026. Ce document distingue le code livré des raccordements encore à réaliser. Les commandes de déploiement et les essais restants sont dans les guides [homelab](HOMELAB.md) et [pilote](PILOTE.md).
 
 L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cette vue : quatre limites de retraitement/cache/couverture ont été reproduites sur des données fictives. Les corrections techniques sont maintenant décrites dans [P0.md](P0.md) ; les validations avec les services réels et sur le NAS restent à effectuer.
@@ -92,9 +94,9 @@ Depuis 0.3.1, les requêtes vers l’API DeepSeek officielle activent aussi son 
 7. Le programme fige les preuves par contenu/provenance, conserve leurs captures, valide les références et reconstruit catalogue et Markdown dans une génération de travail. Seul le remplacement atomique de `data/current.json` rend cette génération visible. Les fiches éditoriales existantes sont préservées ; le worker remplace ses propres synthèses de la source traitée.
 8. L’interface recharge le catalogue lors des requêtes s’il a changé ; actualiser l’écran permet d’afficher les nouvelles données.
 
-Depuis 0.4.1, `source_enrichment.py` récupère aussi le texte d’un site lorsqu’il est conservé dans un fichier HTML Karakeep séparé ou dans sa route de contenu lisible. La réponse archivée et son empreinte accompagnent la preuve de page. Cette lecture est bornée, en lecture seule, sans visite du site d’origine ; une erreur reste visible dans l’étape **Texte de la page**. Un titre seul n’entraîne pas une synthèse du document absent. Les miniatures sont indépendantes de l’IA : images Karakeep normalisées, image de vidéo locale, capture existante ou couverture générique locale explicite. Leur acquisition ne consomme aucun appel LLM/vision et n’est pas nécessaire à l’analyse. [Détails, reprise et limites](WEB.md#aperçus-et-texte-des-sites-041).
+Depuis 0.4.1, `kararecall/source_enrichment.py` récupère aussi le texte d’un site lorsqu’il est conservé dans un fichier HTML Karakeep séparé ou dans sa route de contenu lisible. La réponse archivée et son empreinte accompagnent la preuve de page. Cette lecture est bornée, en lecture seule, sans visite du site d’origine ; une erreur reste visible dans l’étape **Texte de la page**. Un titre seul n’entraîne pas une synthèse du document absent. Les miniatures sont indépendantes de l’IA : images Karakeep normalisées, image de vidéo locale, capture existante ou couverture générique locale explicite. Leur acquisition ne consomme aucun appel LLM/vision et n’est pas nécessaire à l’analyse. [Détails, reprise et limites](WEB.md#aperçus-et-texte-des-sites-041).
 
-Depuis 0.5.0, les PDF joints à un lien suivent aussi le traitement documentaire ; leurs pages restent distinctes du texte de la page web. L’OCR image accepte JPEG, PNG, WebP et GIF ; une animation n’est lue que sur sa première image, avec couverture partielle. `content_support.py` calcule les états de couverture à partir des preuves et étapes observées, pour les sources, l’administration et le diagnostic. Les formats inconnus ne déclenchent pas de synthèse IA. `recovery.py` inventorie et vérifie les générations sans changer le pointeur. [Matrice et limites](FORMATS-ET-COUVERTURE.md) · [Parcours de restauration étudié](RESTAURATION-ET-GENERATIONS.md).
+Depuis 0.5.0, les PDF joints à un lien suivent aussi le traitement documentaire ; leurs pages restent distinctes du texte de la page web. L’OCR image accepte JPEG, PNG, WebP et GIF ; une animation n’est lue que sur sa première image, avec couverture partielle. `kararecall/content_support.py` calcule les états de couverture à partir des preuves et étapes observées, pour les sources, l’administration et le diagnostic. Les formats inconnus ne déclenchent pas de synthèse IA. `kararecall/recovery.py` inventorie et vérifie les générations sans changer le pointeur. [Matrice et limites](FORMATS-ET-COUVERTURE.md) · [Parcours de restauration étudié](RESTAURATION-ET-GENERATIONS.md).
 9. Si la recherche web est activée, le worker relève et consulte des pages via DeepSeek après la publication. Les pistes et traces de lecture sont séparées des preuves d’origine. Une note documentaire publiée demande une revue. [Enrichissement web](RECHERCHE-WEB.md).
 
 Le traitement des sources est séquentiel, mais audio et vision sont indépendants : un échec audio ne bloque pas un OCR réussi. La synthèse attend les étapes en échec. Les reprises sont bornées à trois tentatives automatiques par configuration, puis demandent une relance volontaire. Les anciennes fiches publiées restent consultables. Une tâche terminée signifie seulement que les étapes configurées ont fini, pas que toutes les modalités ont été analysées.
@@ -155,23 +157,23 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 
 | Fichier | Responsabilité |
 |---|---|
-| `compose.yaml`, `compose.build.yaml`, `Dockerfile` | Images publiées web/worker, construction locale, volume, réseau et limites de ressources. |
-| `settings.py`, `.env.example` | Paramètres, validations et activation des étapes. |
+| `compose.yaml`, `deploy/compose.build.yaml`, `Dockerfile` | Images publiées web/worker, construction locale, volume, réseau et limites de ressources. |
+| `kararecall/settings.py`, `.env.example` | Paramètres, validations et activation des étapes. |
 | `integrations.py` | Lecture REST Karakeep et client de conversation compatible OpenAI. |
-| `controls.py` | File durable d’import, d’analyse, de recherche web et de vidage ; annulation de la suite et suspension des passages automatiques. |
-| `worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
-| `publication.py`, `usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
-| `worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |
-| `digests.py`, `digest_writer.py`, `digest_delivery.py` | Éditions persistantes, relecture, exports, planification et diffusion configurée. |
-| `worker_documents.py`, `reading.py` | Extraction PDF/image et synthèses par passages. |
-| `web_research.py`, `editorial.py` | Recherche web séparée, revue humaine et conservation des révisions. |
-| `kararecall_mcp.py` | Adaptateur stdio vers l’API web en lecture seule. |
-| `kararecall.py` | Preuves, validation des fiches, catalogue, Markdown et recherche. |
-| `web_server.py`, `web/` | Interface, authentification, API de lecture et médias. |
-| `overview.py`, `version.py` | Vue d’ensemble, diagnostic sans contenu, configuration publique et versions web/worker. |
+| `kararecall/controls.py` | File durable d’import, d’analyse, de recherche web et de vidage ; annulation de la suite et suspension des passages automatiques. |
+| `kararecall/worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
+| `kararecall/publication.py`, `kararecall/usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
+| `kararecall/worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |
+| `kararecall/digests.py`, `kararecall/digest_writer.py`, `kararecall/digest_delivery.py` | Éditions persistantes, relecture, exports, planification et diffusion configurée. |
+| `kararecall/worker_documents.py`, `kararecall/reading.py` | Extraction PDF/image et synthèses par passages. |
+| `kararecall/web_research.py`, `kararecall/editorial.py` | Recherche web séparée, revue humaine et conservation des révisions. |
+| `scripts/assistant_mcp.py` | Adaptateur stdio vers l’API web en lecture seule. |
+| `kararecall/core.py` | Preuves, validation des fiches, catalogue, Markdown et recherche. |
+| `kararecall/web_server.py`, `web/` | Interface, authentification, API de lecture et médias. |
+| `kararecall/overview.py`, `kararecall/version.py` | Vue d’ensemble, diagnostic sans contenu, configuration publique et versions web/worker. |
 | `scripts/transcribe.py`, `scripts/process.py`, `scripts/ocr.swift` | Pipeline local historique : faster-whisper et OCR Apple Vision sur macOS, distinct du worker Docker. |
 
-Les essais restants portent sur les services réels, les modèles, le NAS et l’usage du MCP depuis un assistant. Un raccordement audio local et une recherche hybride dépendent des résultats du pilote. [Backlog](../backlog.md).
+Les essais restants portent sur les services réels, les modèles, le NAS et l’usage du MCP depuis un assistant. Un raccordement audio local et une recherche hybride dépendent des résultats du pilote. [Backlog](BACKLOG.md).
 
 ## Références techniques
 
@@ -190,8 +192,8 @@ Le web prépare et relit les éditions dans `data/digests/`, sur le volume parta
 
 ## Évolution du 7 novembre : présentation française et commandes persistantes
 
-`curation.py` produit les vues nettoyées et les traductions françaises par preuve, dans un format dérivé distinct des originaux. Le worker versionne le contrat éditorial, borne les titres et résumés, et conserve les traductions en cache par contenu et configuration. Une reprise après quota réutilise les morceaux et la synthèse déjà réussis. Les traductions restent attribuées aux identifiants de preuves originales ; leurs temps ne sont pas recalculés.
+`kararecall/curation.py` produit les vues nettoyées et les traductions françaises par preuve, dans un format dérivé distinct des originaux. Le worker versionne le contrat éditorial, borne les titres et résumés, et conserve les traductions en cache par contenu et configuration. Une reprise après quota réutilise les morceaux et la synthèse déjà réussis. Les traductions restent attribuées aux identifiants de preuves originales ; leurs temps ne sont pas recalculés.
 
-`controls.py` ajoute une file durable pour la synthèse locale, le retraitement complet, la recherche complémentaire et le vidage local. Les commandes sont exécutées par le worker avec son verrou de volume, même lorsque la synchronisation périodique est désactivée. Un identifiant de commande publié avec la source évite de refaire l’inférence après un arrêt entre publication et acquittement. Le vidage publie un catalogue vide et suspend la synchronisation ; il conserve l’historique immuable et les coûts déjà comptabilisés.
+`kararecall/controls.py` ajoute une file durable pour la synthèse locale, le retraitement complet, la recherche complémentaire et le vidage local. Les commandes sont exécutées par le worker avec son verrou de volume, même lorsque la synchronisation périodique est désactivée. Un identifiant de commande publié avec la source évite de refaire l’inférence après un arrêt entre publication et acquittement. Le vidage publie un catalogue vide et suspend la synchronisation ; il conserve l’historique immuable et les coûts déjà comptabilisés.
 
 Le complément de description web est une rédaction française issue de pages effectivement lues par Search/Fetch, avec URL et trace archivées. Les descriptions d’origine et la revue humaine restent distinctes. Les tests sont synthétiques ; les connexions et inférences de ce parcours restent à qualifier sur le NAS.

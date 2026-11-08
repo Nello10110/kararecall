@@ -1,5 +1,7 @@
 # Architecture fonctionnelle
 
+[🇫🇷 Français](ARCHITECTURE-FONCTIONNELLE.md) · [🇬🇧 English](en/functional-architecture.md)
+
 [Présentation de KaraRecall](../README.md) · [Architecture technique](ARCHITECTURE.md) · [Installation](INSTALLATION.md)
 
 KaraRecall transforme les contenus déjà enregistrés dans Karakeep en une bibliothèque consultable, avec des enrichissements IA facultatifs. Le NAS assure la collecte, la conservation et l’interface ; les services de modèles sont configurés séparément.
@@ -61,4 +63,4 @@ Les éditions sont conservées dans Veille. SMTP, webhook et RSS privé ont leur
 
 Le `.env` définit les accès, moteurs et plafonds. Les images Docker fournissent l’application, tandis que le volume contient la bibliothèque privée. Les mises à jour ne remplacent pas une sauvegarde de ce volume et de sa configuration.
 
-[Installer](INSTALLATION.md) · [Configurer et sauvegarder](HOMELAB.md) · [Mettre à jour avec latest](IMAGES-DOCKER.md) · [Qualifier sur le NAS](PILOTE.md) · [Suivre le backlog](../backlog.md)
+[Installer](INSTALLATION.md) · [Configurer et sauvegarder](HOMELAB.md) · [Mettre à jour avec latest](IMAGES-DOCKER.md) · [Qualifier sur le NAS](PILOTE.md) · [Suivre le backlog](BACKLOG.md)

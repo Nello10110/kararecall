@@ -1,5 +1,7 @@
 # Utiliser KaraRecall depuis un assistant
 
+[🇫🇷 Français](MCP.md) · [🇬🇧 English](en/mcp.md)
+
 L’adaptateur MCP s’exécute sur le poste de l’assistant. Il lit l’API web de KaraRecall et reprend ses identifiants. Il ouvre cinq outils, pour rechercher des favoris, lire une fiche, parcourir une source, consulter une preuve précise et récupérer le contexte Markdown. Les résultats donnent les références `ID_FAVORI#ID_PREUVE`, les URL originales et, selon la source, la page ou l’horodatage.
 
 ## Démarrage
@@ -8,7 +10,7 @@ Sur le poste où tourne l’assistant, avec Python 3.10 ou plus récent et un cl
 
 ```sh
 python3 -m venv .venv-mcp
-.venv-mcp/bin/python -m pip install -r requirements.mcp.txt
+.venv-mcp/bin/python -m pip install -r requirements/mcp.txt
 ```
 
 Crée `.env.mcp` dans le dossier du projet et protège ce fichier avec `chmod 600 .env.mcp`. Les exemples ci-dessous utilisent des valeurs à remplacer.
@@ -21,7 +23,7 @@ KARARECALL_PASSWORD=REMPLACER_PAR_LE_MOT_DE_PASSE_WEB
 
 Utilise l’adresse de KaraRecall accessible depuis ce poste, via HTTPS ou ton réseau privé. Un essai sur le même ordinateur peut utiliser `http://127.0.0.1:8765`. L’authentification reprend les identifiants de l’interface.
 
-Dans un client compatible avec les serveurs MCP locaux, choisis le transport **stdio**. Configure la commande avec le chemin absolu de `.venv-mcp/bin/python` et un argument contenant le chemin absolu de `kararecall_mcp.py`. Le client démarre lui-même le processus et communique avec lui par son entrée et sa sortie standard. [Transport stdio du SDK MCP](https://py.sdk.modelcontextprotocol.io/run/).
+Dans un client compatible avec les serveurs MCP locaux, choisis le transport **stdio**. Configure la commande avec le chemin absolu de `.venv-mcp/bin/python` et un argument contenant le chemin absolu de `scripts/assistant_mcp.py`. Le client démarre lui-même le processus et communique avec lui par son entrée et sa sortie standard. [Transport stdio du SDK MCP](https://py.sdk.modelcontextprotocol.io/run/).
 
 Autre possibilité, construire l’image dédiée sur le poste et utiliser `docker` comme commande du client MCP.
 

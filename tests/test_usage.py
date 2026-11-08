@@ -3,11 +3,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from settings import Settings
-from usage import UsageLedger,BudgetExceeded
-from integrations import chat,ServiceError
-from worker import pack_evidence
-from web_server import context_for
+from kararecall.settings import Settings
+from kararecall.usage import UsageLedger,BudgetExceeded
+from kararecall.integrations import chat,ServiceError
+from kararecall.worker import pack_evidence
+from kararecall.web_server import context_for
 
 
 class UsageTests(unittest.TestCase):
@@ -40,7 +40,7 @@ class UsageTests(unittest.TestCase):
 
     def test_output_limit_and_reasoning_are_sent_and_truncation_rejected(self):
         response={'choices':[{'finish_reason':'length','message':{'content':'{partial'}}]}
-        with patch('integrations.request_json',return_value=response) as request:
+        with patch('kararecall.integrations.request_json',return_value=response) as request:
             with self.assertRaisesRegex(ServiceError,'tronquée'):
                 chat('http://example.invalid/v1','','model',[],max_tokens=500,reasoning='none')
         payload=request.call_args.args[2]

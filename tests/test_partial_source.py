@@ -6,12 +6,12 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-import kararecall
-from curation import evidence_presentation, language_code, original_french_title
+from kararecall import core as kararecall
+from kararecall.curation import evidence_presentation, language_code, original_french_title
 from fixtures import corpus
-from settings import Settings
-from usage import BudgetExceeded, UsageLedger
-from web_server import source_payload, source_summary
+from kararecall.settings import Settings
+from kararecall.usage import BudgetExceeded, UsageLedger
+from kararecall.web_server import source_payload, source_summary
 
 
 class PartialSourceTests(unittest.TestCase):
@@ -87,13 +87,13 @@ class PartialSourceTests(unittest.TestCase):
         self.assertFalse(source_summary(source)['has_reading'])
 
     def test_screen_retry_is_scoped_and_keeps_normal_deduplication(self):
-        from controls import request_action, process_actions
+        from kararecall.controls import request_action, process_actions
         full=request_action(self.root,'refresh',source_id='demo-model')
         screen=request_action(self.root,'refresh',source_id='demo-model',stage='vision')
         self.assertNotEqual(full['id'],screen['id'])
         self.assertEqual(screen['id'],request_action(self.root,'refresh',source_id='demo-model',stage='vision')['id'])
         with self.assertRaises(ValueError):request_action(self.root,'refresh',source_id='demo-model',stage='execute')
-        with patch('worker.run_cycle',return_value={'failed':0}) as run:
+        with patch('kararecall.worker.run_cycle',return_value={'failed':0}) as run:
             process_actions(Settings(root=self.root));process_actions(Settings(root=self.root))
             self.assertEqual([call.kwargs['force_stage'] for call in run.call_args_list],['all','vision'])
 

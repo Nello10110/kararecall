@@ -9,13 +9,13 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import kararecall
-from controls import request_action, process_actions, cancel_action, pause_automation, library_paused
+from kararecall import core as kararecall
+from kararecall.controls import request_action, process_actions, cancel_action, pause_automation, library_paused
 from fixtures import corpus
-from integrations import normalize_bookmark
-from overview import overview, diagnostic, public_configuration
-from settings import Settings
-from web_server import Corpus, make_handler
+from kararecall.integrations import normalize_bookmark
+from kararecall.overview import overview, diagnostic, public_configuration
+from kararecall.settings import Settings
+from kararecall.web_server import Corpus, make_handler
 
 
 class OverviewTests(unittest.TestCase):
@@ -68,11 +68,11 @@ class OverviewTests(unittest.TestCase):
         config=Settings(root=self.root)
         job=request_action(self.root,'llm')
         def run(*args):cancel_action(self.root,job['id'])
-        with patch('worker.run_local_llm',side_effect=run) as model:
+        with patch('kararecall.worker.run_local_llm',side_effect=run) as model:
             self.assertTrue(process_actions(config))
             self.assertFalse(process_actions(config))
             self.assertEqual(model.call_count,1)
-        from controls import action_status
+        from kararecall.controls import action_status
         self.assertEqual(action_status(self.root)['jobs'][-1]['state'],'cancelled')
 
     def test_pause_is_durable_and_cannot_resume_during_confirmed_clear(self):
@@ -84,11 +84,11 @@ class OverviewTests(unittest.TestCase):
         with self.assertRaises(ValueError):cancel_action(self.root,job['id'])
 
     def test_manual_import_does_not_resume_an_explicit_automation_pause(self):
-        from controls import request_history, process_history, history_status
+        from kararecall.controls import request_history, process_history, history_status
         pause_automation(self.root,True)
         request_history(self.root)
         self.assertTrue(library_paused(self.root))
-        with patch('worker.run_cycle',return_value={'synced':2,'processed':0,'failed':0}) as collect:
+        with patch('kararecall.worker.run_cycle',return_value={'synced':2,'processed':0,'failed':0}) as collect:
             self.assertTrue(process_history(Settings(root=self.root),collect))
             self.assertTrue(collect.call_args.kwargs['catalog_only'])
         self.assertTrue(library_paused(self.root))
@@ -97,7 +97,7 @@ class OverviewTests(unittest.TestCase):
     def test_connection_check_records_read_only_results_without_inference(self):
         job=request_action(self.root,'check')
         self.assertEqual(job['total'],1)
-        with patch('worker.check_connections',return_value={'karakeep':'ok (GET uniquement)','llm':'modèle annoncé'}) as check,patch('worker.chat') as inference:
+        with patch('kararecall.worker.check_connections',return_value={'karakeep':'ok (GET uniquement)','llm':'modèle annoncé'}) as check,patch('kararecall.worker.chat') as inference:
             self.assertTrue(process_actions(Settings(root=self.root)))
             check.assert_called_once();inference.assert_not_called()
         result=kararecall.read_json(self.root/'data/connection-check.json')
@@ -105,7 +105,7 @@ class OverviewTests(unittest.TestCase):
         self.assertEqual(result['results']['llm'],'modèle annoncé')
 
     def test_worker_metadata_is_public_and_separate_from_credentials(self):
-        from worker import status
+        from kararecall.worker import status
         config=Settings(root=self.root,llm_url='https://api.deepseek.com',llm_model='test-model',llm_key='fake-secret',llm_enabled=True)
         status(config,state='idle')
         worker=kararecall.read_json(self.root/'data/service-status.json')

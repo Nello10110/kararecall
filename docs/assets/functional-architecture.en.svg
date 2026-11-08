@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1136" viewBox="0 0 1320 1136" role="img" aria-labelledby="title desc">
+<title id="title">KaraRecall functional architecture: local processing and AI stages</title>
+<desc id="desc">Read-only Karakeep collection, local preparation, private storage and lexical search. Optional external ASR, vision and text services create referenced recognition and editorial output. Search and reading do not invoke a model. Model servers are separate from the NAS application.</desc>
+<defs>
+  <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0c1424" /><stop offset="1" stop-color="#18213a" /></linearGradient>
+  <linearGradient id="local" x2="1" y2="1"><stop stop-color="#142a3d" /><stop offset="1" stop-color="#172b3e" /></linearGradient>
+  <linearGradient id="ai" x2="1" y2="1"><stop stop-color="#27253f" /><stop offset="1" stop-color="#222b45" /></linearGradient>
+  <marker id="blue" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#80d9ee" stroke-width="1.7" /></marker>
+  <marker id="purple" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#c4b5fd" stroke-width="1.7" /></marker>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
+    .title { fill:#f2f6ff; font-weight:650; font-size:34px; letter-spacing:-.7px; }
+    .heading { fill:#f2f6ff; font-weight:600; font-size:22px; }
+    .copy { fill:#c5d1e4; font-size:18px; }
+    .small { fill:#b1c2d9; font-size:16px; }
+    .label { fill:#91dded; font-size:15px; font-weight:650; letter-spacing:1.4px; }
+    .line { fill:none; stroke:#80d9ee; stroke-width:2.5; marker-end:url(#blue); }
+    .optional { fill:none; stroke:#c4b5fd; stroke-width:2.5; stroke-dasharray:7 6; marker-end:url(#purple); }
+  </style>
+</defs>
+<rect width="1320" height="1136" rx="28" fill="url(#bg)" />
+<text x="48" y="60" class="title">From bookmark to knowledge.</text>
+<text x="48" y="94" class="copy">KaraRecall · A private library on your NAS, enriched on your terms.</text>
+<circle cx="57" cy="132" r="6" fill="#80d9ee" /><text x="74" y="138" class="small">No KaraRecall AI call</text>
+<circle cx="375" cy="132" r="6" fill="#c4b5fd" /><text x="392" y="138" class="small">Optional AI stage</text>
+<circle cx="639" cy="132" r="6" fill="#a6b5ca" /><text x="656" y="138" class="small">Connected service</text>
+<text x="1257" y="138" text-anchor="end" class="label">FUNCTIONAL OVERVIEW</text>
+
+<rect x="48" y="176" width="720" height="100" rx="18" fill="#202b40" stroke="#495a74" />
+<text x="76" y="216" class="heading">Karakeep · Your saved bookmarks</text>
+<text x="76" y="246" class="copy">Sites, articles, notes, files and videos · Instagram and other sources</text>
+<rect x="812" y="176" width="472" height="100" rx="18" fill="#202b40" stroke="#495a74" />
+<text x="840" y="216" class="heading">Web · Further research</text>
+<text x="840" y="246" class="copy">Public pages and publisher documentation</text>
+
+<rect x="36" y="324" width="744" height="724" rx="24" fill="#101e30" stroke="#365f79" />
+<text x="64" y="359" class="label">ON YOUR NAS · DOCKER</text>
+<text x="64" y="382" class="small">Collection, storage and UI · no bundled AI model</text>
+<rect x="812" y="324" width="472" height="724" rx="24" fill="#201f35" stroke="#7062a8" />
+<text x="840" y="359" class="label" style="fill:#c4b5fd">CONFIGURED SERVICES · OPTIONAL</text>
+<text x="840" y="385" class="small">Local machine or remote API provider</text>
+
+<path d="M700 276 V452 H624" class="line" />
+<rect x="365" y="285" width="290" height="26" rx="10" fill="#0e192b" />
+<text x="380" y="304" class="small">Read-only · no bookmark changes</text>
+<path d="M1050 276 V316" class="optional" />
+
+<rect x="64" y="402" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d" />
+
+<text x="88" y="435" class="heading">1 · Import bookmarks</text>
+
+<rect x="512" y="417" width="84" height="26" rx="13" fill="#213f53" />
+<text x="554" y="435" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">NO AI</text>
+
+<text x="88" y="463" class="copy">Text and metadata supplied by Karakeep</text>
+
+<text x="88" y="487" class="copy">Historical import · updates without duplicates</text>
+
+<rect x="64" y="548" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d" />
+
+<text x="88" y="581" class="heading">2 · Prepare content</text>
+
+<rect x="512" y="563" width="84" height="26" rx="13" fill="#213f53" />
+<text x="554" y="581" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">NO AI</text>
+
+<text x="88" y="609" class="copy">Attachments · audio track · video frames</text>
+
+<text x="88" y="633" class="copy">PDF text and existing subtitles, when available</text>
+
+<rect x="64" y="718" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d" />
+
+<text x="88" y="751" class="heading">3 · Store and connect</text>
+
+<rect x="512" y="733" width="84" height="26" rx="13" fill="#213f53" />
+<text x="554" y="751" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">NO AI</text>
+
+<text x="88" y="779" class="copy">Sources, media and evidence in a private volume</text>
+
+<text x="88" y="803" class="copy">Separate summaries · preserved references</text>
+
+<rect x="64" y="886" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d" />
+
+<text x="88" y="919" class="heading">4 · Read and retrieve</text>
+
+<rect x="512" y="901" width="84" height="26" rx="13" fill="#213f53" />
+<text x="554" y="919" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">NO AI</text>
+
+<text x="88" y="947" class="copy">Lexical search · video and transcript</text>
+
+<text x="88" y="971" class="copy">Tool cards, digests, exports and administration</text>
+
+<path d="M340 502 V540" class="line" />
+<path d="M340 648 V710" class="line" />
+<path d="M340 818 V878" class="line" />
+<text x="64" y="1023" class="small">An imported source can remain partial; its actual state is shown.</text>
+
+<rect x="840" y="420" width="416" height="108" rx="17" fill="url(#ai)" stroke="#7469aa" />
+<text x="864" y="452" class="heading" style="font-size:21px">ASR · Transcribe speech</text>
+
+<text x="864" y="481" class="copy" style="font-size:17px">Audio → text, with supplied timestamps</text>
+
+<text x="864" y="506" class="copy" style="font-size:17px">Audio service separate from the text model</text>
+
+<rect x="840" y="546" width="416" height="108" rx="17" fill="url(#ai)" stroke="#7469aa" />
+<text x="864" y="578" class="heading" style="font-size:21px">Vision · Read text from images</text>
+
+<text x="864" y="607" class="copy" style="font-size:17px">Frames, images and PDF pages → text</text>
+
+<text x="864" y="632" class="copy" style="font-size:17px">Sampling and limits remain explicit</text>
+
+<rect x="840" y="672" width="416" height="134" rx="17" fill="url(#ai)" stroke="#7469aa" />
+<text x="864" y="704" class="heading" style="font-size:21px">LLM · Summarize and write</text>
+
+<text x="864" y="733" class="copy" style="font-size:17px">Available text → summaries and tool cards</text>
+
+<text x="864" y="758" class="copy" style="font-size:17px">French translations and digest articles</text>
+
+<text x="864" y="783" class="copy" style="font-size:17px">Originals remain accessible</text>
+
+<rect x="840" y="824" width="416" height="134" rx="17" fill="url(#ai)" stroke="#7469aa" />
+<text x="864" y="856" class="heading" style="font-size:21px">Web + LLM · Enrich tool cards</text>
+
+<text x="864" y="885" class="copy" style="font-size:17px">Search and reading through a dedicated API</text>
+
+<text x="864" y="910" class="copy" style="font-size:17px">Then a description based on pages read</text>
+
+<text x="864" y="935" class="copy" style="font-size:17px">URLs and traces separate from source claims</text>
+
+<text x="840" y="991" class="small">Only enabled stages receive content.</text>
+
+<text x="840" y="1018" class="small">Keys, models and quotas configured in .env.</text>
+
+<path d="M616 598 H804" class="optional" />
+<text x="714" y="556" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">Content for</text>
+
+<text x="714" y="577" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">enabled stages</text>
+
+<path d="M812 768 H624" class="optional" />
+<text x="714" y="728" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">Results</text>
+
+<text x="714" y="749" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">with references</text>
+
+<line x1="48" y1="1074" x2="1272" y2="1074" stroke="#34425a" />
+<text x="48" y="1104" class="small">Reading, search and exports call no model. Karakeep’s own processing is outside this diagram.</text>
+
+</svg>

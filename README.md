@@ -1,3 +1,5 @@
+<p align="center"><strong>🇫🇷 Français</strong> · <a href="docs/en/README.md">🇬🇧 English</a></p>
+
 <p align="center">
   <img src="web/icon.svg" width="76" height="76" alt="Logo KaraRecall" />
 </p>
@@ -18,7 +20,7 @@
   <a href="#comment-ça-fonctionne">Comprendre le fonctionnement</a> ·
   <a href="docs/IMAGES-DOCKER.md">Mettre à jour</a> ·
   <a href="#documentation">Documentation</a> ·
-  <a href="backlog.md">Backlog</a>
+  <a href="docs/BACKLOG.md">Backlog</a>
 </p>
 
 <p align="center">
@@ -137,7 +139,7 @@ Les vidéos sont limitées par défaut à **100 Mio et 5 minutes** ; la vision �
 
 Le budget applicatif est réglé par défaut sur **2 USD/mois**. Il s’agit d’un suivi comptable configurable, distinct de la facture fournisseur et des appels propres à Karakeep. La diffusion des bulletins exige la configuration et l’activation du canal choisi. L’application utilise un compte partagé ; elle ne gère pas de rôles multi-utilisateurs.
 
-Le pilote NAS a démarré ; la qualité sur un corpus varié, les coûts réels, les endpoints et la restauration sur le matériel restent à qualifier. [Guide du pilote](docs/PILOTE.md) · [Travaux restants](backlog.md).
+Le pilote NAS a démarré ; la qualité sur un corpus varié, les coûts réels, les endpoints et la restauration sur le matériel restent à qualifier. [Guide du pilote](docs/PILOTE.md) · [Travaux restants](docs/BACKLOG.md).
 
 ## Documentation
 
@@ -154,7 +156,11 @@ Le pilote NAS a démarré ; la qualité sur un corpus varié, les coûts réels,
 | Comprendre la recherche web et ses références | [Enrichissement web](docs/RECHERCHE-WEB.md) |
 | Connecter un assistant à la bibliothèque | [MCP en lecture seule](docs/MCP.md) |
 | Valider l’installation et mesurer les résultats | [Pilote](docs/PILOTE.md) · [Socle de fiabilité](docs/P0.md) |
-| Comprendre les choix, les coûts et les évolutions envisagées | [Étude d’exploitation](docs/ETUDE-EXPLOITATION.md) · [Long terme](docs/EXPLOITATION-LONG-TERME.md) · [Backlog](backlog.md) |
+| Comprendre les choix, les coûts et les évolutions envisagées | [Étude d’exploitation](docs/ETUDE-EXPLOITATION.md) · [Long terme](docs/EXPLOITATION-LONG-TERME.md) · [Backlog](docs/BACKLOG.md) |
+
+## Organisation du dépôt
+
+Le code Python est regroupé dans `kararecall/`, les dépendances dans `requirements/` et la surcharge de développement dans `deploy/`. Le backlog est dans `docs/BACKLOG.md`. Les lanceurs macOS sont dans `scripts/macos/`. [Arborescence et nouvelles commandes](docs/STRUCTURE.md) · [Documentation anglaise](docs/en/README.md).
 
 ## Développement et validation
 
@@ -165,10 +171,10 @@ PYTHONPYCACHEPREFIX=.build/pycache python3 -m unittest discover -s tests -v
 python3 scripts/check_container.py
 ```
 
-Le test Docker utilise `compose.build.yaml`, construit le code local et supprime ses ressources de test. La CI vérifie également les médias et MCP sur des données synthétiques. Pour développer avec les deux services :
+Le test Docker utilise `deploy/compose.build.yaml`, construit le code local et supprime ses ressources de test. La CI vérifie également les médias et MCP sur des données synthétiques. Pour développer avec les deux services :
 
 ```sh
-docker compose -f compose.yaml -f compose.build.yaml up -d --build
+docker compose -f compose.yaml -f deploy/compose.build.yaml up -d --build
 ```
 
 Les scripts historiques macOS (`scripts/process.py`, transcription locale et OCR Apple Vision) sont distincts du worker Docker. Les JSON, Markdown et preuves restent portables ; SQLite est un stockage dérivé ou opérationnel selon son rôle. AFFiNE et Wiki.js peuvent recevoir des exports manuels, sans connecteur de synchronisation intégré.

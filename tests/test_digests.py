@@ -12,11 +12,11 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import digests
-import digest_delivery
+from kararecall import digests
+from kararecall import digest_delivery
 from fixtures import corpus
-import kararecall
-from web_server import Corpus, make_handler
+from kararecall import core as kararecall
+from kararecall.web_server import Corpus, make_handler
 
 
 class DigestTests(unittest.TestCase):
@@ -102,7 +102,7 @@ class DigestTests(unittest.TestCase):
                           DIGEST_AUTO_APPROVE='true',DIGEST_AUTO_SEND='true',DIGEST_SEND_ENABLED='true',
                           DIGEST_CHANNELS='email',DIGEST_SMTP_HOST='relay.invalid',
                           DIGEST_EMAIL_FROM='sender@example.test',DIGEST_EMAIL_TO='reader@example.test')
-        with patch('digest_delivery.send_mail') as send:
+        with patch('kararecall.digest_delivery.send_mail') as send:
             digest_delivery.process(self.root,datetime(2026,11,2,9,tzinfo=timezone.utc))
             digest_delivery.process(self.root,datetime(2026,11,2,9,tzinfo=timezone.utc))
             send.assert_called_once()
@@ -126,9 +126,9 @@ class DigestTests(unittest.TestCase):
     def test_views_require_opt_in_and_keep_period_history(self):
         self.assertFalse(digests.record_view(self.root,'demo-tv')['recorded'])
         os.environ.update(DIGEST_TRACK_VIEWS='true',DIGEST_SCOPE='viewed')
-        with patch('digests.utcnow',return_value='2026-10-31T09:00:00+00:00'):
+        with patch('kararecall.digests.utcnow',return_value='2026-10-31T09:00:00+00:00'):
             digests.record_view(self.root,'demo-tv')
-        with patch('digests.utcnow',return_value='2026-11-03T09:00:00+00:00'):
+        with patch('kararecall.digests.utcnow',return_value='2026-11-03T09:00:00+00:00'):
             digests.record_view(self.root,'demo-tv')
         self.assertEqual([item['id'] for item in self.edition()['items']],['tool-tv-detox'])
         self.assertEqual(len(kararecall.read_json(self.root/'data/digests/views.json')),2)
@@ -137,12 +137,12 @@ class DigestTests(unittest.TestCase):
         os.environ.update(DIGEST_SEND_ENABLED='true',DIGEST_CHANNELS='email',DIGEST_SMTP_HOST='relay.invalid',
                           DIGEST_EMAIL_FROM='sender@example.test',DIGEST_EMAIL_TO='reader@example.test')
         edition=self.edition()
-        with patch('digest_delivery.send_mail') as send:
+        with patch('kararecall.digest_delivery.send_mail') as send:
             self.assertEqual(digest_delivery.deliver(self.root,edition['id'])['state'],'waiting_review')
             send.assert_not_called()
         edition=self.approve(edition)
         edition=digests.revise(self.root,edition['id'],{'revision':edition['revision']},'send')
-        with patch('digest_delivery.send_mail',side_effect=TimeoutError('password-must-not-be-logged')) as send:
+        with patch('kararecall.digest_delivery.send_mail',side_effect=TimeoutError('password-must-not-be-logged')) as send:
             digest_delivery.process(self.root)
             digest_delivery.process(self.root)
             self.assertEqual(send.call_count,1)
@@ -158,7 +158,7 @@ class DigestTests(unittest.TestCase):
         edition=digests.revise(self.root,edition['id'],{'revision':edition['revision']},'send')
         message=digest_delivery.mail_message(self.root,edition,'reader@example.test')
         self.assertTrue(any(part.get_content_type()=='image/png' for part in message.walk()))
-        with patch('digest_delivery.send_mail') as send:
+        with patch('kararecall.digest_delivery.send_mail') as send:
             digest_delivery.deliver(self.root,edition['id'])
             digest_delivery.deliver(self.root,edition['id'])
             send.assert_called_once()
@@ -168,14 +168,14 @@ class DigestTests(unittest.TestCase):
         os.environ.update(DIGEST_SMTP_HOST='relay.invalid',DIGEST_SMTP_USERNAME='fixture-user',
                           DIGEST_SMTP_PASSWORD='fixture-secret',DIGEST_EMAIL_FROM='sender@example.test')
         edition=self.approve(self.edition())
-        with patch('digest_delivery.smtplib.SMTP') as smtp:
+        with patch('kararecall.digest_delivery.smtplib.SMTP') as smtp:
             relay=smtp.return_value.__enter__.return_value
             relay.send_message.return_value={}
             digest_delivery.send_mail(self.root,edition,'reader@example.test')
             relay.starttls.assert_called_once()
             relay.login.assert_called_once_with('fixture-user','fixture-secret')
             self.assertEqual(relay.send_message.call_args.kwargs['to_addrs'],['reader@example.test'])
-        with patch('digest_delivery.build_opener') as opener:
+        with patch('kararecall.digest_delivery.build_opener') as opener:
             response=opener.return_value.open.return_value.__enter__.return_value
             response.status=204
             digest_delivery.send_webhook(self.root,edition,'https://example.invalid/hook')

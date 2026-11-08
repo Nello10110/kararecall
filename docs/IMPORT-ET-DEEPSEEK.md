@@ -1,5 +1,7 @@
 # Tous les favoris et profil DeepSeek
 
+[🇫🇷 Français](IMPORT-ET-DEEPSEEK.md) · [🇬🇧 English](en/import-and-deepseek.md)
+
 État du 5 novembre 2026. Ce guide complète l’architecture et remplace le périmètre Instagram et le choix de fournisseur proposés dans l’étude initiale. Le volume annoncé est d’environ vingt vidéos par mois ; le nombre de sites, articles et notes s’y ajoute et reste à mesurer.
 
 ## Ce qui est pris en compte
@@ -28,7 +30,7 @@ Le modèle texte produit maintenant un **résumé de lecture sourcé pour chaque
 Commande équivalente, lorsque la boucle est arrêtée :
 
 ```sh
-docker compose --profile automation run --rm --build worker python worker.py import-history
+docker compose --profile automation run --rm --build worker python -m kararecall.worker import-history
 ```
 
 Relancer l’import met à jour les sources sans refaire une analyse inchangée. Les demandes concurrentes en attente sont regroupées ; une demande interrompue reprend après redémarrage. Un média remplacé côté Karakeep reste bloqué pour protéger l’ancienne version et est signalé. Les favoris supprimés de Karakeep restent dans la bibliothèque locale.

@@ -1,7 +1,7 @@
 """Synthetic corpus for distributable tests. No real bookmarks or user media."""
 import hashlib
 from pathlib import Path
-import kararecall
+from kararecall import core as kararecall
 
 
 def corpus(root):

@@ -8,10 +8,10 @@ import sqlite3
 import sys
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import kararecall
-import digests
-from publication import active_root,file_hash
-from worker_documents import attachment_target
+from kararecall import core as kararecall
+from kararecall import digests
+from kararecall.publication import active_root,file_hash
+from kararecall.worker_documents import attachment_target
 
 
 def verify(root):
@@ -29,7 +29,7 @@ def verify(root):
         raw.relative_to((selected/'data/raw').resolve())
         if not raw.is_file():raise ValueError('Réponse source manquante')
         if source.get('preview'):
-            from source_enrichment import preview_target
+            from kararecall.source_enrichment import preview_target
             if not preview_target(selected,source):raise ValueError('Aperçu manquant ou incohérent')
         if source.get('page_origin'):
             page=source['page_origin'];target=(selected/page['file']).resolve()

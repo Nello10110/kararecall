@@ -1,8 +1,10 @@
 # Enrichissement web
 
+[🇫🇷 Français](RECHERCHE-WEB.md) · [🇬🇧 English](en/web-enrichment.md)
+
 Le pilote DeepSeek est disponible dans le worker. Ajoute `WEB_RESEARCH_ENABLED=true` dans `.env`. Le worker utilise `DEEPSEEK_RESEARCH_API_KEY`, ou `LLM_API_KEY` si le service de synthèse configuré est `api.deepseek.com`. Le tarif comptable est `WEB_REQUEST_USD=0.00075` par appel. Les appels web partagent le budget et les quotas du worker. Les résultats apparaissent dans **Pistes de recherche web** sur la fiche. Activité affiche leur nombre et leur coût estimé.
 
-Le worker traite au plus un groupe d’outils par passage après la publication des fiches. Tu peux aussi lancer un essai ciblé avec `docker compose --profile automation run --rm worker python worker.py research --tool ID_OUTIL`. Ajouter `--refresh` relance volontairement ce groupe. Un accès refusé ou une panne de recherche ne bloque pas la fiche. Le cache conserve les recherches et lectures terminées pendant une pause ou une reprise.
+Le worker traite au plus un groupe d’outils par passage après la publication des fiches. Tu peux aussi lancer un essai ciblé avec `docker compose --profile automation run --rm worker python -m kararecall.worker research --tool ID_OUTIL`. Ajouter `--refresh` relance volontairement ce groupe. Un accès refusé ou une panne de recherche ne bloque pas la fiche. Le cache conserve les recherches et lectures terminées pendant une pause ou une reprise.
 
 Les pages sont lues via le service DeepSeek. Le NAS se connecte uniquement au service configuré pour cette recherche, à une adresse fixe. Les URL candidates sont filtrées avant envoi et les redirections de l’API refusées. La trace distingue les URL relevées, les pages lues, les lectures indisponibles et les correspondances incertaines. Elle conserve les dates et des extraits bornés. La réponse Fetch ne donne pas l’adresse finale. Les extraits restent des pistes à relire, avec la provenance initiale de la fiche conservée séparément.
 

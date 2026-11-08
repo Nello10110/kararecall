@@ -18,11 +18,11 @@ import base64
 import os
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import kararecall
-from integrations import Karakeep, ServiceError, normalize_bookmark
-from publication import active_root
-from settings import Settings
-from content_support import inventory
+from kararecall import core as kararecall
+from kararecall.integrations import Karakeep, ServiceError, normalize_bookmark
+from kararecall.publication import active_root
+from kararecall.settings import Settings
+from kararecall.content_support import inventory
 
 
 def usage_since(root, instant):

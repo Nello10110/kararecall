@@ -1,8 +1,10 @@
 # Déploiement sur le homelab
 
+[🇫🇷 Français](HOMELAB.md) · [🇬🇧 English](en/homelab.md)
+
 Pour configurer le NAS et lancer le premier import, suis le [manuel pas à pas](INSTALLATION.md).
 
-Ce guide décrit les commandes disponibles. Le [guide P0](P0.md) détaille le profil API, les limites et les commandes de reprise/vérification. Les preuves sont désormais versionnées et publiées par génération ; la qualification des moteurs réels et du NAS reste à réaliser selon le [backlog](../backlog.md).
+Ce guide décrit les commandes disponibles. Le [guide P0](P0.md) détaille le profil API, les limites et les commandes de reprise/vérification. Les preuves sont désormais versionnées et publiées par génération ; la qualification des moteurs réels et du NAS reste à réaliser selon le [backlog](BACKLOG.md).
 
 ## Configuration
 
@@ -14,7 +16,7 @@ Le dépôt public contient uniquement le code et des tests fictifs. Sur le NAS, 
 | `KARARECALL_BIND_ADDRESS`, `KARARECALL_PORT` | Adresse d’écoute de l’hôte et port ; défaut 127.0.0.1:8765 |
 | `KARARECALL_VOLUME_NAME` | Nom du volume persistant, défaut `kararecall-storage` |
 | `KARARECALL_IMAGE_TAG` | Tag commun aux deux images publiées ; défaut `latest` |
-| `PUID`, `PGID` | UID/GID utilisés seulement par `compose.build.yaml` ; images publiées en 10001:10001 |
+| `PUID`, `PGID` | UID/GID utilisés seulement par `deploy/compose.build.yaml` ; images publiées en 10001:10001 |
 | `COMPOSE_PROFILES=automation` | Active le service worker avec un simple `docker compose up` |
 | `SYNC_ENABLED` | Autorise la collecte périodique ; défaut false |
 | `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY` | Adresse Karakeep et clé Bearer ; pas besoin d’ajouter `/api/v1` |
@@ -65,7 +67,7 @@ Le worker télécharge l’original des PDF et images sans texte fourni par Kara
 - Avec `PDF_OCR_ENABLED=true`, les premières pages sans texte dans cette fenêtre sont converties localement en JPEG de 1280 pixels de côté au maximum. Seuls ces aperçus sont envoyés au service vision configuré. Les preuves OCR portent le numéro de page et le modèle utilisé. Les pages terminées sont réutilisées après un arrêt. Compter jusqu’à `PDF_OCR_MAX_PAGES` appels vision par PDF, dans les quotas IA partagés. Les pages avec une couche texte incomplète ne sont pas éligibles à ce traitement. [Documentation de pdftoppm](https://manpages.debian.org/trixie/poppler-utils/pdftoppm.1.en.html).
 - Une image est conservée comme original par défaut. Pour lire son texte, définir `IMAGE_OCR_ENABLED=true` avec un modèle vision déjà configuré. Le service reçoit un aperçu JPEG sans métadonnées, limité à 1280 pixels de côté. JPEG, PNG, WebP et GIF sont acceptés jusqu’à 20 mégapixels. Pour une animation GIF ou WebP, seule la première image est lue ; le nombre d’images et la couverture partielle sont affichés. L’appel est comptabilisé comme un appel vision.
 
-L’import manuel du catalogue reste indépendant du téléchargement et de l’extraction. Utiliser `worker.py retry --source ID --stage document` pour retraiter volontairement un fichier déjà conservé. Le suivi se trouve dans Activité et dans la fiche source.
+L’import manuel du catalogue reste indépendant du téléchargement et de l’extraction. Utiliser `python -m kararecall.worker retry --source ID --stage document` pour retraiter volontairement un fichier déjà conservé. Le suivi se trouve dans Activité et dans la fiche source.
 
 ## Lancement et diagnostic
 
@@ -73,21 +75,21 @@ L’import manuel du catalogue reste indépendant du téléchargement et de l’
 docker compose up -d
 docker compose ps
 docker compose logs --tail=50 web worker
-docker compose --profile automation run --rm worker python worker.py check
+docker compose --profile automation run --rm worker python -m kararecall.worker check
 ```
 
 La commande `check` fait uniquement des lectures Karakeep et des listes de modèles, sans inférence. Un test complet dépendra du modèle réellement installé et de ses droits. Pour un passage manuel, arrêter la boucle s’il y en a une puis lancer :
 
 ```sh
 docker compose --profile automation stop worker
-docker compose --profile automation run --rm worker python worker.py once
+docker compose --profile automation run --rm worker python -m kararecall.worker once
 # Reprendre la boucle si elle est activée dans .env.
 docker compose up -d
 ```
 
 Un verrou empêche deux workers de modifier le même volume. La synchronisation parcourt toutes les pages de favoris à chaque passage pour détecter les modifications ; elle conserve les suppressions et ne modifie jamais Karakeep. Les identifiants servent à dédupliquer, les réponses brutes sont conservées par version et les tâches réussies ne sont pas rejouées sans changement de source ou de configuration du pipeline. Changer uniquement une clé n’invalide pas les résultats réussis ; les échecs reprendront après leur délai.
 
-Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Activité. Le worker actualise son signal de présence pendant l’attente entre deux passages. La vue signale un état ancien et un espace libre inférieur à `STORAGE_MIN_FREE_MB`. Un téléchargement qui atteindrait ce seuil est interrompu. Le statut `done` signifie que les étapes configurées ont fini. L’interface affiche séparément la transcription et l’OCR réellement disponibles. Une erreur ASR laisse la vision progresser et publier ses résultats. La synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `worker.py retry --source ID --stage asr|vision|document|llm|all` permet une reprise explicite. [Politique de conservation et de versionnement](EXPLOITATION-LONG-TERME.md#conservation).
+Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Activité. Le worker actualise son signal de présence pendant l’attente entre deux passages. La vue signale un état ancien et un espace libre inférieur à `STORAGE_MIN_FREE_MB`. Un téléchargement qui atteindrait ce seuil est interrompu. Le statut `done` signifie que les étapes configurées ont fini. L’interface affiche séparément la transcription et l’OCR réellement disponibles. Une erreur ASR laisse la vision progresser et publier ses résultats. La synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `python -m kararecall.worker retry --source ID --stage asr|vision|document|llm|all` permet une reprise explicite. [Politique de conservation et de versionnement](EXPLOITATION-LONG-TERME.md#conservation).
 
 Le web a une limite de 384 Mio et le worker de 768 Mio ; un seul média est traité à la fois. Les images utilisent `python:3.12-slim` ; le registre fournit Linux AMD64 et ARM64, sélectionné automatiquement par Docker. Le parcours web a été testé sous OrbStack Linux ARM64, autour de 21 Mio au repos avec le petit corpus de test. Ce n’est pas une mesure de charge du worker ni une garantie mémoire pour un gros corpus. Une limite trop basse peut provoquer un arrêt OOM, à diagnostiquer via `docker compose ps` et les journaux.
 
@@ -112,7 +114,7 @@ Restaure et vérifie dans un volume neuf, avec un projet Compose séparé. Chois
 
 ```sh
 KARARECALL_VOLUME_NAME=kararecall-restore-test docker compose -p kararecall-restore run --rm --no-deps -T web tar -C /workspace -xzf - < kararecall-backup.tar.gz
-KARARECALL_VOLUME_NAME=kararecall-restore-test docker compose -p kararecall-restore run --rm --no-deps -T web python verify_storage.py
+KARARECALL_VOLUME_NAME=kararecall-restore-test docker compose -p kararecall-restore run --rm --no-deps -T web python scripts/verify_storage.py
 ```
 
 Pour importer le POC déjà présent sur une autre machine, crée une archive des dossiers `data/` et `vault/` depuis ce dossier, puis utilise la même restauration. Exclure `data/models/` et les caches pour éviter de copier les modèles locaux. Conserve les JSON, réponses brutes, vérifications, médias et extractions. Transfère l’archive par ton réseau privé. Le worker conserve les fiches relues et remplace ses propres synthèses. Pour activer un volume restauré, arrête d’abord les services de production, indique son nom dans `KARARECALL_VOLUME_NAME` et redémarre avec le profil utilisé. Garde le volume précédent jusqu’à validation.
@@ -160,7 +162,7 @@ Cette procédure s’applique aux installations dont le `.env` contient des vari
 
    ```sh
    docker compose run --rm --no-deps -T web tar -C /workspace -xzf - < kararecall-migration.tar.gz &&
-     docker compose run --rm --no-deps -T web python verify_storage.py &&
+     docker compose run --rm --no-deps -T web python scripts/verify_storage.py &&
      docker compose up -d
    ```
 

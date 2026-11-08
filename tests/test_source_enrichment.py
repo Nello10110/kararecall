@@ -11,13 +11,13 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import kararecall
-from integrations import Karakeep, ServiceError, normalize_bookmark
-from publication import active_root, generation
-from settings import Settings
-from source_enrichment import acquire_page, make_preview, preview_target, save_preview, thumbnail_bytes
-from web_server import Corpus, make_handler, source_summary
-from worker import run_cycle, run_local_llm
+from kararecall import core as kararecall
+from kararecall.integrations import Karakeep, ServiceError, normalize_bookmark
+from kararecall.publication import active_root, generation
+from kararecall.settings import Settings
+from kararecall.source_enrichment import acquire_page, make_preview, preview_target, save_preview, thumbnail_bytes
+from kararecall.web_server import Corpus, make_handler, source_summary
+from kararecall.worker import run_cycle, run_local_llm
 
 
 def bookmark(**content):
@@ -43,7 +43,7 @@ class SourceEnrichmentTests(unittest.TestCase):
             payload=json.loads(args[3][-1]['content']);row=next(r for r in payload['evidence'] if r['kind']=='page')
             return json.dumps({'tools':[],'reading':{'summary':'Stocker de la chaleur au jardin.',
                 'source_language':'fr','evidence_ids':[row['id']],'keywords':['thermique']}})
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('worker.Karakeep.download',side_effect=download) as dl,patch('worker.chat',side_effect=response) as chat:
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('kararecall.worker.Karakeep.download',side_effect=download) as dl,patch('kararecall.worker.chat',side_effect=response) as chat:
             # History still promises no download or inference.
             run_cycle(self.config,catalog_only=True);dl.assert_not_called();chat.assert_not_called()
             self.assertEqual(self.source()['content_status'],'metadata_only')
@@ -67,17 +67,17 @@ class SourceEnrichmentTests(unittest.TestCase):
     def test_failed_page_read_is_visible_retryable_and_never_summarized_as_full_article(self):
         raw=bookmark(contentAssetId='html-one')
         self.config.llm_enabled=True;self.config.llm_url='https://example.invalid';self.config.llm_model='test'
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('worker.Karakeep.download',side_effect=ServiceError('Lecture indisponible')),patch('worker.synthesize') as llm:
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('kararecall.worker.Karakeep.download',side_effect=ServiceError('Lecture indisponible')),patch('kararecall.worker.synthesize') as llm:
             self.assertEqual(run_cycle(self.config)['failed'],1)
             source=self.source();self.assertEqual(source['stages']['page'],'failed')
             self.assertEqual(source['stages']['llm'],'waiting');self.assertNotIn('reading',source);llm.assert_not_called()
-        with patch('worker.Karakeep.bookmarks',return_value=iter([raw])),patch('worker.Karakeep.download',side_effect=lambda _,p,**kw:p.write_bytes(b'<p>Contenu maintenant disponible.</p>')),patch('worker.synthesize',return_value=[]):
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([raw])),patch('kararecall.worker.Karakeep.download',side_effect=lambda _,p,**kw:p.write_bytes(b'<p>Contenu maintenant disponible.</p>')),patch('kararecall.worker.synthesize',return_value=[]):
             self.assertEqual(run_cycle(self.config,force_id='site-fixture')['processed'],1)
             self.assertEqual(self.source()['stages']['page'],'complete')
 
     def test_readable_content_endpoint_is_used_only_for_successful_crawl_without_inline_body(self):
         raw=bookmark(crawlStatus='success')
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('integrations.request_json',return_value={'content':'Texte fourni par Karakeep.','contentVersion':'v1'}) as req:
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('kararecall.integrations.request_json',return_value={'content':'Texte fourni par Karakeep.','contentVersion':'v1'}) as req:
             run_cycle(self.config)
             self.assertIn('/bookmarks/site-fixture/content?',req.call_args.args[0])
             self.assertEqual(req.call_args.args[1],'test-only')
@@ -85,16 +85,16 @@ class SourceEnrichmentTests(unittest.TestCase):
             run_cycle(self.config);self.assertEqual(req.call_count,1)
 
     def test_readable_content_pagination_is_bounded_and_rejects_repeated_cursor(self):
-        with patch('integrations.request_json',side_effect=[{'content':'Début','nextCursor':'next'},{'content':' fin','nextCursor':None}]) as req:
+        with patch('kararecall.integrations.request_json',side_effect=[{'content':'Début','nextCursor':'next'},{'content':' fin','nextCursor':None}]) as req:
             parts=Karakeep(self.config).page_content('site-fixture')
             self.assertEqual(''.join(p['content'] for p in parts),'Début fin')
             self.assertIn('cursor=next',req.call_args.args[0])
-        with patch('integrations.request_json',return_value={'content':'texte','nextCursor':'same'}):
+        with patch('kararecall.integrations.request_json',return_value={'content':'texte','nextCursor':'same'}):
             with self.assertRaises(ServiceError):Karakeep(self.config).page_content('site-fixture')
 
     def test_video_does_not_depend_on_a_readable_web_page(self):
         raw=bookmark(crawlStatus='success',videoAssetId='video-one')
-        with patch('worker.Karakeep.bookmarks',return_value=iter([raw])),patch('worker.Karakeep.page_content') as page:
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([raw])),patch('kararecall.worker.Karakeep.page_content') as page:
             self.assertEqual(run_cycle(self.config)['processed'],1)
             page.assert_not_called()
             self.assertNotIn('page',self.source()['stages'])
@@ -102,7 +102,7 @@ class SourceEnrichmentTests(unittest.TestCase):
     def test_title_only_waits_without_ai_then_new_upstream_text_is_analysed(self):
         raw=bookmark(crawlStatus='pending')
         self.config.llm_enabled=True;self.config.llm_url='https://example.invalid';self.config.llm_model='test'
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('worker.synthesize',return_value=[]) as llm,patch('worker.Karakeep.page_content') as read:
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('kararecall.worker.synthesize',return_value=[]) as llm,patch('kararecall.worker.Karakeep.page_content') as read:
             self.assertEqual(run_cycle(self.config)['processed'],0)
             self.assertEqual(self.source()['stages']['llm'],'waiting_content')
             self.assertEqual(run_cycle(self.config)['processed'],0);llm.assert_not_called();read.assert_not_called()
@@ -116,7 +116,7 @@ class SourceEnrichmentTests(unittest.TestCase):
     def test_old_metadata_only_done_job_is_revisited_once(self):
         raw=bookmark(contentAssetId='html-one');source=normalize_bookmark(raw)
         # Simulate an older job fingerprint without the new content contract.
-        with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('worker.Karakeep.download',side_effect=lambda _,p,**kw:p.write_bytes(b'<p>Un ancien site enfin lisible.</p>')):
+        with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('kararecall.worker.Karakeep.download',side_effect=lambda _,p,**kw:p.write_bytes(b'<p>Un ancien site enfin lisible.</p>')):
             run_cycle(self.config,catalog_only=True)
             db=sqlite3.connect(self.root/'data/worker.sqlite')
             db.execute('INSERT OR REPLACE INTO jobs VALUES (?,?,?,?,?,?,?)',('site-fixture','legacy-fingerprint','done',1,0,'','2026-11-01'))
@@ -137,11 +137,11 @@ class SourceEnrichmentTests(unittest.TestCase):
         self.assertIn('svg',thumbnail_bytes(source,self.root)[1])
 
     def test_thumbnail_endpoint_preserves_auth_and_never_downloads_on_read(self):
-        with patch('worker.Karakeep.bookmarks',return_value=iter([bookmark()])):run_cycle(self.config,catalog_only=True)
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([bookmark()])):run_cycle(self.config,catalog_only=True)
         server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(Corpus(self.root),'test','secret'))
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
-            with patch('integrations.request') as network:
+            with patch('kararecall.integrations.request') as network:
                 for headers,status in [({},401),({'Authorization':'Basic '+base64.b64encode(b'test:secret').decode()},200)]:
                     client=http.client.HTTPConnection('127.0.0.1',server.server_port)
                     client.request('GET','/api/sources/site-fixture/thumbnail',headers=headers)
@@ -163,7 +163,7 @@ class PreviewWorkerTests(unittest.TestCase):
             raw=bookmark(imageAssetId='banner-one',text='Un article sans vidéo.')
             data=BytesIO();Image.new('RGB',(1800,1200),'green').save(data,'PNG')
             def download(_,path,**kw):path.write_bytes(data.getvalue())
-            with patch('worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('worker.Karakeep.download',side_effect=download) as dl,patch('worker.synthesize') as llm:
+            with patch('kararecall.worker.Karakeep.bookmarks',side_effect=lambda:iter([raw])),patch('kararecall.worker.Karakeep.download',side_effect=download) as dl,patch('kararecall.worker.synthesize') as llm:
                 run_cycle(config)
                 selected=active_root(root);source=kararecall.read_json(selected/'data/catalog.json')['sources'][0]
                 target=preview_target(selected,source);self.assertTrue(target.is_file())

@@ -9,11 +9,11 @@ import unittest
 from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
-import kararecall
-from publication import active_root
-from integrations import Karakeep,ServiceError,normalize_bookmark
-from settings import Settings,initialize,load_env
-from worker import run_cycle,check_connections,redacted
+from kararecall import core as kararecall
+from kararecall.publication import active_root
+from kararecall.integrations import Karakeep,ServiceError,normalize_bookmark
+from kararecall.settings import Settings,initialize,load_env
+from kararecall.worker import run_cycle,check_connections,redacted
 
 
 class ConfigurationTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class ConfigurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             root=Path(name)
             config=Settings(root=root,karakeep_url='https://example.invalid',storage_min_free_mb=32)
-            with patch('integrations.shutil.disk_usage',return_value=SimpleNamespace(free=31*1024**2)),patch('integrations.request') as request:
+            with patch('kararecall.integrations.shutil.disk_usage',return_value=SimpleNamespace(free=31*1024**2)),patch('kararecall.integrations.request') as request:
                 with self.assertRaisesRegex(ServiceError,'Espace libre insuffisant'):
                     Karakeep(config).download('asset-id',root/'media.mp4')
                 request.assert_not_called()
@@ -170,7 +170,7 @@ class WorkerTests(unittest.TestCase):
         media=self.root/'data/media/one.mp4'
         media.parent.mkdir(parents=True);media.write_bytes(b'old-media')
         new=copy.deepcopy(raw);new['content']['videoAssetId']='new-video'
-        with patch('worker.Karakeep.bookmarks',return_value=iter([new])):
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([new])):
             result=run_cycle(self.config)
         self.assertEqual(result,dict(synced=0,processed=0,failed=1))
         self.assertEqual(media.read_bytes(),b'old-media')
@@ -188,7 +188,7 @@ class WorkerTests(unittest.TestCase):
             (output/'test.jpg').write_bytes(b'synthetic-image')
             kararecall.write_json(output/'ocr.json',{'status':'complete','media_sha256':hashlib.sha256(media.read_bytes()).hexdigest(),'interval':5,'frames':[{'time':0,'image':'test.jpg','lines':[{'text':'Lampe Flux'}]}]})
             return 'complete'
-        with patch('worker.extract_stage',side_effect=extract):
+        with patch('kararecall.worker.extract_stage',side_effect=extract):
             result=run_cycle(self.config)
         self.assertEqual(result,dict(synced=2,processed=1,failed=1))
         source=next(s for s in kararecall.read_json(active_root(self.root)/'data/catalog.json')['sources'] if s['id']=='one')
@@ -234,7 +234,7 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(len([r for r in self.requests if r[0]=='POST']),sent)
 
     def test_worker_keeps_a_reviewed_card_during_resynthesis(self):
-        from editorial import edit_tool
+        from kararecall.editorial import edit_tool
         from test_editorial import change
         run_cycle(self.config)
         entities=kararecall.read_json(active_root(self.root)/'data/entities.json')

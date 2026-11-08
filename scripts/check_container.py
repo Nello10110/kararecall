@@ -20,7 +20,7 @@ def main():
     # Never inherit the real installation's connections or enabled automation.
     env=dict(os.environ,**defaults)
     env.update(KARARECALL_USERNAME='smoke-test',KARARECALL_PASSWORD=secrets.token_urlsafe(30),KARARECALL_PORT='18765',KARARECALL_VOLUME_NAME='kararecall-smoke-'+secrets.token_hex(6),COMPOSE_PROFILES='automation',DIGEST_ENABLED='false',DIGEST_WRITE_ARTICLES='false',DIGEST_SEND_ENABLED='false',SYNC_ENABLED='false',LLM_ENABLED='false',ASR_MODEL='',VISION_MODEL='')
-    command=['docker','compose','--project-name','kararecall-smoke','--file',str(ROOT/'compose.yaml'),'--file',str(ROOT/'compose.build.yaml')]
+    command=['docker','compose','--project-name','kararecall-smoke','--file',str(ROOT/'compose.yaml'),'--file',str(ROOT/'deploy/compose.build.yaml')]
     def compose(*args):
         return subprocess.run(command+list(args),cwd=ROOT,env=env,check=True,capture_output=True,text=True)
     restored_volume=env['KARARECALL_VOLUME_NAME']+'-restore'
@@ -74,7 +74,7 @@ def main():
         container=compose('ps','--quiet','web').stdout.strip()
         fixture=(ROOT/'tests/fixtures.py').read_text()+'''
 corpus(kararecall.ROOT)
-from publication import generation,migrate
+from kararecall.publication import generation,migrate
 with generation(kararecall.ROOT) as (draft,publish):
     sources,entities=migrate(kararecall.read_json(draft/'data/sources.json'),kararecall.read_json(draft/'data/entities.json'),draft)
     kararecall.write_json(draft/'data/sources.json',sources)
@@ -114,14 +114,14 @@ with generation(kararecall.ROOT) as (draft,publish):
                 if time.monotonic()>deadline:raise
                 time.sleep(.25)
         container=compose('ps','--quiet','web').stdout.strip()
-        verified=json.loads(compose('exec','-T','web','python','verify_storage.py').stdout)
+        verified=json.loads(compose('exec','-T','web','python','scripts/verify_storage.py').stdout)
         assert verified['versioned'] and verified['tools']==2 and verified['digests']==1
         image=subprocess.check_output(['docker','inspect','--format','{{.Config.Image}}',container],text=True).strip()
         compose('stop','worker')
         backup=subprocess.run(['docker','exec',container,'tar','-C','/workspace','-czf','-','data','vault'],check=True,capture_output=True).stdout
         subprocess.run(['docker','volume','create',restored_volume],check=True,capture_output=True)
         subprocess.run(['docker','run','--rm','-i','--mount','type=volume,src='+restored_volume+',dst=/workspace',image,'tar','-C','/workspace','-xzf','-'],input=backup,check=True,capture_output=True)
-        restored=subprocess.run(['docker','run','--rm','--read-only','--mount','type=volume,src='+restored_volume+',dst=/workspace',image,'python','verify_storage.py'],check=True,capture_output=True,text=True)
+        restored=subprocess.run(['docker','run','--rm','--read-only','--mount','type=volume,src='+restored_volume+',dst=/workspace',image,'python','scripts/verify_storage.py'],check=True,capture_output=True,text=True)
         assert json.loads(restored.stdout)==verified
         usage=subprocess.check_output(['docker','stats','--no-stream','--format','{{.MemUsage}}',container],text=True).strip()
         print('Docker/OrbStack : corpus synthétique, auth, recherche, exports, vidéo, bulletin conservé après recréation du web et sauvegarde/restauration vérifiés.')

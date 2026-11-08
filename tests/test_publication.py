@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import kararecall
+from kararecall import core as kararecall
 from fixtures import corpus
-from publication import active_root,file_hash,generation,migrate
-from web_server import Corpus,context_for,source_summary
+from kararecall.publication import active_root,file_hash,generation,migrate
+from kararecall.web_server import Corpus,context_for,source_summary
 
 
 class PublicationTests(unittest.TestCase):
@@ -69,7 +69,7 @@ class PublicationTests(unittest.TestCase):
             return write(path,value)
         with self.assertRaises(OSError):
             with generation(self.root) as (draft,commit):
-                with patch('kararecall.write_json',side_effect=fail_pointer):commit()
+                with patch('kararecall.core.write_json',side_effect=fail_pointer):commit()
         self.assertEqual(active_root(self.root),oldroot)
         self.assertEqual((oldroot/'vault/outils/heretic.md').read_bytes(),old)
 
@@ -93,7 +93,7 @@ class PublicationTests(unittest.TestCase):
         digest=file_hash(media)
         with generation(self.root) as (draft,_):
             linked=draft/'data/media/demo-model.mp4'
-            with patch('publication._hash_stream',side_effect=AssertionError('Unexpected rehash')):
+            with patch('kararecall.publication._hash_stream',side_effect=AssertionError('Unexpected rehash')):
                 self.assertEqual(file_hash(linked),digest)
             previous=linked.stat()
             linked.write_bytes(b'X'*previous.st_size)
@@ -109,6 +109,6 @@ class PublicationTests(unittest.TestCase):
             if path==self.root/'data/current.json':raise OSError('error after atomic rename')
         with self.assertRaises(OSError):
             with generation(self.root) as (draft,commit):
-                with patch('kararecall.write_json',side_effect=switch_then_fail):commit()
+                with patch('kararecall.core.write_json',side_effect=switch_then_fail):commit()
         self.assertNotEqual(active_root(self.root),oldroot)
         self.assertEqual(len(Corpus(self.root).load()['entities']),2)

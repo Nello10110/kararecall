@@ -8,9 +8,9 @@ import unittest
 from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
-import kararecall
-from settings import Settings
-from integrations import ServiceError
+from kararecall import core as kararecall
+from kararecall.settings import Settings
+from kararecall.integrations import ServiceError
 
 
 @unittest.skipUnless(importlib.util.find_spec('av') and importlib.util.find_spec('numpy'),'Dépendances du travailleur optionnel absentes')
@@ -64,9 +64,9 @@ class MediaTests(unittest.TestCase):
         import av
         import numpy as np
         import shutil
-        from publication import active_root
-        from worker import run_cycle
-        from worker_media import extract_subtitles
+        from kararecall.publication import active_root
+        from kararecall.worker import run_cycle
+        from kararecall.worker_media import extract_subtitles
 
         root=self.config.root
         srt=root/'embedded.srt'
@@ -99,7 +99,7 @@ class MediaTests(unittest.TestCase):
         def download(_,destination):
             destination.parent.mkdir(parents=True,exist_ok=True)
             shutil.copy2(video_path,destination)
-        with patch('worker.Karakeep.bookmarks',return_value=iter([bookmark])),patch('worker.Karakeep.download',side_effect=download):
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([bookmark])),patch('kararecall.worker.Karakeep.download',side_effect=download):
             self.assertEqual(run_cycle(self.config)['processed'],1)
         self.assertEqual(self.calls,[])
         source=kararecall.read_json(active_root(root)/'data/catalog.json')['sources'][0]
@@ -110,7 +110,7 @@ class MediaTests(unittest.TestCase):
         self.assertEqual(proof['recognition']['language'],'fra')
 
     def test_audio_and_frames_are_extracted_sent_and_cached(self):
-        from worker_media import transcribe,recognize_frames
+        from kararecall.worker_media import transcribe,recognize_frames
         transcribe(self.media,self.output,self.config)
         recognize_frames(self.media,self.output,self.config)
         transcript=kararecall.read_json(self.output/'transcript.json')
@@ -129,14 +129,14 @@ class MediaTests(unittest.TestCase):
         self.assertEqual(len(self.calls),3)
 
     def test_duration_limit_prevents_audio_upload(self):
-        from worker_media import transcribe
+        from kararecall.worker_media import transcribe
         self.config.media_max_seconds=0.1
         with self.assertRaisesRegex(ServiceError,'MEDIA_MAX_SECONDS'):
             transcribe(self.media,self.output,self.config)
         self.assertEqual(self.calls,[])
 
     def test_bad_vision_json_never_becomes_success_and_keeps_existing_transcript(self):
-        from worker_media import transcribe,recognize_frames
+        from kararecall.worker_media import transcribe,recognize_frames
         transcribe(self.media,self.output,self.config)
         original=(self.output/'transcript.json').read_bytes()
         self.vision_responses=['not JSON','   ']
@@ -150,14 +150,14 @@ class MediaTests(unittest.TestCase):
         self.assertEqual(sum(path=='/v1/audio/transcriptions' for path,_ in self.calls),1)
 
     def test_provider_change_invalidates_audio_cache(self):
-        from worker_media import transcribe
+        from kararecall.worker_media import transcribe
         transcribe(self.media,self.output,self.config)
         self.config.asr_url=self.config.asr_url.replace('127.0.0.1','localhost')
         transcribe(self.media,self.output,self.config)
         self.assertEqual(len(self.calls),2)
 
     def test_completed_vision_frames_resume_after_failure(self):
-        from worker_media import recognize_frames
+        from kararecall.worker_media import recognize_frames
         self.fail_second_vision=True
         with self.assertRaises(ServiceError):recognize_frames(self.media,self.output,self.config)
         self.fail_second_vision=False
@@ -168,7 +168,7 @@ class MediaTests(unittest.TestCase):
     def test_change_sampling_keeps_frame_budget_and_prioritizes_transitions(self):
         import av
         import numpy as np
-        from worker_media import recognize_frames
+        from kararecall.worker_media import recognize_frames
 
         video=self.media.parent/'changes.mp4'
         with av.open(str(video),'w') as container:
@@ -189,7 +189,7 @@ class MediaTests(unittest.TestCase):
     def test_video_without_audio_never_calls_audio_service(self):
         import av
         import numpy as np
-        from worker_media import transcribe
+        from kararecall.worker_media import transcribe
         video=self.media.parent/'silent.mp4'
         with av.open(str(video),'w') as container:
             stream=container.add_stream('mpeg4',rate=5);stream.width=64;stream.height=64;stream.pix_fmt='yuv420p'

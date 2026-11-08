@@ -1,5 +1,7 @@
 # Formats et couverture des contenus
 
+[🇫🇷 Français](FORMATS-ET-COUVERTURE.md) · [🇬🇧 English](en/formats-and-coverage.md)
+
 État de l’implémentation 0.5.0, 8 novembre 2026. L’import conserve tous les favoris. Importer des métadonnées, obtenir du texte, rédiger un résumé et analyser une vidéo sont quatre opérations distinctes.
 
 ## Contrat Karakeep

@@ -8,15 +8,15 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import kararecall
-from controls import action_status, library_paused, process_actions, request_action, request_history
-from curation import clean_text, short_text, translate_evidence
+from kararecall import core as kararecall
+from kararecall.controls import action_status, library_paused, process_actions, request_action, request_history
+from kararecall.curation import clean_text, short_text, translate_evidence
 from fixtures import corpus
-from publication import active_root
-from settings import Settings
-from usage import BudgetExceeded, UsageLedger
-from web_server import Corpus, make_handler, source_summary
-from worker import run_cycle
+from kararecall.publication import active_root
+from kararecall.settings import Settings
+from kararecall.usage import BudgetExceeded, UsageLedger
+from kararecall.web_server import Corpus, make_handler, source_summary
+from kararecall.worker import run_cycle
 
 
 def response(*args, **kwargs):
@@ -46,7 +46,7 @@ class CurationControlsTests(unittest.TestCase):
         original=kararecall.read_json(self.root/'data/catalog.json')
         job=request_action(self.root,'llm')
         self.assertEqual(request_action(self.root,'llm')['id'],job['id'])
-        with patch('worker.Karakeep.bookmarks') as remote,patch('worker.chat',side_effect=response) as model:
+        with patch('kararecall.worker.Karakeep.bookmarks') as remote,patch('kararecall.worker.chat',side_effect=response) as model:
             self.assertTrue(process_actions(self.settings))
             self.assertEqual(action_status(self.root)['jobs'][-1]['cursor'],1)
             self.assertTrue(process_actions(self.settings))
@@ -68,7 +68,7 @@ class CurationControlsTests(unittest.TestCase):
 
     def test_quota_pause_resumes_without_repeating_completed_sources(self):
         request_action(self.root,'llm')
-        with patch('worker.run_local_llm',side_effect=[None,BudgetExceeded('quota')]) as run:
+        with patch('kararecall.worker.run_local_llm',side_effect=[None,BudgetExceeded('quota')]) as run:
             process_actions(self.settings);process_actions(self.settings)
             self.assertEqual(run.call_count,2)
         job=action_status(self.root)['jobs'][-1]
@@ -76,22 +76,22 @@ class CurationControlsTests(unittest.TestCase):
         self.assertFalse(process_actions(self.settings))
         value=kararecall.read_json(self.root/'data/control/actions.json');value['jobs'][-1]['retry_at']=0
         kararecall.write_json(self.root/'data/control/actions.json',value)
-        with patch('worker.run_local_llm') as run:
+        with patch('kararecall.worker.run_local_llm') as run:
             process_actions(self.settings)
             self.assertEqual(run.call_args.args[1],job['ids'][1])
         self.assertEqual(action_status(self.root)['jobs'][-1]['state'],'completed')
 
     def test_restart_after_publication_does_not_pay_twice_for_same_command(self):
-        from controls import _update_action
+        from kararecall.controls import _update_action
         request_action(self.root,'llm',source_id='demo-model')
         def crash_after_publication(root,identifier,**changes):
             if changes.get('state')=='completed':raise OSError('Simulated crash before queue acknowledgement')
             return _update_action(root,identifier,**changes)
-        with patch('worker.chat',side_effect=response) as model,patch('controls._update_action',side_effect=crash_after_publication):
+        with patch('kararecall.worker.chat',side_effect=response) as model,patch('kararecall.controls._update_action',side_effect=crash_after_publication):
             with self.assertRaises(OSError):process_actions(self.settings)
             self.assertEqual(model.call_count,1)
         self.assertEqual(action_status(self.root)['jobs'][-1]['cursor'],0)
-        with patch('worker.chat') as model:
+        with patch('kararecall.worker.chat') as model:
             process_actions(self.settings);model.assert_not_called()
         self.assertEqual(action_status(self.root)['jobs'][-1]['state'],'completed')
 
@@ -111,7 +111,7 @@ class CurationControlsTests(unittest.TestCase):
         self.assertEqual(ledger.path.read_bytes(),before)
         self.settings.sync_enabled=True
         self.settings.karakeep_url='https://example.invalid';self.settings.karakeep_key='test-only'
-        with patch('worker.Karakeep.bookmarks') as remote:
+        with patch('kararecall.worker.Karakeep.bookmarks') as remote:
             self.assertEqual(run_cycle(self.settings)['synced'],0);remote.assert_not_called()
         request_history(self.root)
         self.assertFalse(library_paused(self.root))
@@ -121,14 +121,14 @@ class CurationControlsTests(unittest.TestCase):
         sources=kararecall.read_json(self.root/'data/sources.json')
         next(row for row in sources if row['id']=='demo-model')['stages']={'vision':'paused','llm':'waiting'}
         kararecall.write_json(self.root/'data/sources.json',sources)
-        with patch('worker.run_cycle',return_value={'failed':1}) as run:
+        with patch('kararecall.worker.run_cycle',return_value={'failed':1}) as run:
             process_actions(self.settings)
             self.assertEqual(run.call_args.kwargs['force_stage'],'all')
         job=action_status(self.root)['jobs'][-1]
         self.assertEqual(job['state'],'paused')
         data=kararecall.read_json(self.root/'data/control/actions.json');data['jobs'][-1]['retry_at']=0
         kararecall.write_json(self.root/'data/control/actions.json',data)
-        with patch('worker.run_cycle',return_value={'failed':0}) as run:
+        with patch('kararecall.worker.run_cycle',return_value={'failed':0}) as run:
             process_actions(self.settings)
             self.assertEqual(run.call_args.kwargs['force_stage'],'resume')
         self.assertEqual(action_status(self.root)['jobs'][-1]['state'],'completed')
@@ -136,10 +136,10 @@ class CurationControlsTests(unittest.TestCase):
     def test_translation_resumes_cached_chunks_with_provenance(self):
         source={'id':'translated','reading':{'source_language':'en'}}
         proofs=[{'id':'page-abc','kind':'page','text':'Saved text. '*200}]
-        with patch('curation.chat',side_effect=['{"text":"Texte français initial."}',BudgetExceeded('quota')]) as model:
+        with patch('kararecall.curation.chat',side_effect=['{"text":"Texte français initial."}',BudgetExceeded('quota')]) as model:
             with self.assertRaises(BudgetExceeded):translate_evidence(source,proofs,self.settings,None)
             self.assertEqual(model.call_count,2)
-        with patch('curation.chat',return_value='{"text":"Suite traduite."}') as model:
+        with patch('kararecall.curation.chat',return_value='{"text":"Suite traduite."}') as model:
             result=translate_evidence(source,proofs,self.settings,None)
             self.assertEqual(model.call_count,1)
         self.assertIn('Texte français initial.',result['page-abc']['text'])
@@ -150,21 +150,21 @@ class CurationControlsTests(unittest.TestCase):
         source={'id':'translated','reading':{'source_language':'mixed'}}
         proofs=[{'id':'asr-one','kind':'asr','text':'First excerpt.'},{'id':'ocr-two','kind':'ocr','text':'Second excerpt.'}]
         result={'translations':[{'id':'p0','text':'Premier extrait.'},{'id':'p1','text':'Second extrait.'}]}
-        with patch('curation.chat',return_value=json.dumps(result)) as model:
+        with patch('kararecall.curation.chat',return_value=json.dumps(result)) as model:
             translated=translate_evidence(source,proofs,self.settings,None)
             self.assertEqual(model.call_count,1)
         self.assertEqual(translated['asr-one']['text'],'Premier extrait.')
         self.assertEqual(translated['ocr-two']['evidence'],['translated#ocr-two'])
         source['id']='other-source'
-        from integrations import ServiceError
-        with patch('curation.chat',return_value=json.dumps({'translations':[{'id':'invented','text':'Texte inventé.'}]})):
+        from kararecall.integrations import ServiceError
+        with patch('kararecall.curation.chat',return_value=json.dumps({'translations':[{'id':'invented','text':'Texte inventé.'}]})):
             with self.assertRaises(ServiceError):translate_evidence(source,proofs,self.settings,None)
 
     def test_invalid_source_and_missing_config_are_reported_without_remote_calls(self):
         with self.assertRaises(ValueError):request_action(self.root,'refresh',source_id='absent')
         request_action(self.root,'llm',source_id='demo-model')
         self.settings.llm_enabled=False
-        with patch('worker.chat') as model:
+        with patch('kararecall.worker.chat') as model:
             process_actions(self.settings);model.assert_not_called()
         state=action_status(self.root)['jobs'][-1]
         self.assertEqual(state['state'],'error');self.assertIn('LLM_ENABLED',state['message'])

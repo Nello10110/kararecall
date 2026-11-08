@@ -1,6 +1,8 @@
 # Interface et API
 
-L’interface est servie par `web_server.py`, sans compilation ni dépendance tierce. En développement local : `python3 web_server.py --open-browser`, ou le lanceur `Ouvrir KaraRecall.command`. Le serveur écoute sur `127.0.0.1:8765` par défaut. Une configuration `.env` existante est chargée ; sans identifiants, seul le démarrage sur la boucle locale est autorisé. Le [guide homelab](HOMELAB.md) décrit le mode Docker avec authentification obligatoire.
+[🇫🇷 Français](WEB.md) · [🇬🇧 English](en/web-and-api.md)
+
+L’interface est servie par `kararecall/web_server.py`, sans compilation ni dépendance tierce. En développement local : `python3 -m kararecall.web_server --open-browser`, ou le lanceur `scripts/macos/Ouvrir KaraRecall.command`. Le serveur écoute sur `127.0.0.1:8765` par défaut. Une configuration `.env` existante est chargée ; sans identifiants, seul le démarrage sur la boucle locale est autorisé. Le [guide homelab](HOMELAB.md) décrit le mode Docker avec authentification obligatoire.
 
 ## Parcours
 
@@ -103,7 +105,7 @@ Les commandes authentifiées et protégées par anti-CSRF ajoutent :
 - `POST /api/actions/ID/cancel` avec `{}` : annule les éléments suivants de la commande. Une opération déjà engagée peut se terminer et publier ses résultats.
 - `POST /api/automation` avec `{ "paused": true|false }` : suspend ou reprend les prochains passages automatiques, sans changer les clés, les plafonds ou les options du `.env`. Un passage déjà engagé peut se terminer ; les commandes manuelles restent disponibles.
 
-Les styles sont répartis entre les composants de base (`styles.css`) et le système glass (`glass.css`). `workspace.js` contient les écrans de consultation et d’administration, `app.js` conserve la navigation et les fiches/preuves, et `digests.js` conserve la veille. Le web et le worker embarquent `version.py`. Les deux images doivent être mises à jour ensemble.
+Les styles sont répartis entre les composants de base (`styles.css`) et le système glass (`glass.css`). `workspace.js` contient les écrans de consultation et d’administration, `app.js` conserve la navigation et les fiches/preuves, et `digests.js` conserve la veille. Le web et le worker embarquent `kararecall/version.py`. Les deux images doivent être mises à jour ensemble.
 
 Une suspension explicite depuis Administration reste active pendant un import manuel de l’historique. Seule la suspension créée par le vidage local est levée automatiquement au prochain import, conformément à son message de confirmation.
 

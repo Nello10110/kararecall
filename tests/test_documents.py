@@ -9,13 +9,13 @@ import threading
 import unittest
 from unittest.mock import patch
 
-import kararecall
-from publication import active_root
-from integrations import ServiceError
-from settings import Settings
-from web_server import Corpus, make_handler
-from worker import run_cycle
-from worker_documents import extract_document, pdf_text
+from kararecall import core as kararecall
+from kararecall.publication import active_root
+from kararecall.integrations import ServiceError
+from kararecall.settings import Settings
+from kararecall.web_server import Corpus, make_handler
+from kararecall.worker import run_cycle
+from kararecall.worker_documents import extract_document, pdf_text
 
 
 def pdf_bytes(pages):
@@ -60,7 +60,7 @@ class DocumentTests(unittest.TestCase):
             self.downloads.append(asset_id)
             destination.parent.mkdir(parents=True,exist_ok=True)
             destination.write_bytes(content)
-        with patch('worker.Karakeep.bookmarks',return_value=iter([row])),patch('worker.Karakeep.download',side_effect=download):
+        with patch('kararecall.worker.Karakeep.bookmarks',return_value=iter([row])),patch('kararecall.worker.Karakeep.download',side_effect=download):
             return run_cycle(self.settings,**kwargs)
 
     def catalog(self):
@@ -71,7 +71,7 @@ class DocumentTests(unittest.TestCase):
         self.cycle(row,b'original image fixture',catalog_only=True)
         self.assertEqual(self.downloads,[])
         self.assertIsNone(self.catalog()['sources'][0]['processing']['attachment'])
-        with patch('worker_documents.recognize_image') as model:
+        with patch('kararecall.worker_documents.recognize_image') as model:
             self.cycle(row,b'original image fixture')
         model.assert_not_called()
         self.assertEqual(self.catalog()['sources'][0]['stages']['document'],'original_only')
@@ -133,7 +133,7 @@ class DocumentTests(unittest.TestCase):
         self.settings.vision_url='https://example.invalid'
         row=bookmark('image')
         answer={'choices':[{'message':{'content':json.dumps({'text':'Jauge hydraulique'})}}]}
-        with patch('integrations.request_json',return_value=answer) as model:
+        with patch('kararecall.integrations.request_json',return_value=answer) as model:
             self.assertEqual(self.cycle(row,image.read_bytes())['processed'],1)
             self.assertEqual(self.cycle(row,image.read_bytes())['processed'],0)
             self.assertEqual(model.call_count,1)
@@ -154,7 +154,7 @@ class DocumentTests(unittest.TestCase):
         row=bookmark('pdf')
         content=pdf_bytes(['', 'Texte natif', '', ''])
         answer={'choices':[{'message':{'content':json.dumps({'text':'Texte OCR'})}}]}
-        with patch('integrations.request_json',side_effect=[answer,ServiceError('Interruption de test')]) as model:
+        with patch('kararecall.integrations.request_json',side_effect=[answer,ServiceError('Interruption de test')]) as model:
             self.assertEqual(self.cycle(row,content)['failed'],1)
             self.assertEqual(model.call_count,2)
             payload=model.call_args.args[2]['messages'][0]['content'][1]['image_url']['url']
@@ -168,7 +168,7 @@ class DocumentTests(unittest.TestCase):
         self.assertTrue((active_root(self.root)/pages[1]['image']).is_file())
         original=self.root/'fixture.pdf'
         original.write_bytes(content)
-        with patch('integrations.request_json',return_value=answer) as model:
+        with patch('kararecall.integrations.request_json',return_value=answer) as model:
             output=self.root/'resume'
             self.assertEqual(extract_document(source,original,output,self.settings),'complete')
             self.assertEqual(model.call_count,1)

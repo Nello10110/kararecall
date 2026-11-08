@@ -8,12 +8,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import digests
-import digest_delivery
-import digest_writer
-import kararecall
+from kararecall import digests
+from kararecall import digest_delivery
+from kararecall import digest_writer
+from kararecall import core as kararecall
 from fixtures import corpus
-from settings import Settings
+from kararecall.settings import Settings
 
 
 class DigestWriterTests(unittest.TestCase):
@@ -37,7 +37,7 @@ class DigestWriterTests(unittest.TestCase):
         return {'choices':[{'message':{'content':json.dumps(text)}}],'usage':{'prompt_tokens':50,'completion_tokens':60}}
 
     def test_written_articles_keep_references_and_reuse_cached_work(self):
-        with patch('integrations.request_json',side_effect=self.response) as provider:
+        with patch('kararecall.integrations.request_json',side_effect=self.response) as provider:
             state=digest_writer.write_edition(self.root,self.edition['id'],self.settings,max_items=1)
             self.assertEqual(state,'pending')
             self.assertEqual(provider.call_count,1)
@@ -54,7 +54,7 @@ class DigestWriterTests(unittest.TestCase):
 
     def test_budget_pause_resumes_without_rewriting_finished_article(self):
         self.settings.daily_call_limit=1
-        with patch('integrations.request_json',side_effect=self.response) as provider:
+        with patch('kararecall.integrations.request_json',side_effect=self.response) as provider:
             self.assertEqual(digest_writer.write_edition(self.root,self.edition['id'],self.settings),'paused')
             self.assertEqual(provider.call_count,1)
             partial=digests.load(self.root,self.edition['id'])
@@ -71,7 +71,7 @@ class DigestWriterTests(unittest.TestCase):
             data['paragraphs'][0]['evidence']=['missing#invented']
             response['choices'][0]['message']['content']=json.dumps(data)
             return response
-        with patch('digest_writer.Settings.from_env',return_value=self.settings),patch('integrations.request_json',side_effect=wrong):
+        with patch('kararecall.digest_writer.Settings.from_env',return_value=self.settings),patch('kararecall.integrations.request_json',side_effect=wrong):
             digest_delivery.process(self.root,datetime(2026,11,2,9,tzinfo=timezone.utc))
         edition=digests.load(self.root,self.edition['id'])
         self.assertFalse(edition['approved'])
@@ -85,7 +85,7 @@ class DigestWriterTests(unittest.TestCase):
             payload['intro']='Introduction corrigée pendant l’appel.'
             digests.revise(self.root,current['id'],payload)
             return self.response(*args,**kwargs)
-        with patch('integrations.request_json',side_effect=edit_then_respond):
+        with patch('kararecall.integrations.request_json',side_effect=edit_then_respond):
             self.assertEqual(digest_writer.write_edition(self.root,self.edition['id'],self.settings),'changed')
         current=digests.load(self.root,self.edition['id'])
         self.assertEqual(current['intro'],'Introduction corrigée pendant l’appel.')
@@ -93,7 +93,7 @@ class DigestWriterTests(unittest.TestCase):
 
     def test_first_edition_uses_history_and_waits_for_actual_writer_configuration(self):
         os.environ.update(DIGEST_INITIAL_HISTORY='true')
-        with patch('digest_writer.Settings.from_env',return_value=Settings(root=self.root)):
+        with patch('kararecall.digest_writer.Settings.from_env',return_value=Settings(root=self.root)):
             digest_delivery.process(self.root,datetime(2026,11,7,9,tzinfo=timezone.utc))
         initial=next(row for row in digests.list_editions(self.root) if row['kind']=='initial')
         self.assertEqual(len(initial['items']),2)

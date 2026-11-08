@@ -7,7 +7,7 @@ import unittest
 from http.server import ThreadingHTTPServer
 
 from fixtures import corpus
-from web_server import Corpus, make_handler
+from kararecall.web_server import Corpus, make_handler
 
 try:
     SDK_V2=version('mcp').startswith('2.')
@@ -25,8 +25,8 @@ class MCPStdioTests(unittest.IsolatedAsyncioTestCase):
             server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(Corpus(root),'mcp','fixture'))
             thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
             try:
-                executable=Path(__file__).resolve().parents[1]/'kararecall_mcp.py'
-                if not executable.exists():executable=Path('/app/kararecall_mcp.py')
+                executable=Path(__file__).resolve().parents[1]/'scripts/assistant_mcp.py'
+                if not executable.exists():executable=Path('/app/scripts/assistant_mcp.py')
                 params=StdioServerParameters(command=sys.executable,args=[str(executable)],env={
                     'KARARECALL_URL':f'http://127.0.0.1:{server.server_port}',
                     'KARARECALL_USERNAME':'mcp','KARARECALL_PASSWORD':'fixture','PYTHONDONTWRITEBYTECODE':'1'})
