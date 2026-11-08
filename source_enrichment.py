@@ -72,11 +72,17 @@ def make_preview(source,client,draft):
     """A failed preview never blocks analysis and never invokes an AI service."""
     for asset in source.get('preview_asset_ids',[])[:3]:
         try:
-            with tempfile.TemporaryDirectory(dir=draft/'data') as name:
-                path=Path(name)/'preview'
-                client.download(asset,path,max_mb=8)
-                result=save_preview(path.read_bytes(),draft,source['id'],'karakeep')
-                return dict(result,asset_id=asset)
+            original=draft/'data/documents'/source['id']/(asset+'.bin')
+            if asset==source.get('document_asset_id') and original.is_file():
+                if original.stat().st_size>8*1024*1024:continue
+                raw=original.read_bytes()
+            else:
+                with tempfile.TemporaryDirectory(dir=draft/'data') as name:
+                    path=Path(name)/'preview'
+                    client.download(asset,path,max_mb=8)
+                    raw=path.read_bytes()
+            result=save_preview(raw,draft,source['id'],'karakeep')
+            return dict(result,asset_id=asset)
         except (OSError,ValueError,ServiceError,ImportError):
             continue
     media=draft/'data/media'/(source['id']+'.mp4')
