@@ -140,8 +140,11 @@ def make_server(api):
     return server
 
 
-if __name__=='__main__':
+def main():
     load_env(Path(__file__).resolve().parents[1]/'.env.mcp')
     api=ReadAPI(os.getenv('KARARECALL_URL','http://127.0.0.1:8765'),
                 os.getenv('KARARECALL_USERNAME',''),os.getenv('KARARECALL_PASSWORD',''))
     make_server(api).run()
+
+
+if __name__=='__main__':main()
