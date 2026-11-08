@@ -104,3 +104,25 @@ test('administration coverage links to source filters and escapes unknown attach
  assert.match(html,/#\/sources\?support=metadata/);assert.match(html,/Format non pris en charge/);
  assert.doesNotMatch(html,/<script>/);assert.match(html,/Type inconnu/);
 });
+
+test('sync panel keeps an unknown remote count distinct from zero and from AI processing',()=>{
+ const ctx=context();vm.runInContext(fs.readFileSync(path.join(root,'web/workspace.js'),'utf8'),ctx);
+ const html=ctx.syncPanel({summary:{sources:3},actions:{jobs:[]},history_import:{state:'none'}});
+ assert.match(html,/Dans Karakeep<\/span><strong>—/);assert.match(html,/Dans KaraRecall<\/span><strong>3/);
+ assert.match(html,/data-action="sync_check"/);assert.match(html,/data-import-history/);
+ assert.match(html,/sans téléchargement des médias ni appel IA/);
+ assert.doesNotMatch(html,/Catalogue à jour/);
+});
+
+test('sync panel explains equal totals with different records and stale/error observations',()=>{
+ const ctx=context();vm.runInContext(fs.readFileSync(path.join(root,'web/workspace.js'),'utf8'),ctx);
+ const report={actions:{jobs:[]},summary:{sources:2},synchronization:{state:'completed',local_total:2,comparison_current:true,
+  last_success:{observed_at:'2026-11-08T12:00:00Z',karakeep_total:2,missing:1,local_only:1,updates:0}}};
+ let html=ctx.syncPanel(report);assert.match(html,/Import à compléter/);assert.match(html,/À importer<\/span><strong>1/);
+ report.synchronization.state='error';report.synchronization.error='<script>unsafe</script>';
+ html=ctx.syncPanel(report);assert.match(html,/Contrôle à reprendre/);assert.match(html,/derniers compteurs connus/);assert.doesNotMatch(html,/<script>/);
+ report.synchronization.state='completed';report.synchronization.comparison_current=false;
+ assert.match(ctx.syncPanel(report),/bibliothèque locale a changé/);
+ report.synchronization.comparison_current=true;Object.assign(report.synchronization.last_success,{filtered:true,missing_in_scope:0,updates_in_scope:0,excluded:1});
+ assert.match(ctx.syncPanel(report),/Périmètre à jour/);
+});

@@ -25,3 +25,4 @@
 
 .source-preview{margin:0 0 20px;border-radius:var(--radius,16px);overflow:hidden;background:var(--panel);border:1px solid var(--border)}
 .source-preview img{display:block;width:100%;max-height:300px;object-fit:contain}
+.sync-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:22px 0}.sync-counts>div{display:flex;flex-direction:column;gap:6px;min-width:0}.sync-counts strong{font-size:32px;line-height:1.2}.sync-counts small{color:var(--muted);font-size:12px}.sync-panel .heading-actions{justify-content:flex-start;flex-wrap:wrap}.sync-panel .panel-heading{flex-wrap:wrap}@media(max-width:520px){.sync-counts{gap:12px}.sync-counts strong{font-size:25px}.sync-counts span,.sync-counts small{font-size:11px}}

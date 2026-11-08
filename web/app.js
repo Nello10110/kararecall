@@ -228,8 +228,7 @@ function historyPanel(){
  return `<section class="detail-panel history-import" aria-live="polite"><div><h2>Tout votre historique</h2><p>${esc(statusText[task.state]||task.message||'')}</p>${task.failed?'<p>Certains médias remplacés demandent une intervention ; leur version précédente a été conservée.</p>':''}<small>Les sources déjà présentes sont mises à jour sans doublon. L’import inclut les favoris archivés et ignore les filtres de collecte.</small></div><button class="btn btn-primary" type="button" id="import-history" ${busy?'disabled':''}>${busy?'Import en attente ou en cours':'Importer tout l’historique'}</button></section>`;
 }
 function bindHistory(){
- const button=$('#import-history');
- button.onclick=async()=>{button.disabled=true;try{const session=await api('/api/control');await api('/api/import-history',{method:'POST',headers:{'Content-Type':'application/json','X-KaraRecall-CSRF':session.csrf_token},body:'{}'});await bootstrap();toast('Import demandé. Aucun appel IA pour lire le catalogue.');}catch(error){toast(error.message);button.disabled=false;}};
+ document.querySelectorAll('#import-history,[data-import-history]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const session=await api('/api/control');await api('/api/import-history',{method:'POST',headers:{'Content-Type':'application/json','X-KaraRecall-CSRF':session.csrf_token},body:'{}'});await bootstrap();toast('Import demandé. Aucun appel IA pour lire le catalogue.');}catch(error){toast(error.message);button.disabled=false;}});
  clearTimeout(state.historyTimer);
 
 }

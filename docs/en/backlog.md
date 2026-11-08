@@ -2,7 +2,7 @@
 
 [🇫🇷 Français](../BACKLOG.md) · [🇬🇧 English](backlog.md)
 
-Status: release 0.5.1. This English roadmap mirrors the remaining qualification work in the French backlog. Completed implementation is grouped below; an unchecked real-world task is not completed merely because synthetic tests pass. The owner has started the NAS pilot and reported an initial analyzed bookmark. Planning volume remains about twenty videos/month, plus sites/articles/notes.
+Status: release 0.6.0. This English roadmap mirrors the remaining qualification work in the French backlog. Completed implementation is grouped below; an unchecked real-world task is not completed merely because synthetic tests pass. The owner has started the NAS pilot and reported an initial analyzed bookmark. Planning volume remains about twenty videos/month, plus sites/articles/notes.
 
 ## Delivered foundation
 
@@ -23,6 +23,7 @@ Status: release 0.5.1. This English roadmap mirrors the remaining qualification 
 - [x] Read-only coverage, HTTP performance, batch accounting and historical-generation integrity tools; documented safe restore study.
 - [x] Synthetic 2,002-source publication/pagination reference and 20-question lexical baseline: 15/20 top-three, with misses retained.
 - [x] Repository package/dependency/deployment organization, bilingual documentation navigation and English guides.
+- [x] Karakeep/local ID comparison, totals/missing/changed/local-only records, dated observations, scope filters and queued read-only refresh without AI or import.
 
 ## Real providers and NAS foundation
 
@@ -57,6 +58,7 @@ Status: release 0.5.1. This English roadmap mirrors the remaining qualification 
 - [ ] Confirm the formerly failing vision source resumes with the structured-output fix and inspect its recognized text/references.
 - [ ] Confirm detail-page reading comfort and primary links on real NAS content after the UX update.
 - [ ] Run the coverage/HTTP/accounting tools on the NAS and record memory, batch cost and external backup results.
+- [ ] Verify the sync counters and check/import controls on the NAS with the actual Karakeep key, including archived bookmarks and visibility changes.
 
 ## Conditional follow-up
 

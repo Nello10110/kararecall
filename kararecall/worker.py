@@ -26,6 +26,7 @@ from kararecall.reading import LONG_KINDS, summarize_passages
 from kararecall.curation import clean_text, short_text, translate_evidence
 from kararecall.source_enrichment import acquire_page, preview_key, make_preview, preview_target
 from kararecall.content_support import content_kind
+from kararecall import synchronization
 
 
 def now():
@@ -242,15 +243,20 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
             status(settings,state='disabled',last_checked_at=now(),message='Synchronisation suspendue dans la bibliothèque ou désactivée dans .env.')
             return {'synced':0,'processed':0,'failed':0}
         status(settings,state='running',last_started_at=now(),message='Synchronisation en lecture seule.')
+        sync_mode='history' if catalog_only else 'periodic'
+        synchronization.begin(settings.root,sync_mode)
         client=Karakeep(settings)
-        incoming={}
+        incoming={};remote={}
         for raw in client.bookmarks():
             source=normalize_bookmark(raw)
+            remote[source['id']]=source
+            if len(remote)%100==0:synchronization.progress(settings.root,len(remote))
             if not catalog_only and settings.url_filter and settings.url_filter not in source['url']:continue
             wanted={t.strip().casefold() for t in settings.tag_filter.split(',') if t.strip()}
             if not catalog_only and wanted and not wanted.intersection(t.casefold() for t in source['tags']):continue
             incoming[source['id']]=(source,raw)
             if catalog_only and len(incoming)%100==0:update_history(settings.root,collected=len(incoming))
+        synchronization.progress(settings.root,len(remote))
         origin=active_root(settings.root)
         previous={s['id']:s for s in kararecall.read_json(origin/'data/sources.json',[])}
         db=sqlite3.connect(settings.root/'data/worker.sqlite')
@@ -424,10 +430,14 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
         finally:
             db.close()
         message='Dernier passage terminé.' if not blocked else 'Média remplacé côté Karakeep : ancienne version conservée ; intervention nécessaire.'
+        synchronization.complete(settings,remote,sync_mode)
         timing={'publication_timing':publication_timing} if publication_timing else {}
         status(settings,state='idle',last_completed_at=now(),message=message,synced=len(accepted),processed=processed,
             failed=failed+blocked,blocked_media_updates=blocked,jobs=counts,pending=len(todo)-len(selected),usage=ledger.summary(),**timing)
         return {'synced':len(accepted),'processed':processed,'failed':failed+blocked}
+    except Exception as exc:
+        synchronization.failed(settings.root,safe_error(exc,settings))
+        raise
     finally:
         fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
 
@@ -524,7 +534,7 @@ def check_connections(settings):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('command',choices=['once','loop','check','retry','usage','import-history','research','digest-generate','digest-run'])
+    parser.add_argument('command',choices=['once','loop','check','sync-check','retry','usage','import-history','research','digest-generate','digest-run'])
     parser.add_argument('--kind',choices=['weekly','monthly','initial'],default='weekly')
     parser.add_argument('--anchor',help='Date ISO située dans la période qui suit le bulletin')
     parser.add_argument('--source',help='ID de la source à retraiter explicitement')
@@ -533,6 +543,10 @@ def main():
     parser.add_argument('--refresh',action='store_true',help='Relancer explicitement la recherche de la fiche')
     args=parser.parse_args()
     settings=Settings.from_env()
+    if args.command=='sync-check':
+        result=synchronization.check(settings)
+        print(json.dumps({key:value for key,value in result.items() if key!='local_revision'},ensure_ascii=False))
+        return
     if args.command=='digest-generate':
         from kararecall import digests
         initialize(settings.root)

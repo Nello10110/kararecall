@@ -262,3 +262,11 @@ Audit : [usage quotidien et administration](UX-ET-ADMINISTRATION.md).
 - [x] Regrouper le code dans le paquet `kararecall`, les dépendances dans `requirements`, la surcharge Compose dans `deploy` et les lanceurs dans `scripts/macos`, en conservant les chemins des données privées.
 - [x] Déplacer le backlog dans `docs`, documenter les nouvelles commandes et vérifier les imports, lanceurs, tests et images.
 - [x] Fournir une présentation et des guides anglais, un schéma anglais, des sélecteurs 🇫🇷 / 🇬🇧 et un contrôle automatisé des liens et correspondances.
+
+## Suivi de synchronisation — version 0.6.0
+
+- [x] Comparer les identifiants du catalogue Karakeep accessible avec la bibliothèque locale : total distant/local, présents, manquants, mises à jour et copies conservées localement.
+- [x] Afficher le suivi sur le tableau de bord, Activité et un onglet d’administration ; distinguer dates de contrôle/import, valeurs inconnues, chiffres anciens, filtres et erreurs de lecture.
+- [x] Ajouter un contrôle durable authentifié et protégé contre les requêtes intersites, sans import, modèle ni téléchargement ; conserver l’import historique comme action distincte.
+- [x] Reproduire les cas de totaux égaux mais d’identifiants différents, doublons, filtres, bibliothèque vide, interruption et erreur de pagination, sans effacer les derniers compteurs complets.
+- [ ] Confirmer ces compteurs et les boutons de contrôle/import sur le NAS avec la clé Karakeep réelle, notamment les favoris archivés et les changements de visibilité.

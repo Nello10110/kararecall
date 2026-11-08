@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from kararecall import core as kararecall
 from kararecall.content_support import inventory
+from kararecall.synchronization import view as synchronization_view
 from kararecall.controls import action_status, history_status, library_paused
 from kararecall.version import __version__
 from kararecall.settings import integer
@@ -102,6 +103,7 @@ def overview(root,data,view_root):
     if connection.get('state')=='error':alert('connections','Le dernier contrôle des connexions a échoué','Consultez le diagnostic et les paramètres du worker.','#/administration')
     pointer=kararecall.read_json(root/'data/current.json',{})
     return {'version':__version__,'generated_at':now.isoformat(),'summary':summary,'source_types':kinds,
+            'synchronization':synchronization_view(root,view_root,len(sources),worker.get('sync_interval_seconds',900),bool(worker.get('heartbeat_at') and not worker.get('stale') and worker.get('state')=='running')),
             'content_coverage':inventory(sources),
             'additions':[{'date':day,'count':count} for day,count in days.items()],
             'alerts':alerts,'worker':worker,'usage':usage,'configuration':worker.get('configuration'),
@@ -119,6 +121,7 @@ def diagnostic(report):
     return {'application':'KaraRecall','version':report['version'],'generated_at':report['generated_at'],
             'summary':report['summary'],'storage':report['storage'],
             'content_coverage':report['content_coverage'],
+            'synchronization':{**report['synchronization'],'error':bool(report['synchronization'].get('error'))},
             'worker':{key:worker.get(key) for key in ('application_version','state','heartbeat_at','stale','sync_enabled','llm_enabled','asr_enabled','vision_enabled')},
             'usage':{key:usage.get(key) for key in ('month','calls','daily_calls','daily_call_limit','monthly_call_limit','accounted_usd','limit_usd','blocked_by')},
             'automation_suspended':report['actions']['library_paused'],

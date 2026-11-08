@@ -46,6 +46,8 @@ L’application conserve une bibliothèque privée sur votre NAS. Les traitement
 
 L’interface glass propose un thème sombre et un thème clair, avec une navigation adaptée au mobile. [Découvrir les écrans et leur rôle](docs/UX-ET-ADMINISTRATION.md).
 
+Le suivi **Synchronisation Karakeep** compare les favoris accessibles dans Karakeep avec les sources locales, affiche les éléments à importer et permet de vérifier ou actualiser le catalogue séparément des analyses IA. [Compteurs et commandes](docs/WEB.md#synchronisation-karakeep-060).
+
 ## Comment ça fonctionne
 
 ![Architecture fonctionnelle de KaraRecall : import, préparation, stockage et recherche sans appel IA ; transcription, vision, rédaction et enrichissement optionnels.](docs/assets/architecture-fonctionnelle.svg)

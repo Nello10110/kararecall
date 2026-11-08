@@ -77,8 +77,8 @@ def action_status(root):
 
 def request_action(root,kind,source_id=None,tool_id=None,confirmation=None,stage='all'):
     from kararecall.publication import active_root
-    if kind not in ('llm','refresh','research','clear','check'):raise ValueError('Commande inconnue.')
-    if kind=='check' and (source_id or tool_id):raise ValueError('Le contrôle porte sur les connexions configurées.')
+    if kind not in ('llm','refresh','research','clear','check','sync_check'):raise ValueError('Commande inconnue.')
+    if kind in ('check','sync_check') and (source_id or tool_id):raise ValueError('Le contrôle porte sur le catalogue ou les connexions configurées.')
     if stage not in ('all','asr','vision','document','llm') or (kind!='refresh' and stage!='all'):raise ValueError('Étape de reprise invalide.')
     if source_id is not None and (not isinstance(source_id,str) or len(source_id)>150):raise ValueError('Source invalide.')
     if tool_id is not None and (kind!='research' or not isinstance(tool_id,str)):raise ValueError('Outil invalide.')
@@ -93,7 +93,7 @@ def request_action(root,kind,source_id=None,tool_id=None,confirmation=None,stage
         catalogue=kararecall.read_json(active_root(root)/'data/catalog.json',{'sources':[],'entities':[]})
         if source_id and not any(row['id']==source_id for row in catalogue['sources']):raise ValueError('Source absente de la bibliothèque.')
         if kind=='refresh' and not source_id:raise ValueError('Une source est requise pour actualiser.')
-        if kind=='check':ids=['connections']
+        if kind in ('check','sync_check'):ids=['connections' if kind=='check' else 'catalogue']
         elif kind=='research':
             ids=[row['id'] for row in catalogue['entities'] if not tool_id or row['id']==tool_id]
         else:ids=[row['id'] for row in catalogue['sources'] if not source_id or row['id']==source_id]
@@ -140,6 +140,9 @@ def process_actions(settings):
             _update_action(settings.root,identifier,state='running',message=f'Traitement {index+1} sur {job["total"]}.')
             try:
                 if job['kind']=='clear':clear_library(settings)
+                elif job['kind']=='sync_check':
+                    from kararecall.synchronization import check
+                    check(settings)
                 elif job['kind']=='check':
                     try:
                         checked=check_connections(settings)

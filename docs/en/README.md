@@ -23,6 +23,8 @@ Karakeep saves an article, a website or a video. KaraRecall helps you find it ag
 
 The glass interface supports light/dark themes and mobile navigation. **This English documentation does not change the application language:** the interface and generated editorial content currently remain French. Original source text is preserved separately from French translations.
 
+The **Karakeep synchronization** panel compares accessible upstream bookmarks with local sources, shows missing records and provides separate catalogue check/import actions without starting AI analysis. [Counters and controls](web-and-api.md#karakeep-synchronization-060).
+
 ## How it works
 
 ![Functional architecture: local operations in blue, optional AI stages in purple.](../assets/functional-architecture.en.svg)
