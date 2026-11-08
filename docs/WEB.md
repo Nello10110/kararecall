@@ -43,7 +43,7 @@ Les commandes administratives exigent la même authentification, une origine aut
 - `POST /api/import-history` reçoit `{}` dans un corps de 1 Kio maximum. Il enregistre une demande dans `data/control/`.
 - `POST /api/tools/ID/edit` vérifie la révision de la fiche, et celle de l’autre fiche en cas de regroupement. La commande conserve les anciennes versions et publie la nouvelle après validation. Les anciens liens des fiches regroupées restent utilisables. Une fiche revue ou corrigée est préservée lors des traitements suivants.
 
-Les requêtes `HEAD` et `Range` permettent la navigation vidéo. Le reverse proxy doit conserver ces en-têtes, le statut 206 et l’en-tête `Authorization`. Le serveur est prévu pour un usage personnel derrière un reverse proxy, avec un compte partagé configuré dans `.env` ; il n’a pas de gestion multi-utilisateur ni d’éditeur intégré.
+Les requêtes `HEAD` et `Range` permettent la navigation vidéo. Le reverse proxy doit conserver ces en-têtes, le statut 206 et l’en-tête `Authorization`. Le serveur est prévu pour un usage personnel derrière un reverse proxy, avec un compte partagé configuré dans `.env` ; il n’a pas de gestion multi-utilisateur ; l’éditeur de fiches est limité à la revue sourcée.
 
 ## Routes des bulletins
 
@@ -69,7 +69,7 @@ Les éditions et leur historique sont distincts des générations du catalogue. 
 
 Les sources affichent un titre éditorial français (80 caractères maximum) et un résumé d’une phrase (180 caractères maximum). Une ancienne légende n’est plus utilisée comme grand titre. Tant qu’une source n’a pas été retraitée, un intitulé neutre et l’attente du résumé français sont affichés. Les noms propres des outils sont conservés.
 
-**Résumer / traduire**, disponible sur chaque source et en commande globale dans Sources et Activité, travaille sur les preuves déjà conservées. Cette commande ne télécharge pas de média et ne contacte pas Karakeep. Le worker et `LLM_ENABLED=true` restent nécessaires. Les sources en langue étrangère ou mêlant plusieurs langues reçoivent des traductions françaises par extrait, avec les identifiants et les temps des preuves originales. La traduction de documents longs peut demander plusieurs appels ; les morceaux sont mis en cache et la commande reprend après quota. Les textes originaux restent accessibles avec **Afficher les preuves originales**.
+**Résumer / traduire**, disponible sur chaque source et en commande globale dans Activité, travaille sur les preuves déjà conservées. Cette commande ne télécharge pas de média et ne contacte pas Karakeep. Le worker et `LLM_ENABLED=true` restent nécessaires. Les sources en langue étrangère ou mêlant plusieurs langues reçoivent des traductions françaises par extrait, avec les identifiants et les temps des preuves originales. La traduction de documents longs peut demander plusieurs appels ; les morceaux sont mis en cache et la commande reprend après quota. Les textes originaux restent accessibles avec **Afficher les preuves originales**.
 
 Hashtags, appels promotionnels et répétitions publicitaires sont écartés du contexte éditorial, des textes de présentation et des traductions ; les réponses REST et les preuves brutes restent conservées pour permettre de vérifier les citations. La reformulation peut se tromper : elle ne devient pas une preuve brute. Les titres, résumés, rubriques, mots-clés et bulletins sont demandés en français.
 
@@ -104,3 +104,5 @@ Les commandes authentifiées et protégées par anti-CSRF ajoutent :
 - `POST /api/automation` avec `{ "paused": true|false }` : suspend ou reprend les prochains passages automatiques, sans changer les clés, les plafonds ou les options du `.env`. Un passage déjà engagé peut se terminer ; les commandes manuelles restent disponibles.
 
 Les styles sont répartis entre les composants de base (`styles.css`) et le système glass (`glass.css`). `workspace.js` contient les écrans de consultation et d’administration, `app.js` conserve la navigation et les fiches/preuves, et `digests.js` conserve la veille. Le web et le worker embarquent `version.py`. Les deux images doivent être mises à jour ensemble.
+
+Une suspension explicite depuis Administration reste active pendant un import manuel de l’historique. Seule la suspension créée par le vidage local est levée automatiquement au prochain import, conformément à son message de confirmation.

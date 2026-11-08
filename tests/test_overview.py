@@ -83,6 +83,17 @@ class OverviewTests(unittest.TestCase):
         with self.assertRaises(ValueError):pause_automation(self.root,False)
         with self.assertRaises(ValueError):cancel_action(self.root,job['id'])
 
+    def test_manual_import_does_not_resume_an_explicit_automation_pause(self):
+        from controls import request_history, process_history, history_status
+        pause_automation(self.root,True)
+        request_history(self.root)
+        self.assertTrue(library_paused(self.root))
+        with patch('worker.run_cycle',return_value={'synced':2,'processed':0,'failed':0}) as collect:
+            self.assertTrue(process_history(Settings(root=self.root),collect))
+            self.assertTrue(collect.call_args.kwargs['catalog_only'])
+        self.assertTrue(library_paused(self.root))
+        self.assertIn('reste suspendue',history_status(self.root)['message'])
+
     def test_connection_check_records_read_only_results_without_inference(self):
         job=request_action(self.root,'check')
         self.assertEqual(job['total'],1)

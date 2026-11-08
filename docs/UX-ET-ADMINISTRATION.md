@@ -49,7 +49,7 @@ Le diagnostic téléchargeable est une projection séparée : version, compteurs
 
 ## Commandes et limites
 
-La suspension dans l’application empêche les prochains passages automatiques de synchronisation, recherche et préparation des bulletins. Un passage déjà engagé peut se terminer. Les commandes explicites restent utilisables. La reprise n’active pas une option désactivée dans le `.env`, notamment `SYNC_ENABLED`.
+La suspension dans l’application empêche les prochains passages automatiques de synchronisation, recherche et préparation des bulletins. Un passage déjà engagé peut se terminer. Les commandes explicites restent utilisables ; importer manuellement ne lève pas une suspension volontaire. La suspension créée par le vidage local, distincte, est levée au prochain import. La reprise n’active pas une option désactivée dans le `.env`, notamment `SYNC_ENABLED`.
 
 Annuler la suite d’une commande ne prétend pas interrompre une requête déjà partie chez un fournisseur. Ses résultats peuvent encore être publiés ; les éléments suivants de cette commande ne sont pas lancés. Le journal de coûts n’est pas remis à zéro. Un vidage confirmé n’est pas annulable par ce bouton.
 

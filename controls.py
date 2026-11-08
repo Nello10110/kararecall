@@ -29,7 +29,9 @@ def request_history(root):
     with locked(root,'state.lock'):
         if any(row['kind']=='clear' and row['state'] in ('queued','running') for row in action_status(root)['jobs']):
             raise ValueError('Attendre la fin du vidage avant de réimporter.')
-        kararecall.write_json(root/'data/control/library.json',{'paused':False})
+        suspension=kararecall.read_json(root/'data/control/library.json',{})
+        if suspension.get('reason')!='manual':
+            kararecall.write_json(root/'data/control/library.json',{'paused':False})
         current=history_status(root)
         if current['state'] in ('queued','running'):return current
         current={'id':uuid.uuid4().hex,'state':'queued','requested_at':now(),
@@ -56,7 +58,7 @@ def process_history(settings,import_catalog):
             try:
                 result=import_catalog(settings,catalog_only=True)
                 update_history(settings.root,state='completed',completed_at=now(),**result,
-                    message='Catalogue importé. Les analyses configurées suivront par lots si la synchronisation est activée.')
+                    message=('Catalogue importé. L’automatisation reste suspendue ; les traitements manuels sont disponibles.' if library_paused(settings.root) else 'Catalogue importé. Les analyses configurées suivront par lots si la synchronisation est activée.'))
             except Exception as exc:
                 from worker import safe_error
                 update_history(settings.root,state='error',completed_at=now(),message=safe_error(exc,settings))
@@ -103,7 +105,7 @@ def request_action(root,kind,source_id=None,tool_id=None,confirmation=None,stage
             if history['state'] in ('queued','running'):
                 history.update(state='cancelled',message='Import annulé par le vidage.')
                 kararecall.write_json(root/'data/control/history.json',history)
-            kararecall.write_json(root/'data/control/library.json',{'paused':True})
+            kararecall.write_json(root/'data/control/library.json',{'paused':True,'reason':'cleared'})
             ids=['library']
         job={'id':uuid.uuid4().hex,'kind':kind,'source_id':source_id,'tool_id':tool_id,'stage':stage,'ids':ids,
              'state':'queued','cursor':0,'total':len(ids),'failed':0,'requested_at':now(),
@@ -190,5 +192,5 @@ def pause_automation(root,paused):
     with locked(root,'state.lock'):
         if not paused and any(row['kind']=='clear' and row['state'] in ('queued','running') for row in action_status(root)['jobs']):
             raise ValueError('Attendre la fin du vidage avant de reprendre.')
-        kararecall.write_json(root/'data/control/library.json',{'paused':paused,'updated_at':now()})
+        kararecall.write_json(root/'data/control/library.json',{'paused':paused,'reason':'manual' if paused else None,'updated_at':now()})
     return {'paused':paused}
