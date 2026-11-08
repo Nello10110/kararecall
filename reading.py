@@ -2,7 +2,7 @@
 import hashlib
 import json
 
-from integrations import ServiceError, chat, json_result
+from integrations import ServiceError, chat, json_result, json_object_mode
 
 
 LONG_KINDS = ('page', 'document', 'pdf-page')
@@ -52,7 +52,7 @@ def summarize_passages(source, passages, settings, ledger, force=False):
     for passage in passages:
         payload = json.dumps({'section':passage['section'],'text':passage['text']}, ensure_ascii=False)
         identity = [SECTION_PROMPT, settings.llm_url, settings.llm_model, settings.llm_reasoning,
-                    settings.llm_thinking, settings.token_limit_param, output_tokens, payload]
+                    settings.llm_thinking, settings.token_limit_param, output_tokens, payload, json_object_mode(settings.llm_url)]
         key = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
         path = settings.root / 'data/work' / source['id'] / ('reading-' + key + '.json')
         cached = {} if force else kararecall.read_json(path, {})

@@ -20,7 +20,7 @@ import kararecall
 from controls import process_history, update_history, process_actions, library_paused
 from worker_documents import MAX_DOCUMENT_MB, document_path, extract_document, extraction_config
 from web_research import run_research
-from integrations import Karakeep, ServiceError, normalize_bookmark, chat, json_result, request_json
+from integrations import Karakeep, ServiceError, normalize_bookmark, chat, json_result, request_json, OCR_CONTRACT, json_object_mode
 from settings import Settings, initialize
 from reading import LONG_KINDS, summarize_passages
 from curation import clean_text, short_text, translate_evidence
@@ -82,7 +82,7 @@ def synthesize(source,evidence,settings,ledger=None,force=False):
         system+=' Les entrées passage sont des résumés intermédiaires reliés au texte original. Cite leurs identifiants pour les informations correspondantes. Signale la couverture partielle.'
     payload={'title':clean_text(source['title']),'url':source['url'],'bookmark_type':source.get('bookmark_type'),'content_status':source.get('content_status'),'evidence':rows,'coverage':coverage}
     cache_key=fingerprint([system,payload,settings.llm_url,settings.llm_model,settings.llm_max_tokens,
-                           settings.llm_thinking,settings.llm_reasoning,settings.token_limit_param])
+                           settings.llm_thinking,settings.llm_reasoning,settings.token_limit_param,json_object_mode(settings.llm_url)])
     cache_path=settings.root/'data/work'/source['id']/('synthesis-'+cache_key+'.json')
     cached={} if force else kararecall.read_json(cache_path,{})
     if cached:
@@ -187,6 +187,8 @@ def extract_stage(kind,media,source,settings,ledger,draft,force=False):
     config=['media-cache-v2',file_hash(media),kind,
         [settings.asr_url,settings.asr_model,settings.asr_timestamps] if kind=='asr' else
         [settings.vision_url,settings.vision_model,settings.vision_interval,settings.vision_max_frames,settings.vision_max_tokens,settings.vision_reasoning,settings.token_limit_param,settings.vision_thinking]]
+    if kind=='vision':
+        config.extend([OCR_CONTRACT,json_object_mode(settings.vision_url)])
     if kind=='vision' and settings.vision_sample_mode=='changes':
         config.append('changes-v1')
     key=fingerprint(config)

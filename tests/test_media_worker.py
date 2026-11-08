@@ -35,6 +35,7 @@ class MediaTests(unittest.TestCase):
             for packet in audio.encode(sound):container.mux(packet)
             for packet in audio.encode():container.mux(packet)
         self.calls=[]
+        self.vision_responses=[]
         self.fail_second_vision=False
         owner=self
         class Mock(BaseHTTPRequestHandler):
@@ -47,7 +48,8 @@ class MediaTests(unittest.TestCase):
                 if self.path=='/v1/audio/transcriptions':
                     data={'language':'fr','segments':[{'start':0,'end':0.7,'text':'Audio de test synthétique.'}]}
                 else:
-                    data={'choices':[{'message':{'content':json.dumps({'text':'Écran de test synthétique'})}}]}
+                    text=owner.vision_responses.pop(0) if owner.vision_responses else json.dumps({'text':'Écran de test synthétique'})
+                    data={'choices':[{'message':{'content':text}}]}
                 encoded=json.dumps(data).encode()
                 self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(encoded)));self.end_headers();self.wfile.write(encoded)
         self.server=ThreadingHTTPServer(('127.0.0.1',0),Mock)
@@ -132,6 +134,20 @@ class MediaTests(unittest.TestCase):
         with self.assertRaisesRegex(ServiceError,'MEDIA_MAX_SECONDS'):
             transcribe(self.media,self.output,self.config)
         self.assertEqual(self.calls,[])
+
+    def test_bad_vision_json_never_becomes_success_and_keeps_existing_transcript(self):
+        from worker_media import transcribe,recognize_frames
+        transcribe(self.media,self.output,self.config)
+        original=(self.output/'transcript.json').read_bytes()
+        self.vision_responses=['not JSON','   ']
+        with self.assertRaisesRegex(ServiceError,'deux réponses'):
+            recognize_frames(self.media,self.output,self.config)
+        self.assertFalse((self.output/'ocr.json').exists())
+        self.assertEqual((self.output/'transcript.json').read_bytes(),original)
+        recognize_frames(self.media,self.output,self.config)
+        self.assertEqual(kararecall.read_json(self.output/'ocr.json')['status'],'complete')
+        self.assertEqual((self.output/'transcript.json').read_bytes(),original)
+        self.assertEqual(sum(path=='/v1/audio/transcriptions' for path,_ in self.calls),1)
 
     def test_provider_change_invalidates_audio_cache(self):
         from worker_media import transcribe

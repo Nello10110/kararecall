@@ -81,3 +81,19 @@ Le navigateur dispose d’une seule nouvelle commande : `POST /api/import-histor
 Les tests utilisent des sites, notes et fichiers fictifs ainsi que des API simulées. Ils vérifient import manuel sans synchronisation active ni inférence, déduplication, reprise après interruption, échec sans publication partielle, résumé d’article sans outil, citations, recherche, profils et protections HTTP. Le contrôle Compose vérifie aussi la consommation d’une demande depuis le web avec la collecte périodique désactivée, puis signale la configuration manquante sans joindre un fournisseur.
 
 Références officielles consultées le 5 novembre 2026 : [schéma REST Karakeep](https://github.com/karakeep-app/karakeep/blob/main/packages/open-api/karakeep-openapi-spec.json), [base et modèles DeepSeek](https://api-docs.deepseek.com/), [vision](https://api-docs.deepseek.com/guides/vision), [paramètre thinking](https://api-docs.deepseek.com/guides/thinking_mode), [tarifs](https://api-docs.deepseek.com/quick_start/pricing).
+
+## Réponse vision invalide ou vide — correctif 0.3.1
+
+« Le modèle n’a pas renvoyé l’objet JSON attendu » désigne une réponse de modèle inexploitable, distincte d’un quota atteint. Le résumé du dernier traitement peut rester en attente alors qu’une ancienne synthèse et la transcription déjà publiée restent consultables.
+
+À partir de 0.3.1, les requêtes Chat Completions vers le domaine officiel `api.deepseek.com` demandent `response_format={"type":"json_object"}`. Les consignes contiennent aussi le format JSON attendu. Ce paramètre n’est pas imposé aux autres endpoints compatibles, dont le support varie. Les variables `INFERENCE_*` du conteneur Karakeep ne configurent pas les requêtes de KaraRecall.
+
+La lecture des captures vidéo, des images et des pages PDF utilise un contrat commun. Une réponse vide, un JSON mal formé ou un champ `text` absent/invalide déclenche au plus une seconde requête pour cette image dans une invocation de l’extracteur. Cette requête passe par le même journal de budget et les mêmes quotas ; une limite atteinte empêche son envoi. Les reprises du worker restent bornées séparément. Une troncature signalée, un refus du modèle ou une erreur HTTP n’est pas réessayé par ce mécanisme. Les journaux ne contiennent pas la réponse libre du modèle.
+
+`{"text":""}` est une réponse valide lorsqu’aucun texte n’est lisible. Une réponse vide ou invalide n’est jamais convertie en succès OCR. Le contrat et le mode JSON font partie des clés de cache OCR ; une mise à jour peut donc recalculer les images au prochain traitement. La clé de cache audio est conservée et les paroles valides sont réutilisables. Les anciennes preuves publiées ne sont pas réécrites.
+
+Pour appliquer : télécharger et redéployer les deux images `latest`, vérifier 0.3.1 dans Administration, puis utiliser **Réessayer l’analyse de l’écran** sur la source concernée. Le [guide Docker](IMAGES-DOCKER.md) donne les commandes. Il n’est pas nécessaire de vider la bibliothèque, de réimporter l’historique ou de relever les quotas pour corriger un format de réponse.
+
+Si l’erreur devient « sortie tronquée », vérifier `VISION_THINKING=disabled` avec DeepSeek et la valeur de `VISION_MAX_OUTPUT_TOKENS` avant un nouveau test ciblé. Ne pas augmenter cette limite en réponse à une erreur générique de format sans connaître la cause.
+
+La documentation DeepSeek signale que son mode JSON peut renvoyer des espaces seuls, même avec `finish_reason=stop`. Les tests du correctif reproduisent ce cas avec des API simulées ; ils ne constituent pas une validation de l’inférence sur le NAS. [JSON Output officiel](https://api-docs.deepseek.com/guides/json_mode).

@@ -79,6 +79,8 @@ Le worker sait appeler les services suivants :
 
 Un serveur simplement « compatible OpenAI » peut ne prendre en charge qu’une partie de ces routes ou paramètres. Chaque rôle doit être validé avec le modèle réellement choisi. Les références contrôlées empêchent les références inexistantes ; elles ne prouvent pas que la reformulation du modèle est fidèle. Les fiches automatiques restent marquées **À relire**.
 
+Depuis 0.3.1, les requêtes vers l’API DeepSeek officielle activent aussi son mode `json_object`. L’OCR vidéo/image/PDF autorise une seule seconde requête pour une réponse vide ou mal formée, via le même journal d’usage. Une troncature, un refus ou une erreur HTTP n’est pas réessayé par ce mécanisme. [Diagnostic et reprise](IMPORT-ET-DEEPSEEK.md#réponse-vision-invalide-ou-vide--correctif-031).
+
 ## 4. Un favori, du début à la fiche
 
 1. Si le profil `automation` et la synchronisation sont activés, le worker lit toutes les pages de favoris Karakeep. Il prépare l’import complet avant de publier les métadonnées locales. Par défaut tous les favoris sont retenus, y compris sites, articles, notes et fichiers. Des filtres URL/tags restent facultatifs. Le bouton d’import historique ignore ces filtres pour lire tout le catalogue sans téléchargement ni appel IA.

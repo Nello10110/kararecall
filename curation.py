@@ -4,7 +4,7 @@ import json
 import re
 
 import kararecall
-from integrations import ServiceError, chat, json_result
+from integrations import ServiceError, chat, json_result, json_object_mode
 
 
 def clean_text(text):
@@ -85,7 +85,7 @@ def translate_evidence(source,evidence,settings,ledger):
     def flush():
         if not batch:return
         identity=[TRANSLATION_PROMPT,settings.llm_url,settings.llm_model,settings.llm_thinking,
-                  settings.llm_reasoning,settings.token_limit_param,settings.llm_max_tokens,batch]
+                  settings.llm_reasoning,settings.token_limit_param,settings.llm_max_tokens,batch,json_object_mode(settings.llm_url)]
         key=hashlib.sha256(json.dumps(identity,ensure_ascii=False).encode()).hexdigest()
         path=settings.root/'data/work'/source['id']/('translation-'+key+'.json')
         cached=kararecall.read_json(path,{})

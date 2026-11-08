@@ -10,7 +10,7 @@ from controls import locked
 import digests
 import kararecall
 from curation import clean_text
-from integrations import ServiceError, chat, json_result
+from integrations import ServiceError, chat, json_result, json_object_mode
 from settings import Settings
 from usage import BudgetExceeded, UsageLedger
 
@@ -63,7 +63,7 @@ def validate(result, available):
 def write_item(root, item, settings, ledger):
     payload, available = packet(item,settings.llm_max_chars)
     identity = [PROMPT,payload,settings.llm_url,settings.llm_model,settings.llm_reasoning,
-                settings.llm_thinking,settings.token_limit_param,settings.llm_max_tokens]
+                settings.llm_thinking,settings.token_limit_param,settings.llm_max_tokens,json_object_mode(settings.llm_url)]
     key = hashlib.sha256(json.dumps(identity,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
     path = root/'data/work/digest-writing'/(key+'.json')
     cached = kararecall.read_json(path)

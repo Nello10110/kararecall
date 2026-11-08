@@ -71,7 +71,7 @@ class DocumentTests(unittest.TestCase):
         self.cycle(row,b'original image fixture',catalog_only=True)
         self.assertEqual(self.downloads,[])
         self.assertIsNone(self.catalog()['sources'][0]['processing']['attachment'])
-        with patch('worker_documents.chat') as model:
+        with patch('worker_documents.recognize_image') as model:
             self.cycle(row,b'original image fixture')
         model.assert_not_called()
         self.assertEqual(self.catalog()['sources'][0]['stages']['document'],'original_only')

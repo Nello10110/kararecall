@@ -212,3 +212,11 @@ Audit : [usage quotidien et administration](docs/UX-ET-ADMINISTRATION.md).
 - [x] Tags de commit pour figer une paire et promotion de `latest` après les deux constructions.
 - [x] Compose prêt à télécharger les images, guide de migration depuis `build.context` et construction locale conservée séparément.
 - [ ] Valider le premier téléchargement et la mise à jour des deux services sur le NAS via Dockhand.
+
+## Réponses vision structurées — correctif 0.3.1
+
+- [x] Activer le mode JSON natif des appels Chat Completions DeepSeek officiels, avec consigne et exemple JSON.
+- [x] Distinguer une réponse vide, un JSON invalide, une troncature et un refus, sans journaliser le contenu reçu.
+- [x] Unifier l’OCR vidéo/image/PDF et borner à une seconde requête par image en cas de sortie inexploitable, comptabilisée et soumise aux quotas.
+- [x] Versionner le contrat OCR dans les caches, conserver le cache audio et reproduire les échecs sur une vidéo synthétique sans publier de faux succès.
+- [ ] Confirmer la reprise de la source en échec après mise à jour du NAS vers 0.3.1 ; vérifier les textes reconnus et les références.
