@@ -167,7 +167,7 @@ def pipeline_key(source,settings):
         fields['page_asset_id']=source['page_asset_id']
         # Hydration is an output of this job, not a new upstream change.
         if source.get('page_origin'):fields['page_text']=''
-    if source.get('bookmark_type')=='link' and (not source.get('page_text') or source.get('page_origin')):
+    if source.get('bookmark_type')=='link' and not video_asset(source) and (not source.get('page_text') or source.get('page_origin')):
         fields['page_contract']='karakeep-content-v1'
         if source.get('page_origin'):fields['page_text']=''
     parts=['pipeline-v4-fr',fields,settings.download_media,settings.llm_enabled,
@@ -304,7 +304,7 @@ def run_cycle(settings,force_id=None,force_stage='all',catalog_only=False):
                         with db:db.execute('INSERT OR REPLACE INTO jobs VALUES (?,?,?,?,?,?,?)',(source['id'],digest,'running',attempts,0,'',now()))
                         errors=[];stages={};budget_pause=False;ordinary_error=False
                         archive(source,draft)
-                        if source.get('bookmark_type')=='link':
+                        if source.get('bookmark_type')=='link' and not video_asset(source):
                             try:stages['page']=acquire_page(source,client,draft)
                             except Exception as exc:
                                 stages['page']='failed';errors.append(safe_error(exc,settings));ordinary_error=True

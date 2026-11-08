@@ -92,6 +92,13 @@ class SourceEnrichmentTests(unittest.TestCase):
         with patch('integrations.request_json',return_value={'content':'texte','nextCursor':'same'}):
             with self.assertRaises(ServiceError):Karakeep(self.config).page_content('site-fixture')
 
+    def test_video_does_not_depend_on_a_readable_web_page(self):
+        raw=bookmark(crawlStatus='success',videoAssetId='video-one')
+        with patch('worker.Karakeep.bookmarks',return_value=iter([raw])),patch('worker.Karakeep.page_content') as page:
+            self.assertEqual(run_cycle(self.config)['processed'],1)
+            page.assert_not_called()
+            self.assertNotIn('page',self.source()['stages'])
+
     def test_title_only_waits_without_ai_then_new_upstream_text_is_analysed(self):
         raw=bookmark(crawlStatus='pending')
         self.config.llm_enabled=True;self.config.llm_url='https://example.invalid';self.config.llm_model='test'
