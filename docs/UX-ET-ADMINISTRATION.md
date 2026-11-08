@@ -68,3 +68,19 @@ Sur téléphone, le menu devient un panneau latéral avec gestion du focus et fe
 La validation utilise des fixtures pour les états de fonctionnement, les quotas, les commandes et leurs protections. La prévisualisation visuelle locale utilise une copie du corpus privé du POC ; elle ne simule pas une connexion réelle au NAS ni aux fournisseurs. Les données privées et captures de prévisualisation sont exclues de Git.
 
 À qualifier après déploiement : métadonnées et version du worker effectivement remontées, contrôle des endpoints réels, fidélité des contenus, usage sur les appareils habituels et restauration d’une sauvegarde du NAS. La planification de sauvegardes NAS, un navigateur de versions restaurables, les permissions multi-utilisateur et l’édition des secrets ne sont pas implémentés par cette évolution. Ces besoins ne doivent pas être présentés comme déjà couverts par un écran.
+
+## Revue des fiches — version 0.4
+
+Le retour d’usage montre que la refonte glass ne suffisait pas : le détail d’un outil donnait encore trop de place à la provenance et aux tâches d’entretien. La lecture quotidienne est désormais organisée en trois niveaux.
+
+| Niveau | Contenu |
+| --- | --- |
+| Accéder et comprendre | Nom, usage, domaine disponible, lien principal et copie du contexte pour un assistant. |
+| Approfondir | Utilité, fonctionnement, limites, liens utiles et compléments documentaires. Les textes restent attribués et leurs références se déplient. |
+| Entretenir | Présentation complète, sources et identification consultables ; édition, regroupement et commande web en bas de fiche, dans un volet replié. |
+
+Les cartes d’outils et les résultats de recherche reprennent cette priorité. Les indications d’auteur ou de vidéo ne servent plus de sous-titre d’outil. Le choix du lien principal ne réalise aucune vérification supplémentaire et n’invente pas un site lorsque l’adresse manque.
+
+La même passe couvre les sources vidéo, les articles, leurs preuves et les bulletins : commandes de traitement ou de diffusion après le contenu ; alertes de panne visibles mais compactes ; édition secondaire ; exports regroupés. Les paramètres administratifs restent dans Administration et Activité. Les citations, révisions et anciennes routes sont conservées.
+
+Validation locale sur une copie du corpus du POC : fiches et listes d’outils, ouverture des références vers le passage vidéo, éditeur replié, sources vidéo et article, bulletin et son éditeur. Contrôles à 390 px et en taille bureau, dans les thèmes clair et sombre. Les tests JavaScript utilisent un corpus fictif pour le choix de lien, les entrées manquantes ou non vérifiées, les références et la séparation lecture/édition. La validation des parcours sur les appareils habituels du NAS reste à confirmer.

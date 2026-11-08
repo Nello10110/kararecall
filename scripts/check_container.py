@@ -52,7 +52,7 @@ def main():
             overview=json.load(r);assert overview['summary']['sources']==0
         with request('/api/administration/diagnostic') as r:
             diagnostic=json.load(r);assert diagnostic['application']=='KaraRecall' and 'sources' not in diagnostic
-        for asset in ('/glass.css','/workspace.js'):
+        for asset in ('/glass.css','/workspace.js','/details.css','/details.js'):
             with request(asset) as r:assert r.status==200
             assert catalog['stats']==dict(tools=0,sources=0,processed=0)
         while True:

@@ -220,3 +220,12 @@ Audit : [usage quotidien et administration](docs/UX-ET-ADMINISTRATION.md).
 - [x] Unifier l’OCR vidéo/image/PDF et borner à une seconde requête par image en cas de sortie inexploitable, comptabilisée et soumise aux quotas.
 - [x] Versionner le contrat OCR dans les caches, conserver le cache audio et reproduire les échecs sur une vidéo synthétique sans publier de faux succès.
 - [ ] Confirmer la reprise de la source en échec après mise à jour du NAS vers 0.3.1 ; vérifier les textes reconnus et les références.
+
+## Ergonomie des fiches — version 0.4
+
+- [x] Mettre les liens explicites et l’usage en tête des outils, sans inventer de site officiel.
+- [x] Déplacer l’édition, le regroupement et l’enrichissement web dans un volet secondaire en bas de fiche.
+- [x] Regrouper les références sans perdre les passages ni leur attribution et retirer les mentions de vidéo des sous-titres de navigation des outils.
+- [x] Revoir les cartes, résultats, sources, preuves et bulletins avec la même priorité donnée à la lecture.
+- [x] Vérifier les parcours bureau/mobile et les thèmes sur une copie privée, ainsi que les cas de liens invalides ou absents sur fixtures.
+- [ ] Confirmer le confort de lecture et les liens principaux sur le corpus réel du NAS après mise à jour vers 0.4.

@@ -106,3 +106,15 @@ Les commandes authentifiées et protégées par anti-CSRF ajoutent :
 Les styles sont répartis entre les composants de base (`styles.css`) et le système glass (`glass.css`). `workspace.js` contient les écrans de consultation et d’administration, `app.js` conserve la navigation et les fiches/preuves, et `digests.js` conserve la veille. Le web et le worker embarquent `version.py`. Les deux images doivent être mises à jour ensemble.
 
 Une suspension explicite depuis Administration reste active pendant un import manuel de l’historique. Seule la suspension créée par le vidage local est levée automatiquement au prochain import, conformément à son message de confirmation.
+
+## Lecture des fiches 0.4
+
+Les outils mettent en tête leur nom, une présentation utile et le meilleur lien explicite disponible. Le lien est choisi parmi ceux conservés dans la fiche, sans fabriquer de domaine ni qualifier automatiquement un site d’officiel. Les liens de publication d’origine, réseaux sociaux, adresses avec identifiants et liens signalés en échec ne sont pas utilisés comme destination principale. Une page d’accueil déjà enregistrée comme lien d’outil consulté reste admissible, même si elle est aussi un favori. Un lien relevé mais non vérifié reste présenté comme tel. Le lien est aussi accessible depuis les cartes de la bibliothèque et les résultats de recherche, sans imbriquer les ancres.
+
+L’utilité, le fonctionnement et les limites précèdent les informations de provenance. Une présentation qui se borne à mentionner une vidéo laisse place, lorsqu’il existe, à un texte utile déjà sourcé dans la fiche. Le contenu conservé n’est pas réécrit : la description complète, les repères, les références et les sources restent disponibles dans les volets correspondants. Les références identiques d’une affirmation sont regroupées et les passages restent cliquables. L’attribution reste affichée sous chaque texte ; les hypothèses restent signalées.
+
+**Gérer cette fiche**, replié en bas de page, contient l’éditeur, le regroupement et la recherche web explicite. Les contrôles de révision, l’authentification, l’anti-CSRF et les routes ne changent pas. L’export est regroupé dans un menu natif.
+
+Les sources donnent priorité à la consultation du document ou de la vidéo et à ses preuves. **Gérer cette source** contient les traitements et leur état détaillé ; un échec ou une pause produit un avis compact avec un bouton qui ouvre les détails. Les sources sans vidéo n’affichent plus des étapes audio/écran non pertinentes. Les bulletins présentent l’article avant **Diffusion et édition**, qui conserve les commandes et le suivi d’envoi. Leur préparation automatique ne nécessite pas une composition manuelle.
+
+Les composants de lecture et les liens sont dans `details.js`, leur présentation dans `details.css`. Ils restent servis par la liste statique authentifiée et la politique CSP existante. Les volets et menus utilisent les éléments HTML natifs, avec focus visible et mise en page mobile. Aucun appel IA ou externe n’est ajouté par l’ouverture d’une fiche.

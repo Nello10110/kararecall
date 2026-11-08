@@ -138,7 +138,7 @@ class OverviewHTTPTests(unittest.TestCase):
         return status,body,header
 
     def test_new_read_routes_and_assets_require_auth_and_catalog_export_is_explicit(self):
-        for path in ['/api/overview','/api/administration','/api/administration/diagnostic','/download/catalog.json','/glass.css','/workspace.js']:
+        for path in ['/api/overview','/api/administration','/api/administration/diagnostic','/download/catalog.json','/glass.css','/workspace.js','/details.css','/details.js']:
             self.assertEqual(self.send(path,Authorization='bad')[0],401)
             self.assertEqual(self.send(path)[0],200)
         status,body,headers=self.send('/api/administration/diagnostic')

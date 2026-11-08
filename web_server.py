@@ -310,7 +310,7 @@ def make_handler(corpus, username='', password=''):
             if not self.authorized():
                 return self.send_bytes(b'Authentification requise', 'text/plain; charset=utf-8', 401,
                                        {'WWW-Authenticate': 'Basic realm="KaraRecall", charset="UTF-8"'})
-            static = {'/': 'index.html', '/app.js': 'app.js', '/digests.js':'digests.js', '/styles.css': 'styles.css', '/glass.css':'glass.css', '/workspace.js':'workspace.js', '/icon.svg': 'icon.svg'}
+            static = {'/': 'index.html', '/app.js': 'app.js', '/digests.js':'digests.js', '/styles.css': 'styles.css', '/glass.css':'glass.css', '/workspace.js':'workspace.js', '/details.js':'details.js', '/details.css':'details.css', '/icon.svg': 'icon.svg'}
             if path in static:
                 return self.serve_file(WEB / static[path])
             if path=='/api/control':
