@@ -1,8 +1,10 @@
 # Architecture de KaraRecall
 
-État décrit le 6 novembre 2026. Ce document distingue le code livré des raccordements encore à réaliser. Les commandes de déploiement et les essais restants sont dans les guides [homelab](HOMELAB.md) et [pilote](PILOTE.md).
+État décrit le 8 novembre 2026. Ce document distingue le code livré des raccordements encore à réaliser. Les commandes de déploiement et les essais restants sont dans les guides [homelab](HOMELAB.md) et [pilote](PILOTE.md).
 
 L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cette vue : quatre limites de retraitement/cache/couverture ont été reproduites sur des données fictives. Les corrections techniques sont maintenant décrites dans [P0.md](P0.md) ; les validations avec les services réels et sur le NAS restent à effectuer.
+
+Pour une première lecture sans détails techniques : [architecture fonctionnelle illustrée](ARCHITECTURE-FONCTIONNELLE.md), avec les étapes IA et les opérations locales.
 
 ## 1. Ce qui fonctionne aujourd’hui
 
@@ -12,10 +14,10 @@ L’[étude d’exploitation et des coûts](ETUDE-EXPLOITATION.md) complète cet
 |---|---|
 | POC local | Trois vidéos ont été transcrites sur le Mac avec faster-whisper et analysées par OCR Apple Vision. Les premières fiches ont été rédigées et enrichies avec l’assistant. |
 | Consultation et recherche | Implémentées ; lisent le corpus conservé, sans appeler un modèle. |
-| Collecte REST Karakeep | Implémentée et testée avec une API simulée ; à connecter au serveur réel du homelab. |
-| Worker Docker : audio, vision, synthèse | Clients API implémentés ; tests avec services simulés et vidéo synthétique. Aucune inférence sur un fournisseur réel n’a été validée pour ce worker. |
+| Collecte REST Karakeep | Implémentée et testée avec une API simulée ; le pilote NAS a démarré, la qualification détaillée est suivie séparément. |
+| Worker Docker : audio, vision, synthèse | Clients API implémentés ; tests avec services simulés et vidéo synthétique. Un premier favori analysé a été signalé sur le NAS ; chaque contrat et la qualité des résultats réels restent à qualifier. |
 | Installation neuve | Bibliothèque vide ; collecte et synthèse désactivées dans la configuration d’exemple, modèles audio/vision non renseignés. |
-| NAS | Compose prêt à construire ; déploiement, ressources réelles et connexions restent à valider sur le matériel. |
+| NAS et images Docker | Pilote NAS démarré. Images publiques AMD64/ARM64 publiées après les tests, avec `latest` et tags de commit ; restauration, ressources en charge et endpoints à qualifier. |
 | Enrichissement web et MCP | Pilote web DeepSeek configurable et adaptateur MCP local en lecture seule. |
 
 Le fait que le POC ait produit une transcription ne signifie donc pas qu’un moteur de transcription est déjà fourni dans le Compose. Le script local existe ; son exposition comme service serait nécessaire pour un profil Mac. Le profil API proposé n’en dépend pas et peut être généré avec `scripts/setup_env.py --profile deepseek`.
@@ -102,7 +104,7 @@ Le traitement des sources est séquentiel, mais audio et vision sont indépendan
 | API ASR distante | Renseigner URL, modèle et clé d’un service conforme, puis tester une vidéo. | Indépendant du Mac ; audio envoyé au fournisseur, coût et règles de conservation propres au service. |
 | Moteur directement sur le NAS | Non fourni dans le Compose actuel. Possibilité à mesurer selon CPU, RAM et petit modèle choisi. | Autonomie vis-à-vis du Mac, mais concurrence avec les autres services du NAS ; les 2–3 Go disponibles ne suffisent pas à garantir la faisabilité ou la vitesse. |
 
-Orientation après l’[étude des coûts](ETUDE-EXPLOITATION.md), **pas encore déployée** : un premier profil API économique peut rendre le NAS autonome vis-à-vis du Mac, si la transmission des données convient. Le moteur local sur Mac reste une alternative à mesurer pour la confidentialité ou un besoin constaté ; le faible coût estimé des API ne suffit pas à rendre ce service local obligatoire. Aucun fournisseur n’est sélectionné par ce document.
+Orientation proposée par l’[étude des coûts](ETUDE-EXPLOITATION.md), à qualifier pendant le pilote : un premier profil API économique peut rendre le NAS autonome vis-à-vis du Mac, si la transmission des données convient. Le moteur local sur Mac reste une alternative à mesurer pour la confidentialité ou un besoin constaté ; le faible coût estimé des API ne suffit pas à rendre ce service local obligatoire. Aucun fournisseur n’est sélectionné par ce document.
 
 ## 6. Rôle de FFmpeg et réduction des appels IA
 
@@ -130,7 +132,7 @@ Le bouton de contexte fournit un texte à copier dans un assistant ; il ne trans
 
 | Emplacement | Contenu et responsabilité |
 |---|---|
-| Dépôt Git privé | Code, documentation, exemple de configuration et tests synthétiques. Aucun corpus utilisateur ni secret. |
+| Dépôt Git et images publics | Code, documentation, exemple de configuration et tests synthétiques. Aucun corpus utilisateur ni secret. |
 | `.env` sur l’hôte | Identifiants web, adresses, modèles, clés et activation des services. Compose transmet explicitement les variables requises à chaque conteneur ; le web ne reçoit pas les clés IA/Karakeep. Modifier ce fichier puis recréer les services pour appliquer les changements. |
 | Volume Docker du NAS | Sources normalisées, réponses brutes versionnées, médias, extractions et fiches ; données privées à sauvegarder séparément. |
 | `data/current.json`, `data/generations/…` | Pointeur vers le catalogue et les Markdown d’une génération validée ; les chemins du catalogue sont relatifs à cette génération. |
@@ -147,10 +149,10 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 
 | Fichier | Responsabilité |
 |---|---|
-| `compose.yaml`, `Dockerfile` | Services web/worker, volume, réseau et limites de ressources. |
+| `compose.yaml`, `compose.build.yaml`, `Dockerfile` | Images publiées web/worker, construction locale, volume, réseau et limites de ressources. |
 | `settings.py`, `.env.example` | Paramètres, validations et activation des étapes. |
 | `integrations.py` | Lecture REST Karakeep et client de conversation compatible OpenAI. |
-| `controls.py` | File durable des demandes manuelles d’import du catalogue, sans inférence. |
+| `controls.py` | File durable d’import, d’analyse, de recherche web et de vidage ; annulation de la suite et suspension des passages automatiques. |
 | `worker.py` | Synchronisation, file de tâches, reprises, synthèse et publication. |
 | `publication.py`, `usage.py` | Générations, preuves immuables et réservations/consommations IA persistantes. |
 | `worker_media.py` | Préparation audio/images et clients ASR/vision du worker Docker. |
@@ -160,6 +162,7 @@ Le web est limité à 384 Mio et le worker à 768 Mio dans Compose, sans moteur 
 | `kararecall_mcp.py` | Adaptateur stdio vers l’API web en lecture seule. |
 | `kararecall.py` | Preuves, validation des fiches, catalogue, Markdown et recherche. |
 | `web_server.py`, `web/` | Interface, authentification, API de lecture et médias. |
+| `overview.py`, `version.py` | Vue d’ensemble, diagnostic sans contenu, configuration publique et versions web/worker. |
 | `scripts/transcribe.py`, `scripts/process.py`, `scripts/ocr.swift` | Pipeline local historique : faster-whisper et OCR Apple Vision sur macOS, distinct du worker Docker. |
 
 Les essais restants portent sur les services réels, les modèles, le NAS et l’usage du MCP depuis un assistant. Un raccordement audio local et une recherche hybride dépendent des résultats du pilote. [Backlog](../backlog.md).

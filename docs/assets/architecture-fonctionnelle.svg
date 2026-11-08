@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1136" viewBox="0 0 1320 1136" role="img" aria-labelledby="title desc">
+<title id="title">Architecture fonctionnelle de KaraRecall : traitements locaux et étapes IA</title>
+<desc id="desc">Karakeep est lu sans modification. Sur le NAS, KaraRecall importe les favoris, prépare les textes et médias, conserve une bibliothèque privée et permet la consultation et la recherche par mots sans appel IA. Sur activation, des services IA transcrivent le son, lisent les images, rédigent les synthèses et les bulletins. Une recherche web facultative fournit des pages pour enrichir les descriptions avec un LLM. Les résultats sont conservés avec leurs références. Les modèles sont hébergés séparément, sur une machine locale ou chez un fournisseur API.</desc>
+<defs>
+  <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0c1424"/><stop offset="1" stop-color="#18213a"/></linearGradient>
+  <linearGradient id="local" x2="1" y2="1"><stop stop-color="#142a3d"/><stop offset="1" stop-color="#172b3e"/></linearGradient>
+  <linearGradient id="ai" x2="1" y2="1"><stop stop-color="#27253f"/><stop offset="1" stop-color="#222b45"/></linearGradient>
+  <marker id="blue" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#80d9ee" stroke-width="1.7"/></marker>
+  <marker id="purple" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#c4b5fd" stroke-width="1.7"/></marker>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
+    .title { fill:#f2f6ff; font-weight:650; font-size:34px; letter-spacing:-.7px; }
+    .heading { fill:#f2f6ff; font-weight:600; font-size:22px; }
+    .copy { fill:#c5d1e4; font-size:18px; }
+    .small { fill:#b1c2d9; font-size:16px; }
+    .label { fill:#91dded; font-size:15px; font-weight:650; letter-spacing:1.4px; }
+    .line { fill:none; stroke:#80d9ee; stroke-width:2.5; marker-end:url(#blue); }
+    .optional { fill:none; stroke:#c4b5fd; stroke-width:2.5; stroke-dasharray:7 6; marker-end:url(#purple); }
+  </style>
+</defs>
+<rect width="1320" height="1136" rx="28" fill="url(#bg)"/>
+<text x="48" y="60" class="title">Du favori à la connaissance.</text>
+<text x="48" y="94" class="copy">KaraRecall · Une bibliothèque privée sur votre NAS, enrichie selon vos choix.</text>
+<circle cx="57" cy="132" r="6" fill="#80d9ee"/><text x="74" y="138" class="small">Sans appel IA de KaraRecall</text>
+<circle cx="375" cy="132" r="6" fill="#c4b5fd"/><text x="392" y="138" class="small">Étape IA optionnelle</text>
+<circle cx="639" cy="132" r="6" fill="#a6b5ca"/><text x="656" y="138" class="small">Service connecté</text>
+<text x="1257" y="138" text-anchor="end" class="label">VUE FONCTIONNELLE</text>
+
+<rect x="48" y="176" width="720" height="100" rx="18" fill="#202b40" stroke="#495a74"/>
+<text x="76" y="216" class="heading">Karakeep · Vos favoris enregistrés</text>
+<text x="76" y="246" class="copy">Sites, articles, notes, fichiers et vidéos · Instagram et autres sources</text>
+<rect x="812" y="176" width="472" height="100" rx="18" fill="#202b40" stroke="#495a74"/>
+<text x="840" y="216" class="heading">Web · Recherche complémentaire</text>
+<text x="840" y="246" class="copy">Pages publiques et documentation éditeur</text>
+
+<rect x="36" y="324" width="744" height="724" rx="24" fill="#101e30" stroke="#365f79"/>
+<text x="64" y="359" class="label">SUR VOTRE NAS · DOCKER</text>
+<text x="64" y="382" class="small">Collecte, stockage et interface · sans modèle IA embarqué</text>
+<rect x="812" y="324" width="472" height="724" rx="24" fill="#201f35" stroke="#7062a8"/>
+<text x="840" y="359" class="label" style="fill:#c4b5fd">SERVICES CONFIGURÉS · OPTIONNELS</text>
+<text x="840" y="385" class="small">Machine locale ou fournisseur API distant</text>
+
+<path d="M700 276 V452 H624" class="line"/>
+<rect x="365" y="285" width="290" height="26" rx="10" fill="#0e192b"/>
+<text x="380" y="304" class="small">Lecture seule · aucun favori modifié</text>
+<path d="M1050 276 V316" class="optional"/>
+
+<rect x="64" y="402" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d"/>
+
+<text x="88" y="435" class="heading" >1 · Importer les favoris</text>
+
+<rect x="512" y="417" width="84" height="26" rx="13" fill="#213f53"/>
+<text x="554" y="435" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">SANS IA</text>
+
+<text x="88" y="463" class="copy" >Textes et métadonnées fournis par Karakeep</text>
+
+<text x="88" y="487" class="copy" >Import historique · mises à jour sans doublon</text>
+
+<rect x="64" y="548" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d"/>
+
+<text x="88" y="581" class="heading" >2 · Préparer les contenus</text>
+
+<rect x="512" y="563" width="84" height="26" rx="13" fill="#213f53"/>
+<text x="554" y="581" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">SANS IA</text>
+
+<text x="88" y="609" class="copy" >Pièces jointes · piste audio · captures vidéo</text>
+
+<text x="88" y="633" class="copy" >Texte PDF et sous-titres existants, si disponibles</text>
+
+<rect x="64" y="718" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d"/>
+
+<text x="88" y="751" class="heading" >3 · Conserver et relier</text>
+
+<rect x="512" y="733" width="84" height="26" rx="13" fill="#213f53"/>
+<text x="554" y="751" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">SANS IA</text>
+
+<text x="88" y="779" class="copy" >Sources, médias et preuves dans un volume privé</text>
+
+<text x="88" y="803" class="copy" >Synthèses séparées · références conservées</text>
+
+<rect x="64" y="886" width="552" height="100" rx="17" fill="url(#local)" stroke="#39677d"/>
+
+<text x="88" y="919" class="heading" >4 · Consulter et retrouver</text>
+
+<rect x="512" y="901" width="84" height="26" rx="13" fill="#213f53"/>
+<text x="554" y="919" class="small" text-anchor="middle" style="fill:#9ce3ee;font-size:13px;font-weight:650">SANS IA</text>
+
+<text x="88" y="947" class="copy" >Recherche par mots · vidéo et transcription</text>
+
+<text x="88" y="971" class="copy" >Fiches, veille, exports et administration</text>
+
+<path d="M340 502 V540" class="line"/>
+<path d="M340 648 V710" class="line"/>
+<path d="M340 818 V878" class="line"/>
+<text x="64" y="1023" class="small" >Une source importée peut rester partielle ; son état réel est affiché.</text>
+
+<rect x="840" y="420" width="416" height="108" rx="17" fill="url(#ai)" stroke="#7469aa"/>
+<text x="864" y="452" class="heading" style="font-size:21px">ASR · Transcrire les paroles</text>
+
+<text x="864" y="481" class="copy" style="font-size:17px">Audio → texte, avec temps si fournis</text>
+
+<text x="864" y="506" class="copy" style="font-size:17px">Service audio distinct du modèle texte</text>
+
+<rect x="840" y="546" width="416" height="108" rx="17" fill="url(#ai)" stroke="#7469aa"/>
+<text x="864" y="578" class="heading" style="font-size:21px">Vision · Lire le texte des images</text>
+
+<text x="864" y="607" class="copy" style="font-size:17px">Captures, images et pages PDF → texte</text>
+
+<text x="864" y="632" class="copy" style="font-size:17px">Échantillonnage et limites conservés</text>
+
+<rect x="840" y="672" width="416" height="134" rx="17" fill="url(#ai)" stroke="#7469aa"/>
+<text x="864" y="704" class="heading" style="font-size:21px">LLM · Résumer et rédiger</text>
+
+<text x="864" y="733" class="copy" style="font-size:17px">Textes disponibles → résumés et fiches</text>
+
+<text x="864" y="758" class="copy" style="font-size:17px">Traductions françaises et articles de veille</text>
+
+<text x="864" y="783" class="copy" style="font-size:17px">Les originaux restent accessibles</text>
+
+<rect x="840" y="824" width="416" height="134" rx="17" fill="url(#ai)" stroke="#7469aa"/>
+<text x="864" y="856" class="heading" style="font-size:21px">Web + LLM · Enrichir les fiches</text>
+
+<text x="864" y="885" class="copy" style="font-size:17px">Recherche et lecture via une API dédiée</text>
+
+<text x="864" y="910" class="copy" style="font-size:17px">Puis description issue des pages lues</text>
+
+<text x="864" y="935" class="copy" style="font-size:17px">URL et traces séparées des sources</text>
+
+<text x="840" y="991" class="small" >Seules les étapes activées reçoivent du contenu.</text>
+
+<text x="840" y="1018" class="small" >Clés, modèles et quotas définis dans le .env.</text>
+
+<path d="M616 598 H804" class="optional"/>
+<text x="714" y="556" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">Contenus des</text>
+
+<text x="714" y="577" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">étapes activées</text>
+
+<path d="M812 768 H624" class="optional"/>
+<text x="714" y="728" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">Résultats</text>
+
+<text x="714" y="749" class="small" text-anchor="middle" style="font-size:15px;fill:#d1c8f4">avec références</text>
+
+<line x1="48" y1="1074" x2="1272" y2="1074" stroke="#34425a"/>
+<text x="48" y="1104" class="small" >Lire, chercher et exporter n’appellent aucun modèle. Les traitements propres à Karakeep sont hors de ce schéma.</text>
+
+</svg>

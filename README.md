@@ -1,24 +1,82 @@
-# KaraRecall
+<p align="center">
+  <img src="web/icon.svg" width="76" height="76" alt="Logo KaraRecall" />
+</p>
 
-KaraRecall est une application à héberger chez toi pour retrouver, résumer et explorer tes favoris Karakeep. Elle conserve les textes et preuves disponibles, ainsi que des fiches avec la description des outils, leurs usages, leur fonctionnement et des liens pour approfondir.
+<h1 align="center">KaraRecall</h1>
 
-Le manuel couvre la configuration du NAS, le premier import et l’activation de DeepSeek. Il inclut une méthode sans Python installé sur le NAS. **[Manuel d’installation](docs/INSTALLATION.md)**.
+<p align="center">
+  <strong>Retrouvez vos découvertes. Comprenez ce qu’elles apportent. Gardez le fil.</strong><br />
+  Votre bibliothèque personnelle à partir de tous vos favoris Karakeep.
+</p>
 
-Pour transférer une installation sous l’ancien nom et conserver son historique, suis la [migration vers KaraRecall](docs/HOMELAB.md#passer-à-kararecall).
+<p align="center">
+  Auto-hébergé sur NAS · Docker Compose · Interface et synthèses en français · IA configurable
+</p>
 
-Les évolutions à discuter et les travaux restants sont dans le [backlog](backlog.md), avec un ordre de réalisation proposé et des critères vérifiables.
+<p align="center">
+  <a href="docs/INSTALLATION.md">Installer</a> ·
+  <a href="#comment-ça-fonctionne">Comprendre le fonctionnement</a> ·
+  <a href="docs/IMAGES-DOCKER.md">Mettre à jour</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="backlog.md">Backlog</a>
+</p>
 
-Le [document d’architecture](docs/ARCHITECTURE.md) décrit le fonctionnement global, le rôle de chaque modèle, les options locales et les raccordements encore à réaliser.
+<p align="center">
+  <a href="https://github.com/Nello10110/kararecall/actions/workflows/ci.yml"><img src="https://github.com/Nello10110/kararecall/actions/workflows/ci.yml/badge.svg" alt="État des tests et de la publication Docker" /></a>
+</p>
 
-Le [guide du pilote](docs/PILOTE.md) permet de vérifier l’installation sur le NAS. Les décisions de stockage, de mise à jour et d’export sont dans le [guide d’exploitation à long terme](docs/EXPLOITATION-LONG-TERME.md).
+## Vos favoris deviennent une bibliothèque exploitable
 
-L’[étude pour l’usage quotidien](docs/ETUDE-EXPLOITATION.md) compare les options et les coûts. Le [socle P0](docs/P0.md) implémente maintenant les générations cohérentes, preuves versionnées, reprises et budgets. La qualification des API réelles et du NAS reste à effectuer.
+Un article à relire, un outil aperçu dans une vidéo, un site à tester : Karakeep les enregistre ; KaraRecall permet de les retrouver, de comprendre leur intérêt et de repartir de leurs sources.
 
-Le NAS conserve les données et sert l’interface. Un travailleur optionnel synchronise Karakeep en lecture seule, extrait les médias et appelle les services IA configurés. Les modèles tournent sur une autre machine ou chez un fournisseur API : aucun gros modèle n’est chargé sur le NAS.
+L’application conserve une bibliothèque privée sur votre NAS. Les traitements IA configurés peuvent y ajouter des résumés courts en français, des traductions, les paroles des vidéos et le texte visible à l’écran. La consultation reste disponible lorsque les modèles sont indisponibles.
 
-## Démarrage rapide
+**Tous les favoris sont inclus par défaut** : sites, articles, notes, fichiers, PDF, images et vidéos, dont les reels Instagram. Karakeep reste une source en lecture seule : KaraRecall ne modifie, ne tague et ne supprime aucun favori.
 
-Avec Docker Compose v2, lance ces commandes depuis le dossier de tes applications sur le NAS.
+| Pour… | KaraRecall propose… |
+| --- | --- |
+| **Retrouver une découverte** | Une recherche dans les titres, textes, résumés, transcriptions et textes reconnus dans les images. |
+| **Comprendre un outil** | Une fiche avec description, utilité, fonctionnement, limites et liens pour approfondir, accompagnée de ses références. |
+| **Revenir au bon passage** | La vidéo et sa transcription côte à côte, des passages cliquables, des captures horodatées et des références par page pour les PDF. |
+| **Faire de la veille** | Des articles illustrés hebdomadaires et mensuels, consultables dans l’application ; mail, RSS privé et webhook selon la configuration. |
+| **Poursuivre avec un assistant** | Des exports Markdown, un contexte sourcé à copier et un adaptateur MCP en lecture seule. |
+| **Garder la main** | Un tableau de bord, le suivi des traitements, les quotas IA, les diagnostics et les commandes de pause et de reprise. |
+
+L’interface glass propose un thème sombre et un thème clair, avec une navigation adaptée au mobile. [Découvrir les écrans et leur rôle](docs/UX-ET-ADMINISTRATION.md).
+
+## Comment ça fonctionne
+
+![Architecture fonctionnelle de KaraRecall : import, préparation, stockage et recherche sans appel IA ; transcription, vision, rédaction et enrichissement optionnels.](docs/assets/architecture-fonctionnelle.svg)
+
+1. **Importer.** Le worker lit Karakeep et récupère les textes et métadonnées. L’import de tout l’historique est disponible dans l’interface et ne crée pas de doublons pour un même identifiant Karakeep.
+2. **Préparer.** Lors des traitements, les pièces jointes sont téléchargées et préparées localement : extraction du son, captures vidéo, texte incorporé aux PDF et sous-titres existants.
+3. **Enrichir, si configuré.** Les services audio, vision et texte produisent les extractions et synthèses demandées. Une recherche web optionnelle complète les fiches à partir de pages lues, avec leurs URL et leurs traces.
+4. **Conserver et consulter.** Sources, médias, preuves et synthèses restent dans le volume privé. Vous recherchez, consultez, relisez et exportez les résultats depuis le navigateur.
+
+**Bleu : aucun appel IA de KaraRecall. Violet : traitement IA optionnel.** Les services IA sont hébergés séparément, sur une machine locale ou chez un fournisseur API. Aucun serveur de modèles n’est installé par le Compose.
+
+[Lire le schéma pas à pas](docs/ARCHITECTURE-FONCTIONNELLE.md) · [Ouvrir le schéma en grand](docs/assets/architecture-fonctionnelle.svg) · [Architecture technique](docs/ARCHITECTURE.md)
+
+### Où intervient l’IA ?
+
+| Étape | Utilisation de l’IA dans KaraRecall |
+| --- | --- |
+| Import du catalogue et dédoublonnage | **Aucune.** L’import historique ne télécharge pas les médias et ne lance aucune analyse IA. |
+| Téléchargement et préparation des médias | **Aucune.** Extraire le son, créer des captures, lire le texte incorporé aux PDF ou réutiliser des sous-titres ne demande pas de modèle. |
+| Reconnaissance de nouvelles paroles | **Oui, si activée.** Un moteur audio spécialisé (ASR, par exemple Whisper) transforme le son en texte. |
+| Lecture du texte dans les images | **Oui, si activée.** Un modèle vision lit les captures, images ou aperçus de pages PDF. |
+| Résumés, traductions et fiches | **Oui, si activés.** Le modèle texte rédige à partir des contenus disponibles et de leurs références. |
+| Enrichissement web des outils | **Services de recherche/lecture + LLM.** Les pages sont obtenues via une API dédiée ; le LLM rédige le complément à partir des pages lues. |
+| Bulletins de veille | **IA pour la rédaction automatique.** Sélection, mise en page, exports et diffusion sont des opérations applicatives. |
+| Recherche dans votre bibliothèque, consultation et exports | **Aucune.** Ces actions utilisent les contenus déjà conservés et ne relancent pas les modèles. |
+
+La recherche actuelle est **lexicale** : elle normalise les accents et tolère certaines fautes. Elle ne comporte pas encore de recherche sémantique ni d’embeddings. La rédaction préalable des résumés enrichit les textes recherchables, sans ajouter d’appel LLM à chaque recherche.
+
+Les éventuels traitements IA réalisés par Karakeep lui-même sont indépendants de ceux décrits ici.
+
+## Démarrer sur votre NAS
+
+Prérequis : **Docker Compose v2**, un serveur Karakeep accessible et une clé API Karakeep. Les images publiques sont disponibles pour **Linux AMD64 et ARM64** ; aucun compte GitHub ni build sur le NAS n’est nécessaire pour les télécharger.
 
 ```sh
 git clone https://github.com/Nello10110/kararecall.git
@@ -26,91 +84,89 @@ cd kararecall
 python3 scripts/setup_env.py --profile deepseek
 ```
 
-Ouvre `.env` et complète les lignes `KARAKEEP_BASE_URL` et `KARAKEEP_API_KEY`. Mets `COMPOSE_PROFILES=automation` pour démarrer le worker et `KARARECALL_BIND_ADDRESS=0.0.0.0` pour accéder à l’interface depuis le réseau du NAS. Conserve `SYNC_ENABLED=false` et `LLM_ENABLED=false` pour le premier import. Les filtres URL/tags restent vides afin de prendre tous les favoris.
+Complétez les lignes existantes dans le fichier privé `.env` :
+
+```dotenv
+KARAKEEP_BASE_URL='https://karakeep.example.net'
+KARAKEEP_API_KEY='REMPLACER_PAR_VOTRE_CLE_KARAKEEP'
+COMPOSE_PROFILES=automation
+KARARECALL_BIND_ADDRESS=0.0.0.0
+SYNC_ENABLED=false
+LLM_ENABLED=false
+KARAKEEP_URL_FILTER=
+KARAKEEP_TAG_FILTER=
+```
 
 ```sh
 docker compose up -d
 ```
 
-Les images publiques `ghcr.io/nello10110/kararecall-web:latest` et `ghcr.io/nello10110/kararecall-worker:latest` sont téléchargées sans construction sur le NAS ni authentification GitHub. [Mise à jour, Compose existant et construction locale](docs/IMAGES-DOCKER.md).
+Ouvrez **`http://IP_DU_NAS:8765`**, connectez-vous avec les identifiants générés dans `.env`, puis choisissez **Activité → Importer tout l’historique**. Pour un essai uniquement sur le Mac, gardez l’écoute `127.0.0.1` et ouvrez [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
-Ouvre **`http://IP_DU_NAS:8765`** avec `KARARECALL_USERNAME` et `KARARECALL_PASSWORD` indiqués dans `.env`, puis clique sur **Activité → Importer tout l’historique**. Sur le Mac, garder l’écoute `127.0.0.1` et ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765).
+L’import initial fonctionne sans IA. Activez ensuite les modèles et la synchronisation après un premier essai sur une source. Le profil DeepSeek prépare le texte et la vision ; la transcription audio se configure séparément. Clés, endpoints, modèles et plafonds restent dans votre `.env`.
 
-Les commandes pour un NAS sans Python et le premier essai DeepSeek figurent dans le manuel. Pour un accès distant, utilise un VPN ou le [reverse proxy HTTPS du homelab](docs/HOMELAB.md#réseau).
+**[Suivre le manuel d’installation](docs/INSTALLATION.md)** — avec une méthode sans Python sur le NAS, l’activation de DeepSeek et les premiers contrôles. Pour un accès distant, utilisez un VPN ou un reverse proxy HTTPS.
 
-**Une nouvelle installation démarre vide.** Les favoris, vidéos, notes et clés du POC ne sont pas inclus dans Git ni dans les images. Les données persistent dans le volume Docker `kararecall-storage`, indépendamment des conteneurs. Le [guide homelab](docs/HOMELAB.md) explique aussi comment importer un corpus local existant.
+### Des mises à jour avec latest
 
-## Activer la collecte et les fiches IA
-
-Le profil recommandé prépare DeepSeek `deepseek-flash` pour les captures et la synthèse. La transcription audio reste à configurer séparément. Aucun compte ni clé n’est fourni ; aucun appel n’est activé par la création du fichier. Le [guide import et DeepSeek](docs/IMPORT-ET-DEEPSEEK.md) précise les capacités, limites et coûts. Le profil alternatif `--profile api` reste disponible.
-
-Dans `.env`, renseigner `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY` et la clé DeepSeek dans `LLM_API_KEY`. La vision hérite de la clé LLM si `VISION_API_KEY` est vide. **Tous les favoris sont collectés par défaut**, y compris sites, articles, notes, fichiers et favoris archivés. Garder `KARAKEEP_URL_FILTER=` et `KARAKEEP_TAG_FILTER=` pour conserver ce périmètre ; corriger un ancien `.env` limité à Instagram.
-
-Dans **Activité**, le bouton **Importer tout l’historique** demande au worker de récupérer le catalogue complet, sans appel IA ni téléchargement média. Le worker doit être démarré avec ses accès Karakeep ; la synchronisation périodique peut rester désactivée pour cet import. Les analyses suivront ensuite par lots avec les étapes et le budget configurés.
-
-Le [guide P0](docs/P0.md) donne le premier passage manuel puis l’activation de `SYNC_ENABLED=true`, `LLM_ENABLED=true` et du profil Compose `automation`. Commencer avec `WORKER_BATCH_SIZE=1`, contrôler les preuves, puis démarrer la boucle. `ASR_MODEL` et `VISION_MODEL` vides désactivent leurs étapes.
-
-Ces services sont indépendants et facultatifs. Un modèle ASR ou vision vide désactive l’étape et aucun audio/image n’est envoyé à ce service. Sans ces étapes, une fiche peut être produite depuis la légende et le texte de page ; elle ne constitue pas une analyse vidéo. L’ASR doit prendre en charge le contrat `verbose_json` : la seule compatibilité texte avec OpenAI ne suffit pas.
+Le Compose utilise `ghcr.io/nello10110/kararecall-web:latest` et `ghcr.io/nello10110/kararecall-worker:latest`. Les images sont publiées après les tests ; des tags de commit permettent de figer une paire.
 
 ```sh
-# Vérifier les adresses, l’authentification et les modèles annoncés.
-docker compose --profile automation run --rm worker python worker.py check
-# Télécharger puis lancer la consultation et la boucle automatique.
-docker compose up -d
-docker compose logs --tail=50 worker
+docker compose --profile automation pull web worker
+docker compose --profile automation up -d --no-deps web worker
 ```
 
-Le contrôle de connexion ne lance pas d’inférence. Les premières analyses permettront de vérifier la compatibilité réelle du modèle et de son JSON. Le worker démarre immédiatement, puis repasse toutes les 15 minutes, trois sources par passage par défaut. Les erreurs sont réessayées avec délai croissant, trois tentatives au maximum par configuration ; les résultats déjà traités sont réutilisés. Aucune tâche Codex n’est nécessaire.
+`latest` est téléchargé au déploiement : un conteneur déjà lancé ne change pas tout seul. Conservez le volume et votre `.env`. [Guide Docker : Dockhand, Compose existant, versions figées et construction locale](docs/IMAGES-DOCKER.md).
 
-## Consulter et poursuivre
+## Vos données et vos réglages restent chez vous
 
-Le tableau de bord regroupe les nouveautés et les alertes ; Activité suit les traitements ; Administration expose les services, quotas, versions et données. L’interface glass propose un thème sombre et un thème clair, avec navigation mobile. [Organisation des écrans et limites d’administration](docs/UX-ET-ADMINISTRATION.md).
+- **Un volume persistant privé** conserve les JSON, médias, preuves, fiches et bulletins. Une installation neuve démarre vide ; aucun favori ni secret n’est livré dans le dépôt ou les images.
+- **Des contenus séparés** distinguent texte original, note personnelle, transcription, texte reconnu, traduction, synthèse et vérification externe. Les références et anciennes versions restent disponibles.
+- **Des services IA explicites** reçoivent uniquement les contenus correspondant aux étapes configurées : textes, audio ou images. Un endpoint peut être local ou distant ; les appels distants transmettent ces contenus au fournisseur choisi.
+- **Des traitements bornés** disposent de cache, reprises et quotas persistants. La consultation fonctionne sans fournisseur IA ; les nouveaux traitements qui en dépendent attendent ou signalent leur échec.
 
-Recherche par souvenir, bibliothèque d’outils, sources originales, transcription et captures horodatées, lecture vidéo à l’instant cité, suivi des traitements et exports Markdown. Le bouton de contexte prépare un texte à copier dans un assistant, avec les explications, liens et preuves. Il n’appelle pas lui-même de service IA.
+Le volume Docker assure la persistance ; il faut aussi une sauvegarde séparée. [Configuration, réseau et sauvegarde/restauration](docs/HOMELAB.md).
 
-Les titres et synthèses sont rédigés en français ; les sources affichent un résumé d’une phrase. Les commandes web permettent de résumer/traduire une source ou toute la bibliothèque, de relancer une analyse et d’enrichir les outils sur le web. Les preuves originales restent accessibles séparément. [Commandes et traductions](docs/WEB.md#résumés-français-et-commandes-de-traitement).
+## À connaître avant de commencer
 
-Chaque favori peut recevoir un résumé de lecture sourcé ; les articles sans outil identifiable restent des sources avec leur résumé et ne sont pas transformés en faux outils. Lors d’un traitement, KaraRecall conserve les PDF et images sans texte fourni par Karakeep. Le texte des PDF est extrait localement, page par page. Pour les images, `IMAGE_OCR_ENABLED=true` active la lecture par le service vision configuré. [Paramètres et limites](docs/HOMELAB.md#pdf-et-images).
+Les résultats IA peuvent comporter des erreurs : une référence valide ne garantit pas une reformulation fidèle. Les fiches automatiques restent à relire. L’interface distingue un favori importé, un résumé produit et une vidéo effectivement transcrite et analysée à l’écran.
 
-Les fiches générées automatiquement portent **À relire**. Leurs propos sont attribués aux sources. Les liens relevés restent non vérifiés ; une vérification documentaire exige une trace externe explicite. La recherche est lexicale, avec normalisation des accents et rapprochement orthographique, sans embeddings.
+Les vidéos sont limitées par défaut à **100 Mio et 5 minutes** ; la vision échantillonne au plus **12 captures**, espacées d’au moins 5 secondes, et peut manquer un texte bref. Un PDF ou une image sans texte exploitable reste signalé comme partiellement traité ou comme métadonnées seules. Les suppressions dans Karakeep ne suppriment pas les copies locales.
 
-## Veille hebdomadaire et mensuelle
+Le budget applicatif est réglé par défaut sur **2 USD/mois**. Il s’agit d’un suivi comptable configurable, distinct de la facture fournisseur et des appels propres à Karakeep. La diffusion des bulletins exige la configuration et l’activation du canal choisi. L’application utilise un compte partagé ; elle ne gère pas de rôles multi-utilisateurs.
 
-L’onglet **Veille** présente de véritables articles rédigés à partir des favoris et de leurs preuves, avec les captures disponibles. Le worker produit une première sélection de l’historique, puis les éditions hebdomadaires et mensuelles. La rédaction et la diffusion fonctionnent automatiquement après raccordement du modèle et du canal d’envoi dans `.env`. Les exports HTML/Markdown, le PDF via impression et le RSS privé restent disponibles. [Guide des bulletins](docs/VEILLE.md).
+Le pilote NAS a démarré ; la qualité sur un corpus varié, les coûts réels, les endpoints et la restauration sur le matériel restent à qualifier. [Guide du pilote](docs/PILOTE.md) · [Travaux restants](backlog.md).
 
-## Architecture et stockage
+## Documentation
 
-```text
-Navigateur → web (Python + HTML/CSS/JS) → catalogue, médias, Markdown
-                                         ↑
-Karakeep (GET uniquement) → worker → volume persistant
-                              ↕
-                 LLM / transcription / vision configurés
-```
-
-Les réponses brutes, médias, extractions et JSON de sources/fiches constituent le corpus portable. Après publication, `data/current.json` sélectionne une génération complète sous `data/generations/…` ; les chemins du catalogue sont relatifs à cette génération et les anciennes preuves restent conservées. `vault/` contient les fiches Markdown générées et `data/catalog.json` le catalogue. SQLite conserve les tâches et le journal d’usage, ainsi qu’un index régénérable. La consultation fonctionne sans IA ni accès internet une fois les données présentes. AFFiNE et Wiki.js restent utilisables pour les notes personnelles ou des copies Markdown ; aucun connecteur vers eux n’est implémenté.
-
-Le web est limité à 384 Mio et le worker à 768 Mio avec traitement séquentiel. Ces limites ne couvrent pas le serveur de modèles extérieur. [Exploitation, sauvegarde, mise à jour et paramètres](docs/HOMELAB.md) · [Interface et API de lecture](docs/WEB.md).
+| Votre besoin | Guide |
+| --- | --- |
+| Installer et importer vos premiers favoris | [Manuel d’installation](docs/INSTALLATION.md) |
+| Comprendre les grands flux et les rôles IA | [Architecture fonctionnelle](docs/ARCHITECTURE-FONCTIONNELLE.md) |
+| Comprendre les composants, contrats et formats | [Architecture technique](docs/ARCHITECTURE.md) |
+| Mettre à jour avec `latest`, utiliser Dockhand ou construire localement | [Images Docker](docs/IMAGES-DOCKER.md) |
+| Configurer le NAS, le réseau et les sauvegardes | [Guide homelab](docs/HOMELAB.md) |
+| Brancher Karakeep, DeepSeek et les moteurs de traitement | [Import et DeepSeek](docs/IMPORT-ET-DEEPSEEK.md) |
+| Utiliser les écrans et administrer l’application | [Parcours et administration](docs/UX-ET-ADMINISTRATION.md) · [Interface et API](docs/WEB.md) |
+| Configurer les articles et les canaux de diffusion | [Veille hebdomadaire et mensuelle](docs/VEILLE.md) |
+| Comprendre la recherche web et ses références | [Enrichissement web](docs/RECHERCHE-WEB.md) |
+| Connecter un assistant à la bibliothèque | [MCP en lecture seule](docs/MCP.md) |
+| Valider l’installation et mesurer les résultats | [Pilote](docs/PILOTE.md) · [Socle de fiabilité](docs/P0.md) |
+| Comprendre les choix, les coûts et les évolutions envisagées | [Étude d’exploitation](docs/ETUDE-EXPLOITATION.md) · [Long terme](docs/EXPLOITATION-LONG-TERME.md) · [Backlog](backlog.md) |
 
 ## Développement et validation
 
-Python 3.12 est utilisé dans les images. Le cœur et les tests HTTP n’ont aucune dépendance tierce. Le test Docker construit le code local via `compose.build.yaml` :
+Python 3.12 dans les images, une interface HTML/CSS/JavaScript sans compilation, un service web et un worker optionnel. Le Compose limite le web à 384 Mio et le worker à 768 Mio, hors services de modèles.
 
 ```sh
-python3 -m unittest discover -s tests -v
+PYTHONPYCACHEPREFIX=.build/pycache python3 -m unittest discover -s tests -v
 python3 scripts/check_container.py
-docker build --target worker -t kararecall-worker:local .
-docker run --rm --mount "type=bind,src=$PWD/tests,dst=/tests,readonly" -e PYTHONPATH=/app kararecall-worker:local python -m unittest discover -s /tests -p test_media_worker.py -v
 ```
 
-Les tests distribués utilisent un corpus fictif, des API locales simulées et une petite vidéo synthétique. Ils couvrent la pagination, la déduplication, les références inventées, les reprises sur erreur, l’authentification, les chemins autorisés, les exports, les requêtes vidéo partielles et les étapes ASR/vision. La CI reproduit ces contrôles sur Linux, y compris sauvegarde/restauration sur un volume neuf. Le test Compose crée puis supprime son propre volume temporaire.
+Le test Docker utilise `compose.build.yaml`, construit le code local et supprime ses ressources de test. La CI vérifie également les médias et MCP sur des données synthétiques. Pour développer avec les deux services :
 
-Les scripts historiques `scripts/process.py`, `transcribe.py`, `frames.py` et `ocr.swift` permettent toujours un traitement local sur macOS avec `requirements.txt` ; ils ne sont pas utilisés par le worker Docker. Les lanceurs `.command` démarrent la consultation locale depuis ce dossier.
+```sh
+docker compose -f compose.yaml -f compose.build.yaml up -d --build
+```
 
-Les fiches sont modifiables et regroupables depuis le navigateur. Un assistant compatible peut lire la bibliothèque via l’adaptateur local. [Guide MCP](docs/MCP.md).
-
-La recherche web par outil s’active dans le worker. Les résultats et les pages consultées sont présentés séparément des preuves de la fiche. [Configuration et coût](docs/RECHERCHE-WEB.md).
-
-**Limites connues :** aucune connexion réelle à vos futurs endpoints ni aucun déploiement sur le NAS n’a encore été validé. Les vidéos sont limitées à 100 Mio et 300 secondes par défaut ; la vision échantillonne au plus 12 images et peut manquer un texte bref. Les modèles peuvent se tromper et les références valides ne garantissent pas l’exactitude d’une reformulation. Le budget comptable par défaut est de 2 USD/mois ; les tarifs et usages estimés ne remplacent pas la facture fournisseur. Les suppressions Karakeep ne sont pas répercutées localement. Un remplacement de pièce jointe vidéo déjà conservée est bloqué pour préserver ses preuves et demande une intervention.
-
-Documentation des contrats utilisés : [API Karakeep](https://github.com/karakeep-app/karakeep/blob/main/packages/open-api/karakeep-openapi-spec.json), [compatibilité OpenAI d’Ollama](https://docs.ollama.com/api/openai-compatibility), [transcription audio](https://platform.openai.com/docs/guides/speech-to-text), [variables Compose](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/).
+Les scripts historiques macOS (`scripts/process.py`, transcription locale et OCR Apple Vision) sont distincts du worker Docker. Les JSON, Markdown et preuves restent portables ; SQLite est un stockage dérivé ou opérationnel selon son rôle. AFFiNE et Wiki.js peuvent recevoir des exports manuels, sans connecteur de synchronisation intégré.
