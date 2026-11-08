@@ -18,7 +18,7 @@ Le NAS conserve les données et sert l’interface. Un travailleur optionnel syn
 
 ## Démarrage rapide
 
-Avec Docker Compose v2 et un accès au dépôt GitHub privé, lance ces commandes depuis le dossier de tes applications sur le NAS.
+Avec Docker Compose v2, lance ces commandes depuis le dossier de tes applications sur le NAS.
 
 ```sh
 git clone https://github.com/Nello10110/kararecall.git
@@ -29,8 +29,10 @@ python3 scripts/setup_env.py --profile deepseek
 Ouvre `.env` et complète les lignes `KARAKEEP_BASE_URL` et `KARAKEEP_API_KEY`. Mets `COMPOSE_PROFILES=automation` pour démarrer le worker et `KARARECALL_BIND_ADDRESS=0.0.0.0` pour accéder à l’interface depuis le réseau du NAS. Conserve `SYNC_ENABLED=false` et `LLM_ENABLED=false` pour le premier import. Les filtres URL/tags restent vides afin de prendre tous les favoris.
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 ```
+
+Les images publiques `ghcr.io/nello10110/kararecall-web:latest` et `ghcr.io/nello10110/kararecall-worker:latest` sont téléchargées sans construction sur le NAS ni authentification GitHub. [Mise à jour, Compose existant et construction locale](docs/IMAGES-DOCKER.md).
 
 Ouvre **`http://IP_DU_NAS:8765`** avec `KARARECALL_USERNAME` et `KARARECALL_PASSWORD` indiqués dans `.env`, puis clique sur **Activité → Importer tout l’historique**. Sur le Mac, garder l’écoute `127.0.0.1` et ouvrir [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
@@ -53,8 +55,8 @@ Ces services sont indépendants et facultatifs. Un modèle ASR ou vision vide d�
 ```sh
 # Vérifier les adresses, l’authentification et les modèles annoncés.
 docker compose --profile automation run --rm worker python worker.py check
-# Construire puis lancer la consultation et la boucle automatique.
-docker compose up -d --build
+# Télécharger puis lancer la consultation et la boucle automatique.
+docker compose up -d
 docker compose logs --tail=50 worker
 ```
 
@@ -92,7 +94,7 @@ Le web est limité à 384 Mio et le worker à 768 Mio avec traitement séquentie
 
 ## Développement et validation
 
-Python 3.12 est utilisé dans les images. Le cœur et les tests HTTP n’ont aucune dépendance tierce :
+Python 3.12 est utilisé dans les images. Le cœur et les tests HTTP n’ont aucune dépendance tierce. Le test Docker construit le code local via `compose.build.yaml` :
 
 ```sh
 python3 -m unittest discover -s tests -v

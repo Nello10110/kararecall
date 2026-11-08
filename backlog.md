@@ -8,7 +8,7 @@ Volume prévu précisé par l’utilisateur : **environ 20 vidéos/mois**. Dimen
 
 - [x] POC sur trois vidéos avec transcription locale, OCR et fiches sourcées.
 - [x] Interface dédiée : consultation, recherche globale, vidéo et transcription côte à côte, passages cliquables, exports Markdown et contexte pour assistant.
-- [x] Dépôt GitHub privé, Compose web/worker, configuration d’exemple et CI sur données synthétiques.
+- [x] Dépôt GitHub (désormais public), Compose web/worker, configuration d’exemple et CI sur données synthétiques.
 - [x] [Document d’architecture](docs/ARCHITECTURE.md) : composants, flux, rôles IA et options locales.
 - [x] Étude des limites, coûts, alternatives et critères de passage à l’exploitation ; quatre limites de retraitement/cache/couverture reproduites sur un corpus fictif.
 
@@ -205,3 +205,10 @@ Audit : [usage quotidien et administration](docs/UX-ET-ADMINISTRATION.md).
 - [x] Thèmes glass sombre/clair, navigation mobile et maintien des anciennes routes de preuves et fiches.
 - [ ] Qualifier les nouveaux états de configuration, le contrôle des fournisseurs et les parcours sur le NAS après mise à jour des deux images.
 - [ ] Étudier un parcours de restauration des anciennes générations et une preuve de sauvegarde externe, avant de présenter ces fonctions comme administrables dans l’interface.
+
+## Distribution Docker — 8 novembre 2026
+
+- [x] Publication GHCR des images web/worker AMD64 et ARM64 après réussite des tests sur `main`.
+- [x] Tags de commit pour figer une paire et promotion de `latest` après les deux constructions.
+- [x] Compose prêt à télécharger les images, guide de migration depuis `build.context` et construction locale conservée séparément.
+- [ ] Valider le premier téléchargement et la mise à jour des deux services sur le NAS via Dockhand.

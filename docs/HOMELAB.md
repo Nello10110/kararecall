@@ -6,14 +6,15 @@ Ce guide décrit les commandes disponibles. Le [guide P0](P0.md) détaille le pr
 
 ## Configuration
 
-Le dépôt privé contient uniquement le code et des tests fictifs. Sur le NAS, cloner le dépôt puis exécuter `python3 scripts/setup_env.py --profile deepseek` ou créer `.env` depuis `.env.example`. Garder ce fichier sur le serveur : Compose transmet explicitement les variables requises à chaque service. Le service web ne reçoit aucune clé Karakeep ou IA.
+Le dépôt public contient uniquement le code et des tests fictifs. Sur le NAS, cloner le dépôt puis exécuter `python3 scripts/setup_env.py --profile deepseek` ou créer `.env` depuis `.env.example`. Garder ce fichier sur le serveur : Compose transmet explicitement les variables requises à chaque service. Le service web ne reçoit aucune clé Karakeep ou IA.
 
 | Paramètres `.env` | Rôle |
 |---|---|
 | `KARARECALL_USERNAME`, `KARARECALL_PASSWORD` | Accès web ; mot de passe d’exemple refusé |
 | `KARARECALL_BIND_ADDRESS`, `KARARECALL_PORT` | Adresse d’écoute de l’hôte et port ; défaut 127.0.0.1:8765 |
 | `KARARECALL_VOLUME_NAME` | Nom du volume persistant, défaut `kararecall-storage` |
-| `PUID`, `PGID` | UID/GID de l’utilisateur non privilégié créé dans l’image ; défaut 10001 |
+| `KARARECALL_IMAGE_TAG` | Tag commun aux deux images publiées ; défaut `latest` |
+| `PUID`, `PGID` | UID/GID utilisés seulement par `compose.build.yaml` ; images publiées en 10001:10001 |
 | `COMPOSE_PROFILES=automation` | Active le service worker avec un simple `docker compose up` |
 | `SYNC_ENABLED` | Autorise la collecte périodique ; défaut false |
 | `KARAKEEP_BASE_URL`, `KARAKEEP_API_KEY` | Adresse Karakeep et clé Bearer ; pas besoin d’ajouter `/api/v1` |
@@ -69,7 +70,7 @@ L’import manuel du catalogue reste indépendant du téléchargement et de l’
 ## Lancement et diagnostic
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 docker compose ps
 docker compose logs --tail=50 web worker
 docker compose --profile automation run --rm worker python worker.py check
@@ -88,7 +89,7 @@ Un verrou empêche deux workers de modifier le même volume. La synchronisation 
 
 Les erreurs de traitement sont conservées sans contenu de réponse distant ni clé dans `data/worker.sqlite`. Le résumé est dans `data/service-status.json` et la vue Activité. Le worker actualise son signal de présence pendant l’attente entre deux passages. La vue signale un état ancien et un espace libre inférieur à `STORAGE_MIN_FREE_MB`. Un téléchargement qui atteindrait ce seuil est interrompu. Le statut `done` signifie que les étapes configurées ont fini. L’interface affiche séparément la transcription et l’OCR réellement disponibles. Une erreur ASR laisse la vision progresser et publier ses résultats. La synthèse attend les étapes en échec. Trois tentatives automatiques sont permises par défaut, puis `worker.py retry --source ID --stage asr|vision|document|llm|all` permet une reprise explicite. [Politique de conservation et de versionnement](EXPLOITATION-LONG-TERME.md#conservation).
 
-Le web a une limite de 384 Mio et le worker de 768 Mio ; un seul média est traité à la fois. Les images utilisent `python:3.12-slim` et sont construites pour l’architecture du NAS. Le parcours web a été testé sous OrbStack Linux ARM64, autour de 21 Mio au repos avec le petit corpus de test. Ce n’est pas une mesure de charge du worker ni une garantie mémoire pour un gros corpus. Une limite trop basse peut provoquer un arrêt OOM, à diagnostiquer via `docker compose ps` et les journaux.
+Le web a une limite de 384 Mio et le worker de 768 Mio ; un seul média est traité à la fois. Les images utilisent `python:3.12-slim` ; le registre fournit Linux AMD64 et ARM64, sélectionné automatiquement par Docker. Le parcours web a été testé sous OrbStack Linux ARM64, autour de 21 Mio au repos avec le petit corpus de test. Ce n’est pas une mesure de charge du worker ni une garantie mémoire pour un gros corpus. Une limite trop basse peut provoquer un arrêt OOM, à diagnostiquer via `docker compose ps` et les journaux.
 
 ## Réseau
 
@@ -125,10 +126,11 @@ Pour une installation sous l’ancien nom, commence par la [migration vers KaraR
 ```sh
 git pull --ff-only
 # Comparer .env.example avec .env pour les nouveaux paramètres.
-docker compose up -d --build
+docker compose --profile automation pull web worker
+docker compose --profile automation up -d --no-deps web worker
 ```
 
-Le dépôt n’inclut pas d’image publiée dans un registre : le NAS doit pouvoir cloner le dépôt privé et construire les images. Pour Portainer ou un gestionnaire de stacks Git, fournir l’accès privé au dépôt, le chemin `compose.yaml` et les valeurs du `.env` via son mécanisme de variables. Les conteneurs en fonctionnement n’ont pas besoin d’accès GitHub. La procédure a été testée localement ; le déploiement sur le NAS reste à effectuer.
+Le Compose utilise les images publiques GHCR avec `latest` et `pull_policy: always`. Aucun accès Git privé ni build sur le NAS n’est nécessaire. Dans Dockhand/Portainer, télécharger puis redéployer les deux services ensemble, en conservant les variables et le volume. `latest` ne met pas à jour un conteneur déjà lancé : un déploiement reste nécessaire. Pour un Compose personnalisé avec anciens `build.context`, supprimer les deux blocs `build` et remplacer les images selon le [guide des images](IMAGES-DOCKER.md). Ce guide explique aussi les versions figées, le retour arrière et la construction locale avec UID/GID personnalisés.
 
 ## Passer à KaraRecall
 
@@ -157,9 +159,9 @@ Cette procédure s’applique aux installations dont le `.env` contient des vari
 4. Restaure la sauvegarde, vérifie le contenu, puis démarre KaraRecall.
 
    ```sh
-   docker compose run --rm --no-deps --build -T web tar -C /workspace -xzf - < kararecall-migration.tar.gz &&
+   docker compose run --rm --no-deps -T web tar -C /workspace -xzf - < kararecall-migration.tar.gz &&
      docker compose run --rm --no-deps -T web python verify_storage.py &&
-     docker compose up -d --build
+     docker compose up -d
    ```
 
    Vérifie que tes sources, fiches et preuves sont visibles dans l’interface. Garde la sauvegarde et l’ancien volume jusqu’à cette vérification.

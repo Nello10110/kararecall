@@ -2,12 +2,8 @@ name: kararecall
 
 services:
   web:
-    build:
-      context: .
-      target: web
-      args:
-        PUID: ${PUID:-10001}
-        PGID: ${PGID:-10001}
+    image: ghcr.io/nello10110/kararecall-web:${KARARECALL_IMAGE_TAG:-latest}
+    pull_policy: always
     ports:
       - "${KARARECALL_BIND_ADDRESS:-127.0.0.1}:${KARARECALL_PORT:-8765}:8765"
     environment:
@@ -50,12 +46,8 @@ services:
         max-file: "2"
   worker:
     profiles: [automation]
-    build:
-      context: .
-      target: worker
-      args:
-        PUID: ${PUID:-10001}
-        PGID: ${PGID:-10001}
+    image: ghcr.io/nello10110/kararecall-worker:${KARARECALL_IMAGE_TAG:-latest}
+    pull_policy: always
     environment:
       DIGEST_SEND_ENABLED: ${DIGEST_SEND_ENABLED:-false}
       DIGEST_CHANNELS: ${DIGEST_CHANNELS:-}

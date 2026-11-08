@@ -5,7 +5,7 @@ Ce guide mène jusqu’à la consultation de tous les favoris Karakeep. La premi
 ## Avant de commencer
 
 - Docker avec Compose v2 fonctionne sur le NAS.
-- Tu disposes d’un accès au dépôt GitHub privé, de l’adresse de Karakeep et de sa clé API.
+- Tu disposes de l’adresse de Karakeep et de sa clé API. Le code et les images Docker sont publics.
 - Prépare ta clé DeepSeek si tu veux activer les résumés à l’étape 6.
 
 Les commandes se lancent dans le terminal du NAS, par exemple en SSH. Pour essayer sur le Mac avec OrbStack, les mêmes commandes conviennent.
@@ -19,7 +19,7 @@ git clone https://github.com/Nello10110/kararecall.git
 cd kararecall
 ```
 
-L’accès Git au dépôt privé doit être configuré sur cette machine. Si tu utilises une clé SSH GitHub, remplace l’adresse HTTPS par `git@github.com:Nello10110/kararecall.git`.
+Le dépôt est public ; le clonage HTTPS ne demande pas d’identifiant GitHub.
 
 **Si ton NAS n’a pas Git**, télécharge le ZIP du dépôt depuis ton compte GitHub, décompresse-le sur le NAS, puis ouvre un terminal dans ce dossier. Conserve les fichiers cachés, notamment `.env.example` et `.dockerignore`.
 
@@ -76,11 +76,11 @@ L’adresse d’écoute `0.0.0.0` permet l’accès depuis ton réseau domestiqu
 ## 4. Démarrer
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 docker compose ps
 ```
 
-Le premier démarrage construit les images et peut prendre quelques minutes. Vérifie que les services **web** et **worker** sont démarrés et que le web passe à `healthy`.
+Le premier démarrage télécharge les images publiques préconstruites pour Linux AMD64 ou ARM64 ; il ne compile rien sur le NAS. Vérifie que les services **web** et **worker** sont démarrés et que le web passe à `healthy`.
 
 Depuis ton navigateur, ouvre **`http://IP_DU_NAS:8765`**, en remplaçant `IP_DU_NAS` par son adresse locale. Pour un essai sur le Mac, ouvre [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
@@ -136,7 +136,7 @@ Le service passe immédiatement, puis toutes les quinze minutes. Il traite au pl
 
 | Symptôme | À vérifier |
 |---|---|
-| Impossible de cloner le dépôt | Configure l’accès Git au dépôt privé sur le NAS ou utilise la méthode ZIP de l’étape 1. |
+| Impossible de cloner le dépôt | Vérifie l’accès réseau à GitHub ou utilise la méthode ZIP de l’étape 1. |
 | `.env existe déjà` | Ouvre le fichier existant et complète-le à partir de l’étape 3. |
 | Page inaccessible | Remplacer `IP_DU_NAS`, vérifier `KARARECALL_BIND_ADDRESS=0.0.0.0`, le pare-feu local et `docker compose ps`. |
 | Port 8765 déjà utilisé | Mettre `KARARECALL_PORT=8766` dans `.env`, relancer `docker compose up -d`, puis ouvrir ce nouveau port. |
@@ -158,10 +158,11 @@ Lance ces commandes depuis le dossier cloné avec Git.
 
 ```sh
 git pull --ff-only
-docker compose up -d --build
+docker compose --profile automation pull web worker
+docker compose --profile automation up -d --no-deps web worker
 ```
 
-Compare `.env.example` et `.env` pour repérer les nouveaux paramètres. Conserve tes valeurs. Pour une installation par ZIP, remplace le code en conservant ton `.env`, puis reconstruis avec la seconde commande.
+Compare `.env.example` et `.env` pour repérer les nouveaux paramètres. Conserve tes valeurs. Pour une installation par ZIP, actualise les fichiers Compose en conservant ton `.env`, puis lance les deux commandes Docker. Avec un Compose personnalisé déjà configuré sur `latest`, il suffit de télécharger et redéployer les images ; aucune nouvelle copie du code n’est nécessaire.
 
 Les données restent dans le volume Docker `kararecall-storage`. Sauvegarde le volume et ton `.env` en suivant la [procédure de sauvegarde](HOMELAB.md#sauvegarde-et-restauration). Pour arrêter les services en conservant les données, utilise `docker compose stop`.
 
@@ -171,8 +172,8 @@ Après le premier import, ouvre **Veille** pour préparer un bulletin hebdomadai
 
 ## Après la mise à jour : résumés courts et commandes web
 
-Reconstruis et recrée **les deux images web et worker avec la même version**. Pour une stack utilisant un contexte Git distant figé sur un commit, actualise la référence de commit dans les deux `build.context` ; reconstruire sans changer cette référence reconstruit l’ancienne version.
+Télécharge et redéploie **les deux images web et worker avec la même version**. Pour une stack utilisant encore `build.context`, passe aux images `:latest` en suivant le [guide des images Docker](IMAGES-DOCKER.md). Un simple redémarrage ne télécharge pas une nouvelle version.
 
-Dans **Sources**, utilise **Résumer / traduire toutes les sources** pour reprendre les anciens textes avec le titre court et le résumé français. Le worker exécute la file séquentiellement avec ses quotas. Tu peux aussi traiter une seule source, relancer son analyse complète ou importer tout l’historique. Le [guide web](WEB.md#résumés-français-et-commandes-de-traitement) distingue ces actions et décrit le vidage local.
+Dans **Activité**, utilise **Résumer / traduire toutes les sources** pour reprendre les anciens textes avec le titre court et le résumé français. Le worker exécute la file séquentiellement avec ses quotas. Tu peux aussi traiter une seule source, relancer son analyse complète ou importer tout l’historique. Le [guide web](WEB.md#résumés-français-et-commandes-de-traitement) distingue ces actions et décrit le vidage local.
 
 Pour que les descriptions des outils s’enrichissent aussi périodiquement avec des lectures web, ajouter `WEB_RESEARCH_ENABLED=true` dans le `.env` et le transmettre au worker dans un Compose personnalisé, puis recréer le worker. Les boutons de recherche explicite fonctionnent sans activer cette périodicité. Les requêtes Search/Fetch et les compléments de rédaction partagent le budget IA ; leur disponibilité réelle dépend du compte fournisseur.
