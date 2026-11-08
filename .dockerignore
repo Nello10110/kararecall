@@ -5,6 +5,7 @@
 !settings.py
 !integrations.py
 !worker.py
+!source_enrichment.py
 !worker_media.py
 !worker_documents.py
 !reading.py
