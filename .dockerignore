@@ -1,5 +1,8 @@
 *
 !Dockerfile
+!deploy/
+!deploy/legacy/
+!deploy/legacy/*.py
 !kararecall/
 !kararecall/*.py
 !requirements/

@@ -57,7 +57,7 @@ Garder `compose.yaml` en premier : les chemins du projet sont résolus depuis sa
 
 ## Migration des anciennes commandes
 
-Le déploiement standard garde les mêmes services, `.env`, ports, volume et API. Mettre à jour les deux images suffit. Si un Compose ou un script personnel remplace explicitement la commande du conteneur, remplacer `python worker.py` par `python -m kararecall.worker`, et `python web_server.py` par `python -m kararecall.web_server`.
+Le déploiement standard garde les mêmes services, `.env`, ports, volume et API. À partir de la version 0.6.1, les images acceptent aussi les anciens chemins `/app/worker.py` et `/app/web_server.py`. Pour un Compose personnalisé, laisser les images choisir leur commande de démarrage. Si une commande personnalisée est nécessaire, utiliser `python -m kararecall.worker` ou `python -m kararecall.web_server` avec les arguments voulus.
 
 Les commandes de diagnostic deviennent `python scripts/pilot.py` et `python scripts/verify_storage.py`. Les lanceurs Finder sont dans `scripts/macos/` et reviennent automatiquement à la racine. Le client MCP utilise le chemin absolu de `scripts/assistant_mcp.py`, afin de fonctionner depuis n’importe quel répertoire de travail.
 

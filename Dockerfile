@@ -8,6 +8,8 @@ ENV KARARECALL_ROOT=/workspace
 COPY kararecall/ ./kararecall/
 COPY web/ ./web/
 COPY scripts/verify_storage.py scripts/pilot.py scripts/assistant_mcp.py ./scripts/
+# Existing Compose files may still invoke the original script paths.
+COPY deploy/legacy/ ./
 USER kararecall
 
 FROM base AS mcp

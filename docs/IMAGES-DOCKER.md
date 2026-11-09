@@ -27,6 +27,8 @@ services:
 
 Cet extrait n’est pas une stack complète. Conserver les variables d’environnement, volumes, réseaux, reverse proxy, limites et noms de services de son installation. En particulier, garder le volume `kararecall-storage` et le `.env` existants. Aucune modification des autres services Karakeep n’est nécessaire.
 
+Supprimer les lignes `command:` qui répètent le démarrage standard des deux services pour laisser chaque image utiliser sa propre commande. Les anciens chemins `/app/web_server.py` et `/app/worker.py` sont également pris en charge à partir de la version 0.6.1.
+
 Dans Dockhand, redéployer les deux services en demandant le téléchargement des images. En terminal, depuis le dossier de la stack :
 
 ```sh

@@ -57,7 +57,7 @@ Keep the root `compose.yaml` first so project paths resolve from the root. The d
 
 ## Migrating custom commands
 
-Standard deployment retains services, credentials, ports, volume and API. Updating both images is sufficient. If a personal script/custom Compose overrides container commands, replace `python worker.py` with `python -m kararecall.worker` and `python web_server.py` with `python -m kararecall.web_server`.
+Standard deployment retains services, credentials, ports, volume and API. Images from version 0.6.1 also support the original `/app/worker.py` and `/app/web_server.py` paths. Let the images supply their startup commands in custom Compose files. If you need a command override, use `python -m kararecall.worker` or `python -m kararecall.web_server` with the required arguments.
 
 Diagnostics use `python scripts/pilot.py` and `python scripts/verify_storage.py`. Finder launchers are under `scripts/macos/` and resolve the root automatically. MCP desktop clients should pass the absolute `scripts/assistant_mcp.py` entry point, which works from any working directory.
 

@@ -25,6 +25,8 @@ services:
 
 This is only an image-selection example. Retain your actual service names, environment, volumes, networks, reverse proxy and resource limits. Keep the existing storage volume and `.env`. Do not modify unrelated Karakeep services.
 
+Remove any `command:` overrides that repeat the standard startup so each image can supply its default command. Images from version 0.6.1 also support the original `/app/web_server.py` and `/app/worker.py` paths.
+
 In Dockhand, request new images and redeploy both KaraRecall services. With the example names:
 
 ```sh

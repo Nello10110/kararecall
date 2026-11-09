@@ -71,6 +71,8 @@ def main():
                 break
             if time.monotonic()>deadline:raise AssertionError('Disabled worker did not consume manual import request')
             time.sleep(.25)
+        compose('exec','-T','web','python','/app/web_server.py','--help')
+        compose('exec','-T','worker','python','/app/worker.py','--help')
         container=compose('ps','--quiet','web').stdout.strip()
         fixture=(ROOT/'tests/fixtures.py').read_text()+'''
 corpus(kararecall.ROOT)
